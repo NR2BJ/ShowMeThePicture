@@ -11,6 +11,8 @@ name: showmethepicture
 #  - PHOTOS_HOST_PATH 는 넓게(풀 전체 또는 photo123 의 부모) 잡고, 실제 폴더는 앱 안 폴더 선택기로 고른다.
 #
 # 새 이미지가 올라오면 Portainer 에서 스택의 "Pull and redeploy" 한 번이면 된다.
+# TLS·도메인은 이 스택 밖의 reverse proxy(예: Proxmox LXC 의 Caddy)가 맡고, app 의 3000 포트로 프록시한다.
+# 외부 프록시가 없으면 compose.caddy.yaml 을 겹쳐 쓴다.
 # 소스에서 직접 빌드하려면: docker compose -f compose.yaml -f compose.build.yaml up -d --build
 
 x-app: &app
@@ -48,7 +50,8 @@ services:
     <<: *app
     # 기동 시 마이그레이션 적용 후 SvelteKit 서버 시작
     command: ['sh', '-c', 'pnpm db:migrate && node build']
-    expose: ['3000']
+    ports:
+      - '${APP_PORT:-3000}:3000' # 외부 reverse proxy 가 여기로 프록시
     depends_on:
       db:
         condition: service_healthy
@@ -71,50 +74,6 @@ services:
       - ml-cache:/cache
     restart: unless-stopped
 
-  caddy:
-    image: caddy:2
-    ports:
-      - '80:80'
-      - '443:443'
-    environment:
-      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
-    configs:
-      - source: caddyfile
-        target: /etc/caddy/Caddyfile
-    volumes:
-      - ${CACHE_HOST_PATH:?set CACHE_HOST_PATH}:/srv/cache:ro
-      - caddy-data:/data
-      - caddy-config:/config
-    depends_on:
-      - app
-    restart: unless-stopped
-
-configs:
-  # Caddyfile 을 레포 파일 바인드 대신 인라인으로 둔다 (Portainer 의 git 스택은 상대경로 바인드가 까다롭다).
-  # `$$` 는 compose 치환을 피해 caddy 가 런타임에 읽는 환경변수 자리표시자다.
-  caddyfile:
-    content: |
-      {$$SITE_ADDRESS}
-
-      encode zstd gzip
-
-      # 파생 이미지는 caddy 가 SSD 캐시에서 직접 서빙 (불변 URL → 1년 캐시)
-      # /media/{file_id}/{thumb|preview|full}.webp -> /srv/cache/{id[:2]}/{id}/{size}.webp
-      @media path_regexp m ^/media/([0-9A-Za-z]{2})([0-9A-Za-z]+)/(thumb|preview|full)\.webp$
-      handle @media {
-        root * /srv/cache
-        rewrite * /{re.m.1}/{re.m.1}{re.m.2}/{re.m.3}.webp
-        header Cache-Control "public, max-age=31536000, immutable"
-        file_server
-      }
-
-      # 나머지(페이지, /api, 관리자 전용 원본)는 SvelteKit 서버로
-      handle {
-        reverse_proxy app:3000
-      }
-
 volumes:
   db-data:
   ml-cache:
-  caddy-data:
-  caddy-config:

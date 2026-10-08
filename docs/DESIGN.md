@@ -182,7 +182,7 @@ Photo
 | 메타           | **exiftool-vendored**                                | ExifTool 바이너리 동봉, stay_open, RAW 내장 프리뷰 추출                                                                                                                      |
 | 해시           | hash-wasm(BLAKE3), pHash 직접(32×32 DCT), thumbhash  |                                                                                                                                                                              |
 | ML             | immich-machine-learning(openvino)                    | §3.6. v2에 자체 Python 서비스 추가 가능                                                                                                                                      |
-| 프록시         | Caddy                                                | 자동 TLS                                                                                                                                                                     |
+| 프록시         | 외부 reverse proxy (LXC Caddy)                       | 이미 있는 것을 쓴다. 스택 안에는 두지 않는다                                                                                                                                 |
 | 런타임         | Node 22 LTS, pnpm                                    | Bun은 sharp/exiftool 호환이 아직 확인 대상이라 나중에                                                                                                                        |
 
 솔직한 단점
@@ -197,28 +197,29 @@ v0.1의 FastAPI + 별도 프론트 안을 버린 이유: 언어 둘, 툴체인 �
 
 ```
   게스트 / 관리자
-        │
-   ┌────▼─────┐   /media/*  ┌───────────────────┐
-   │  caddy   │────────────▶│ cache (SSD 볼륨)   │ thumb/preview/full webp
-   │  (TLS)   │             └─────────▲─────────┘
-   └────┬─────┘                       │ 생성
-        │ 페이지, /api                 │
-   ┌────▼─────┐   ┌────────────┐  ┌───┴──────┐      ┌──────────────────────┐
-   │   app    │──▶│ Postgres17 │◀─│  worker  │─────▶│ ml                   │
-   │ SvelteKit│   │ + pgvector │  │ 스캔·메타 │ 임베딩│ immich-ml (openvino) │
-   │ SSR+API  │◀─ │ + pg-boss  │  │ 파생·페어 │      │ /dev/dri → Arc A380  │
-   └──────────┘   └────────────┘  └───┬──────┘      └──────────────────────┘
-                                      │ :ro
-                              ┌───────▼────────┐
-                              │ /mnt (mergerfs) │ HDD ×12, LSI 9400-8i
-                              │  …/photo123     │ Proxmox → Debian VM
-                              └────────────────┘
+        │ https://photos.example.com
+   ┌────▼───────────────┐
+   │ 외부 reverse proxy  │  Proxmox LXC 의 Caddy (TLS·도메인). 이 스택 밖.
+   └────┬───────────────┘
+        │ http://<VM IP>:3000
+   ┌────▼──────┐     ┌─────────────┐     ┌───────────┐      ┌──────────────────────┐
+   │ app       │────▶│ Postgres 17 │◀────│ worker    │─────▶│ ml                   │
+   │ SvelteKit │     │ + pgvector  │     │ 스캔·메타  │ 임베딩│ immich-ml (openvino) │
+   │ SSR + API │     │ + pg-boss   │     │ 파생·페어  │      │ /dev/dri → Arc A380  │
+   │ + /media  │     └─────────────┘     └─────┬─────┘      └──────────────────────┘
+   └────┬──────┘                               │
+        │ 읽기(공개 여부 확인 후)                  │ 쓰기            원본 읽기 :ro
+   ┌────▼───────────────────────────────────────▼───┐      ┌──────────────────────────┐
+   │ cache 볼륨 (SSD) — thumb / preview / full webp  │      │ /mnt (mergerfs, HDD ×12)  │
+   └────────────────────────────────────────────────┘      │  …/photo123  ← worker 만  │
+                                                           └──────────────────────────┘
 ```
 
-컨테이너 5개: `app`, `worker`, `ml`, `db`, `caddy`. 이미지는 GitHub Actions 가 `ghcr.io/nr2bj/showmethepicture` 로 올린 것을 쓴다(§8.1).
+컨테이너 4개: `app`, `worker`, `ml`, `db`. TLS·도메인은 스택 밖의 reverse proxy(LXC 의 Caddy)가 맡고 `app:3000` 으로 프록시한다. 외부 프록시가 없으면 `compose.caddy.yaml` override. 이미지는 GitHub Actions 가 `ghcr.io/nr2bj/showmethepicture` 로 올린 것을 쓴다(§8.1).
 compose 핵심:
 
-- `app`/`worker`: `volumes: [ "${PHOTOS_HOST_PATH}:/photos:ro", "${CACHE_HOST_PATH}:/cache" ]` — 캐시는 VM의 SSD 경로. Caddyfile 은 compose `configs` 인라인.
+- `app`/`worker`: `volumes: [ "${PHOTOS_HOST_PATH}:/photos:ro", "${CACHE_HOST_PATH}:/cache" ]` — 캐시는 VM의 SSD 경로.
+- `app`: `ports: ["${APP_PORT:-3000}:3000"]`, `ORIGIN` 은 공개 URL.
 - `ml`: `devices: ["/dev/dri:/dev/dri"]`만 있으면 된다(컨테이너가 root로 돌아 `group_add` 불필요). VM에서 `card0`, `card1`, `renderD128` 확인됨. 모델 캐시 볼륨.
 - `app`은 텍스트 임베딩(검색 질의)만 `ml`에 직접 요청, 이미지 임베딩은 `worker`가.
 
@@ -271,7 +272,7 @@ GET  /api/photos/{id}/similar
 GET  /api/collections · /api/collections/{slug}
 GET  /api/library/{slug}?cursor=                 Source 통째로(평탄), RAW 우선 표시
 GET  /api/search?q=&medium=&year=&limit=
-GET  /media/{file_id}/{thumb|preview|full}.webp  불변 URL(해시 포함), 1년 캐시, caddy가 직접 서빙
+GET  /media/{file_id}/{thumb|preview|full}.webp  불변 URL(해시 포함), 1년 캐시. app 이 공개 여부 확인 후 스트리밍
 /p/{id}, /c/{slug}                               SSR 페이지(OG 메타 포함)
 ```
 
@@ -324,7 +325,7 @@ GET   /media/{file_id}/original                  관리자만
 
 ### 8.1 설정의 경계와 배포 흐름
 
-- **compose + 환경변수 = 인프라만**: `PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_*`, `SITE_ADDRESS`, `ORIGIN`, `APP_TAG`, `IMMICH_ML_VERSION`. 이게 전부다.
+- **compose + 환경변수 = 인프라만**: `PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_*`, `ORIGIN`, `APP_PORT`, `APP_TAG`, `IMMICH_ML_VERSION`. 이게 전부다.
 - **관리자 페이지 = 앱 설정 전부**: Source 등록(폴더 선택기), 사이트 제목·About, 랜딩 모드, 게스트 최대 해상도, GPS·B컷 정책, 검색 모델, 스캔 주기. `settings` 테이블과 `sources` 테이블에 저장되어 `db-data` 볼륨에 남는다. 재배포·이미지 업데이트에 영향받지 않는다. 세션 서명 키도 첫 기동 때 생성해 DB 에 둔다(환경변수 불필요).
 - 배포: `main` push → GitHub Actions → `ghcr.io/nr2bj/showmethepicture:latest`(+ `sha-…`, `v*`). Portainer 에서는 **웹 에디터 스택**에 `compose.yaml` 을 붙여넣고 값만 바꾼다 — 레포의 compose 는 템플릿이지 고정이 아니며, 이후 수정은 Portainer 에서 한다. 새 이미지는 스택의 "Pull and redeploy" 로 받는다. 자동화를 원하면 Repository 스택(GitOps) + 레포 Secrets `PORTAINER_WEBHOOK` 조합이 선택지.
 - `compose.yaml` 에는 `build:` 를 두지 않는다(웹 에디터 스택은 빌드 컨텍스트가 없어 실패). 소스 빌드는 `compose.build.yaml` override: `docker compose -f compose.yaml -f compose.build.yaml up --build`.
@@ -332,6 +333,7 @@ GET   /media/{file_id}/original                  관리자만
 잡 체인(파일 1개): `scan → extract_metadata → derive → hash → embed → pair → rules`
 
 - 파생본: thumb 480 / preview 1600 / full 2560(긴 변), WebP, sRGB 변환(AdobeRGB·ProPhoto 원본 대비). 경로 `cache/{id[:2]}/{id}/{size}.webp`, SSD.
+- `/media/*` 는 app 이 서빙한다: 공개 사진(또는 관리자 세션)만 통과, `Cache-Control: immutable`, SSD 캐시에서 스트리밍. 외부 프록시는 TLS·도메인만 맡는다.
 - RAW 원본 표시용: ExifTool 내장 프리뷰 추출 → 같은 파생본 파이프라인.
 - 배치: ExifTool stay_open, 임베딩 32장 단위, 워커 동시성은 HDD를 배려해 2~4.
 - 스캔 주기 30분 기본. 밤에 HDD를 재우고 싶으면 스캔 시간대 제한 설정.

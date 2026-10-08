@@ -1,0 +1,31 @@
+# 외부 reverse proxy 가 없을 때만 겹쳐 쓰는 override. 도메인·TLS 를 스택 안의 caddy 가 처리한다.
+#   docker compose -f compose.yaml -f compose.caddy.yaml up -d
+# Portainer 웹 에디터라면 아래 caddy 서비스와 configs/volumes 를 compose.yaml 에 합쳐 넣으면 된다.
+services:
+  caddy:
+    image: caddy:2
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80} # 도메인을 넣으면 자동 TLS
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+configs:
+  caddyfile:
+    content: |
+      {$$SITE_ADDRESS}
+      encode zstd gzip
+      reverse_proxy app:3000
+
+volumes:
+  caddy-data:
+  caddy-config:

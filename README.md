@@ -6,7 +6,7 @@
 
 ## 스택
 
-SvelteKit 3(Svelte 5) · TypeScript · Tailwind v4 · PostgreSQL 17 + pgvector · Drizzle · pg-boss · sharp · exiftool-vendored · Immich machine-learning(OpenVINO, Intel Arc) · Caddy
+SvelteKit 3(Svelte 5) · TypeScript · Tailwind v4 · PostgreSQL 17 + pgvector · Drizzle · pg-boss · sharp · exiftool-vendored · Immich machine-learning(OpenVINO, Intel Arc). TLS·도메인은 외부 reverse proxy(Caddy 등)
 
 ## 설정의 경계
 
@@ -17,18 +17,26 @@ SvelteKit 3(Svelte 5) · TypeScript · Tailwind v4 · PostgreSQL 17 + pgvector �
 ## 배포 (Debian + Docker, Portainer)
 
 1. `main` 에 push 하면 GitHub Actions 가 `ghcr.io/nr2bj/showmethepicture:latest` 를 만든다 (`sha-…`, `v*` 태그도). 레포가 public 이라 pull 에 인증이 필요 없다.
-2. Portainer → Stacks → Add stack → **Web editor** 에 [compose.yaml](compose.yaml) 을 붙여넣는다. `${...}` 자리는 아래 Environment variables 에 넣어도 되고 그냥 값으로 바꿔 써도 된다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `SITE_ADDRESS`, `ORIGIN`). 이후 수정도 Portainer 에서 바로 한다. 레포의 compose 는 템플릿일 뿐 고정이 아니다.
-3. 새 이미지가 올라오면 스택에서 **Pull and redeploy**. 자동화하고 싶으면 대신 Repository 스택(GitOps)으로 만들고 스택 webhook URL 을 레포 Secrets `PORTAINER_WEBHOOK` 에 넣으면 빌드 직후 재배포된다.
-4. 서버에서 직접 돌릴 때
+2. Portainer → Stacks → Add stack → **Web editor** 에 [compose.yaml](compose.yaml) 을 붙여넣는다. `${...}` 자리는 아래 Environment variables 에 넣어도 되고 그냥 값으로 바꿔 써도 된다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `ORIGIN`, 필요하면 `APP_PORT`). 이후 수정도 Portainer 에서 바로 한다. 레포의 compose 는 템플릿일 뿐 고정이 아니다.
+3. 외부 reverse proxy(예: Proxmox LXC 의 Caddy)에서 도메인을 app 으로 넘긴다. `ORIGIN` 은 이 공개 URL 과 같아야 한다.
+   ```
+   photos.example.com {
+       encode zstd gzip
+       reverse_proxy <Debian VM IP>:3000
+   }
+   ```
+   외부 프록시가 없으면 [compose.caddy.yaml](compose.caddy.yaml) 을 겹쳐 스택 안에서 TLS 까지 처리한다.
+4. 새 이미지가 올라오면 스택에서 **Pull and redeploy**. 자동화하고 싶으면 대신 Repository 스택(GitOps)으로 만들고 스택 webhook URL 을 레포 Secrets `PORTAINER_WEBHOOK` 에 넣으면 빌드 직후 재배포된다.
+5. 서버에서 직접 돌릴 때
    ```bash
    cp .env.example .env     # 값 채우기. CACHE_HOST_PATH 는 SSD!
    docker compose up -d     # GHCR 이미지 pull
    # 소스에서 직접 빌드할 때만:
    docker compose -f compose.yaml -f compose.build.yaml up -d --build
    ```
-5. 첫 실행 후 관리자로 로그인해 라이브러리에서 폴더를 Source 로 등록한다.
+6. 첫 실행 후 관리자로 로그인해 라이브러리에서 폴더를 Source 로 등록한다.
 
-컨테이너: `db`, `app`(SSR + API, 기동 시 마이그레이션), `worker`(스캔·메타·파생본·페어링), `ml`(Immich ML, `/dev/dri`), `caddy`(TLS, `/media/*` 직접 서빙). Caddyfile 은 compose 안에 인라인(`configs`)이라 레포 파일이 필요 없다. `compose.yaml` 에는 `build:` 가 없다 — 웹 에디터 스택은 빌드 컨텍스트가 없어서 넣으면 실패한다. 로컬 빌드는 `compose.build.yaml` override 로.
+컨테이너: `db`, `app`(SSR + API + `/media/*` 서빙, 기동 시 마이그레이션), `worker`(스캔·메타·파생본·페어링), `ml`(Immich ML, `/dev/dri`). 파생 이미지는 app 이 공개 여부를 확인하고 스트리밍하므로 비공개 사진의 썸네일이 id 만으로 새지 않는다. `compose.yaml` 에는 `build:` 가 없다 — 웹 에디터 스택은 빌드 컨텍스트가 없어서 넣으면 실패한다. 로컬 빌드는 `compose.build.yaml` override 로.
 
 ## 로컬 개발 (Mac)
 
