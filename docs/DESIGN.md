@@ -159,7 +159,7 @@ Photo
 ### 3.7 권한
 
 - 게스트: 읽기 전용, `visibility=public`만, **원본 파일은 절대 못 받는다**("전체 보기"도 `guest_max_edge` 2560px 파생본).
-- 관리자: 단일 계정, argon2 + HttpOnly·SameSite=Strict 세션 쿠키. TOTP는 v2.
+- 관리자: 단일 계정, scrypt(Node 내장) + HMAC 서명 HttpOnly·SameSite=Lax 쿠키(서명 키는 첫 기동 때 DB 에 생성). 첫 계정 생성은 앱 로그에 찍히는 설정 토큰 필요. 로그인 실패는 IP 당 10분 10회. TOTP는 v2.
 - 관리자 기능: Source 등록/재스캔, 잡 현황, 페어링 검토·수동 페어, primary/라벨 지정, 공개·숨김·tier·제목·캡션·촬영일 수정(일괄 포함), 컬렉션 편집, 롤 정보 입력, 사이트 설정(제목·About·랜딩 모드·게스트 최대 해상도·GPS·B컷 정책), 원본 다운로드, 모델 교체·재임베딩.
 - Source별 `default_visibility`: 보정 A 폴더 public, B 폴더 설정값, 원본 폴더 hidden.
 

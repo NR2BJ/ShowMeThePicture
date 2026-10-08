@@ -78,6 +78,15 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 - 공개 페이지: `/archive`(공개 사진, 월별, B컷 토글은 설정/관리자), `/library/{slug}`(Source 통째로, 공개 설정된 것만 게스트에게), `/p/{id}`(사진 + 스펙 시트 드로어, ←/→/i/Esc, `\` 는 원본⇄보정 — 페어링은 2단계), `/`(공개 A컷 무작위 필름 스트립).
 - `/media/{file_id}/{thumb|preview|full}.webp?v=` 는 공개 사진만(관리자는 전부), `/media/{file_id}/original` 은 관리자만.
 
+## 보안과 권한
+- **첫 관리자 생성**(`/admin/setup`)은 관리자가 0명일 때만 열리고, 앱이 기동하며 로그에 찍는 **설정 토큰**을 요구한다. `docker compose logs app | grep setup` 으로 확인한다. 계정을 만들면 토큰은 사라지고 페이지는 로그인으로만 간다.
+- **로그인**은 IP 당 10분에 실패 10회까지. 프록시 뒤에서 IP 를 제대로 보려면 compose 의 `ADDRESS_HEADER=X-Forwarded-For` 를 켠다(기본 켜져 있음). 세션은 HttpOnly·SameSite=Lax 쿠키이고 https 로 접속하면 Secure 가 붙는다. **`ORIGIN` 과 같은 주소로 접속해야 로그인이 유지된다**(https 로 설정해 두고 http://IP:3000 으로 들어가면 쿠키가 거부된다).
+- 폼 요청은 SvelteKit 이 `ORIGIN` 과 비교해 CSRF 를 막는다.
+- 원본 폴더는 컨테이너에 **read-only** 로 마운트되고, 앱은 사이드카도 쓰지 않는다. 폴더 선택기와 모든 경로 API 는 `/photos` 아래로만 제한된다(상위 탈출 불가).
+- 게스트는 공개(`visibility=public`) 사진의 파생본만 받는다. 숨긴 사진은 썸네일도 404. 원본 파일(`/media/{id}/original`)은 관리자 세션에서만.
+- 컨테이너는 root 로 돈다(Immich 와 같은 기본값). 그래서 **호스트의 파일 권한 때문에 읽기가 실패할 일은 없다**(mergerfs 는 `allow_other` 가 켜져 있어야 하는데 mergerfs 기본값이다). 캐시 폴더(`CACHE_HOST_PATH`)는 root 가 만들어 쓰므로 호스트에서 지울 때 sudo 가 필요하다. 비루트로 돌리고 싶으면 compose 의 `user: "1000:1000"` 주석을 풀고, 그 uid 가 사진을 읽고 캐시 폴더에 쓸 수 있어야 한다.
+- 사진 폴더 위치: 컨테이너 안에서는 항상 `/photos` 다. 실제 위치는 `PHOTOS_HOST_PATH` 로 준다(예: `/mnt/pool/photos`). 폴더 선택기의 `/photos/...` 는 그 아래를 가리킨다.
+
 ## 구조
 
 ```

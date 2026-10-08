@@ -6,7 +6,9 @@
 <section class="admin-page narrow">
 	<h1>첫 관리자 만들기</h1>
 	<p class="notice">
-		아직 관리자 계정이 없습니다. 한 번만 만들 수 있고, 이후에는 로그인 화면만 보입니다.
+		아직 관리자 계정이 없습니다. 한 번만 만들 수 있고, 이후에는 로그인 화면만 보입니다.<br />
+		앱 로그에 찍힌 <strong>설정 토큰</strong>이 필요합니다. Docker 라면
+		<code>docker compose logs app | grep setup</code>
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	<form method="POST">
@@ -35,6 +37,9 @@
 				required
 			/></label
 		>
+		<label class="field"
+			><span>설정 토큰</span><input type="text" name="token" autocomplete="off" required /></label
+		>
 		<button class="btn primary" type="submit">만들기</button>
 	</form>
 </section>
@@ -42,5 +47,9 @@
 <style>
 	.narrow {
 		max-width: 420px;
+	}
+	code {
+		font-family: var(--font-mono);
+		font-size: 12px;
 	}
 </style>
