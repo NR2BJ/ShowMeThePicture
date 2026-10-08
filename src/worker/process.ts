@@ -73,11 +73,16 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 	const src = await openSource(ctx.exiftool, ctx.cacheDir, {
 		id: fileId,
 		kind: file.kind,
-		absPath: abs
+		absPath: abs,
+		rotation: file.rotation
 	});
 	let d;
 	try {
-		d = await deriveAll(src.input, ctx.cacheDir, fileId, { eager, fullEdge });
+		d = await deriveAll(src.input, ctx.cacheDir, fileId, {
+			eager,
+			fullEdge,
+			rotation: file.rotation
+		});
 	} finally {
 		await src.cleanup();
 	}

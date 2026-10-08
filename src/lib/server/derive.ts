@@ -9,7 +9,7 @@ import { derivativeDir, derivativePath } from './media';
 
 export const QUALITY: Record<SizeName, number> = { thumb: 78, preview: 84, full: 84 };
 
-export type SourceFile = { id: string; kind: string; absPath: string };
+export type SourceFile = { id: string; kind: string; absPath: string; rotation?: number };
 
 /** RAW 면 내장 프리뷰를 꺼내 임시 JPG 경로를, 아니면 원본 경로를 돌려준다. */
 export async function openSource(
@@ -30,8 +30,10 @@ export async function openSource(
 	return { input: tmp, cleanup: () => rm(tmp, { force: true }) };
 }
 
-export function basePipeline(input: string): Sharp {
-	return sharp(input, { failOn: 'none', limitInputPixels: false }).rotate();
+/** EXIF 자동 회전 + 관리자 추가 회전(시계 방향 90° × rotation) */
+export function basePipeline(input: string, rotation = 0): Sharp {
+	const s = sharp(input, { failOn: 'none', limitInputPixels: false }).autoOrient();
+	return rotation % 4 ? s.rotate((rotation % 4) * 90) : s;
 }
 
 /** 한 사이즈를 webp 로 렌더 (임시 파일 → rename 으로 원자적 교체). */
@@ -79,7 +81,13 @@ export async function ensureDerivative(
 		p = (async () => {
 			const src = await openSource(exiftool, cacheDir, file);
 			try {
-				return await renderSize(basePipeline(src.input), cacheDir, file.id, size, edge);
+				return await renderSize(
+					basePipeline(src.input, file.rotation ?? 0),
+					cacheDir,
+					file.id,
+					size,
+					edge
+				);
 			} finally {
 				await src.cleanup();
 				inflight.delete(key);

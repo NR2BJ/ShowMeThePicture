@@ -37,6 +37,7 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 			ready: files.derivativesReady,
 			relPath: files.relPath,
 			kind: files.kind,
+			rotation: files.rotation,
 			ext: files.ext,
 			filename: files.filename,
 			size: files.size,
@@ -75,14 +76,19 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 	const p = await ensureDerivative(
 		getExifTool(),
 		config.CACHE_DIR,
-		{ id: row.id, kind: row.kind, absPath: path.join(row.rootPath, row.relPath) },
+		{
+			id: row.id,
+			kind: row.kind,
+			absPath: path.join(row.rootPath, row.relPath),
+			rotation: row.rotation
+		},
 		size,
 		edge
 	);
 	const st = await stat(p).catch(() => null);
 	if (!st) error(404);
 
-	const etag = `"${(row.contentHash ?? '').slice(0, 16)}-${size}"`;
+	const etag = `"${(row.contentHash ?? '').slice(0, 16)}-r${row.rotation}-${size}"`;
 	if (request.headers.get('if-none-match') === etag)
 		return new Response(null, { status: 304, headers: { ETag: etag } });
 	return new Response(Readable.toWeb(createReadStream(p)) as ReadableStream, {

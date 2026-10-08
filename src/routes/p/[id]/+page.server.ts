@@ -7,6 +7,7 @@ import {
 	scopeFromCtx,
 	setPhotoVisibility
 } from '#lib/server/gallery.ts';
+import { setFileRotation } from '#lib/server/rotation.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -30,5 +31,15 @@ export const actions: Actions = {
 		const v = form.get('visibility') === 'public' ? 'public' : 'hidden';
 		await setPhotoVisibility(db(), params.id, v);
 		return { ok: true };
+	},
+	/** 관리자: 파일 하나의 방향을 저장하고 파생본을 다시 만든다 */
+	rotate: async ({ request, locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const form = await request.formData();
+		const fileId = String(form.get('fileId') ?? '');
+		const rotation = Number(form.get('rotation'));
+		if (!fileId || !Number.isInteger(rotation)) return fail(400, { error: 'bad request' });
+		await setFileRotation(db(), fileId, rotation);
+		return { rotated: true };
 	}
 };

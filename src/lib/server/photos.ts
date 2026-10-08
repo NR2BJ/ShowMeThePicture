@@ -14,6 +14,7 @@ export async function getLandingFrames(n = 42): Promise<Frame[]> {
 			fileId: files.id,
 			camera: files.cameraModel,
 			contentHash: files.contentHash,
+			rotation: files.rotation,
 			medium: photos.medium
 		})
 		.from(photos)
@@ -31,7 +32,7 @@ export async function getLandingFrames(n = 42): Promise<Frame[]> {
 
 	return rows.map((r, i) => ({
 		id: r.id,
-		src: mediaUrl(r.fileId, 'preview', versionOf(r.contentHash)),
+		src: mediaUrl(r.fileId, 'preview', versionOf(r.contentHash, r.rotation)),
 		label: (
 			r.camera ?? (r.medium === 'film' ? 'FILM' : r.medium === 'digital' ? 'DIGITAL' : '')
 		).toUpperCase(),

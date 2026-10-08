@@ -8,6 +8,8 @@ export function mediaUrl(fileId: string, size: SizeName, version?: string | null
 	return `/media/${fileId}/${size}.webp${version ? `?v=${version}` : ''}`;
 }
 
-export function versionOf(contentHash: string | null | undefined): string | null {
-	return contentHash ? contentHash.slice(0, 8) : null;
+/** rotation 이 바뀌면 URL 도 바뀌어야 캐시가 갈린다. */
+export function versionOf(contentHash: string | null | undefined, rotation = 0): string | null {
+	if (!contentHash) return null;
+	return contentHash.slice(0, 8) + (rotation % 4 ? `r${rotation % 4}` : '');
 }

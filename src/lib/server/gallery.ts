@@ -56,6 +56,7 @@ const itemSelect = {
 	height: files.height,
 	thumbhash: files.thumbhash,
 	contentHash: files.contentHash,
+	rotation: files.rotation,
 	camera: files.cameraModel
 };
 
@@ -70,9 +71,10 @@ function toItem(r: {
 	height: number | null;
 	thumbhash: Uint8Array | null;
 	contentHash: string | null;
+	rotation: number;
 	camera: string | null;
 }): GalleryItem {
-	const v = versionOf(r.contentHash);
+	const v = versionOf(r.contentHash, r.rotation);
 	return {
 		id: r.id,
 		takenAt: r.takenAt ? r.takenAt.toISOString() : null,
@@ -125,6 +127,7 @@ export type Variant = {
 	width: number | null;
 	height: number | null;
 	contentHash: string | null;
+	rotation: number;
 	takenAt: string | null;
 	takenAtSource: string | null;
 	cameraMake: string | null;
@@ -192,7 +195,7 @@ export async function getPhotoDetail(
 		);
 	const variants: Variant[] = rows
 		.map(({ f, s }) => {
-			const v = versionOf(f.contentHash);
+			const v = versionOf(f.contentHash, f.rotation);
 			return {
 				id: f.id,
 				role: f.variantRole,
@@ -205,6 +208,7 @@ export async function getPhotoDetail(
 				width: f.width,
 				height: f.height,
 				contentHash: f.contentHash,
+				rotation: f.rotation,
 				takenAt: f.takenAt ? f.takenAt.toISOString() : null,
 				takenAtSource: f.takenAtSource,
 				cameraMake: f.cameraMake,

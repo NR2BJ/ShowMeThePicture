@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { PgBoss } from 'pg-boss';
 import { config } from './config';
 import type { Db } from './db';
-import { Q, type ScanSourceJob } from './jobs';
+import { Q, type ProcessFileJob, type ScanSourceJob } from './jobs';
 
 let boss: PgBoss | null = null;
 let starting: Promise<PgBoss> | null = null;
@@ -34,6 +34,12 @@ export async function enqueueScan(sourceId: string, full = false): Promise<strin
 	const b = await getBoss();
 	const data: ScanSourceJob = { sourceId, full };
 	return b.send(Q.SCAN_SOURCE, data, { singletonKey: `scan:${sourceId}`, singletonSeconds: 30 });
+}
+
+export async function enqueueProcess(fileId: string): Promise<string | null> {
+	const b = await getBoss();
+	const data: ProcessFileJob = { fileId };
+	return b.send(Q.PROCESS_FILE, data, { singletonKey: `file:${fileId}`, singletonSeconds: 10 });
 }
 
 export type QueueCount = { name: string; state: string; count: number };

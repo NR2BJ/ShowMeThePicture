@@ -147,6 +147,8 @@ export const files = pgTable(
 		width: integer('width'),
 		height: integer('height'),
 		orientation: integer('orientation'),
+		/** 관리자가 추가로 돌린 방향 (시계 방향 90° 단위, 0~3). EXIF 자동 회전 뒤에 적용 */
+		rotation: integer('rotation').notNull().default(0),
 		colorProfile: text('color_profile'),
 
 		takenAt: ts('taken_at'),

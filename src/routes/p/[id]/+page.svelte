@@ -51,6 +51,26 @@
 	});
 	const q = $derived(`?ctx=${encodeURIComponent(data.ctx)}`);
 
+	// 보기용 회전 (누구나). 관리자는 '방향 저장' 으로 파생본에 굽는다.
+	let turns = $state(0);
+	let box = $state({ w: 0, h: 0 });
+	$effect(() => {
+		void data.photo.id;
+		turns = 0;
+	});
+	const fit = $derived.by(() => {
+		const v = current;
+		if (!v?.width || !v?.height || !box.w || !box.h) return null;
+		const odd = turns % 2 === 1;
+		const vw0 = odd ? v.height : v.width;
+		const vh0 = odd ? v.width : v.height;
+		const scale = Math.min(box.w / vw0, box.h / vh0, 1);
+		const vw = vw0 * scale;
+		const vh = vh0 * scale;
+		// img 요소 자체의 크기(회전 전) — 회전 후 보이는 박스가 vw×vh 가 되게
+		return { w: odd ? vh : vw, h: odd ? vw : vh };
+	});
+
 	function onKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 		if (e.key === 'ArrowLeft' && data.nav.prev) goto(`/p/${data.nav.prev}${q}`);
@@ -79,7 +99,7 @@
 </svelte:head>
 
 <main class="photo" class:info>
-	<figure>
+	<figure bind:clientWidth={box.w} bind:clientHeight={box.h}>
 		{#if data.nav.prev}<a class="arrow prev" href={`/p/${data.nav.prev}${q}`} aria-label="이전 사진"
 				>←</a
 			>{/if}
@@ -90,6 +110,9 @@
 					alt={data.photo.title ?? ''}
 					width={current.width ?? undefined}
 					height={current.height ?? undefined}
+					style:width={fit ? `${fit.w}px` : undefined}
+					style:height={fit ? `${fit.h}px` : undefined}
+					style:transform={turns ? `rotate(${turns * 90}deg)` : undefined}
 					use:fadeIn
 				/>
 			{/if}
@@ -124,6 +147,31 @@
 					{/each}
 				</span>
 			{/if}
+			<span class="chips rotate">
+				<button
+					type="button"
+					class="chip"
+					onclick={() => (turns = (turns + 3) % 4)}
+					title="왼쪽으로 회전"
+					aria-label="왼쪽으로 회전">↺</button
+				>
+				<button
+					type="button"
+					class="chip"
+					onclick={() => (turns = (turns + 1) % 4)}
+					title="오른쪽으로 회전"
+					aria-label="오른쪽으로 회전">↻</button
+				>
+				{#if data.admin && turns && current}
+					<form method="POST" action="?/rotate">
+						<input type="hidden" name="fileId" value={current.id} />
+						<input type="hidden" name="rotation" value={(current.rotation + turns) % 4} />
+						<button type="submit" class="chip on" title="이 방향으로 파생본을 다시 만듭니다"
+							>방향 저장</button
+						>
+					</form>
+				{/if}
+			</span>
 			<button type="button" class="pill quiet" onclick={() => (info = !info)} title="i 키"
 				>{info ? '닫기' : '정보'}</button
 			>
@@ -173,17 +221,20 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		min-height: 60vh;
+		height: 80vh;
+		min-height: 320px;
 	}
 	figure img {
 		max-width: 100%;
-		max-height: 80vh;
+		max-height: 100%;
 		width: auto;
 		height: auto;
 		object-fit: contain;
 		background: #000;
 		opacity: 0;
-		transition: opacity 0.15s ease;
+		transition:
+			opacity 0.15s ease,
+			transform 0.2s ease;
 	}
 	figure img:global(.loaded) {
 		opacity: 1;
@@ -258,6 +309,11 @@
 	.chips {
 		display: inline-flex;
 		gap: 4px;
+	}
+	.chips.rotate .chip {
+		font-size: 15px;
+		line-height: 1;
+		padding: 5px 10px;
 	}
 	.chip {
 		border-color: var(--color-ink-faint);

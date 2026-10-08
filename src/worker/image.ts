@@ -1,10 +1,8 @@
 // 워커용 파생본 생성: 미리 만드는 사이즈(thumb/preview) + thumbhash + pHash.
 // full(2560) 은 기본적으로 누가 열 때 /media 가 만든다 (EAGER_FULL=1 이면 여기서 미리).
-import { rm } from 'node:fs/promises';
 import { rgbaToThumbHash } from 'thumbhash';
 import { SIZES, type SizeName } from '#lib/media.ts';
 import { basePipeline, renderSize } from '#lib/server/derive.ts';
-import { derivativeDir } from '#lib/server/media.ts';
 
 export type DeriveResult = { width: number; height: number; thumbhash: Buffer; phash: Buffer };
 
@@ -47,7 +45,7 @@ export function hamming(a: Uint8Array, b: Uint8Array): number {
 	return d;
 }
 
-export type DeriveOptions = { eager: SizeName[]; fullEdge: number };
+export type DeriveOptions = { eager: SizeName[]; fullEdge: number; rotation?: number };
 
 /**
  * 입력(원본 또는 RAW 내장 프리뷰) → 지정한 사이즈 webp + thumbhash + pHash.
@@ -59,11 +57,13 @@ export async function deriveAll(
 	fileId: string,
 	opts: DeriveOptions
 ): Promise<DeriveResult> {
-	const base = basePipeline(input);
+	const rotation = (opts.rotation ?? 0) % 4;
+	const base = basePipeline(input, rotation);
 	const meta = await base.metadata();
-	const oriented = (meta.orientation ?? 1) >= 5;
-	const width = oriented ? (meta.height ?? 0) : (meta.width ?? 0);
-	const height = oriented ? (meta.width ?? 0) : (meta.height ?? 0);
+	// EXIF 방향을 반영한 크기 → 추가 회전이 홀수면 가로세로 교환
+	let width = meta.autoOrient?.width ?? meta.width ?? 0;
+	let height = meta.autoOrient?.height ?? meta.height ?? 0;
+	if (rotation % 2) [width, height] = [height, width];
 
 	for (const size of opts.eager) {
 		await renderSize(base, cacheDir, fileId, size, size === 'full' ? opts.fullEdge : SIZES[size]);
@@ -84,6 +84,4 @@ export async function deriveAll(
 	return { width, height, thumbhash, phash };
 }
 
-export async function removeDerivatives(cacheDir: string, fileId: string): Promise<void> {
-	await rm(derivativeDir(cacheDir, fileId), { recursive: true, force: true });
-}
+export { removeDerivatives } from '#lib/server/derivefs.ts';

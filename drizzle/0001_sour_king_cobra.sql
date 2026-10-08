@@ -1,0 +1,1 @@
+ALTER TABLE "files" ADD COLUMN "rotation" integer DEFAULT 0 NOT NULL;
