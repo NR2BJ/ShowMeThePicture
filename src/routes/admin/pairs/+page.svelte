@@ -10,6 +10,18 @@
 		보정본과 원본을 한 장으로 묶습니다. 파일명(stem)·촬영시각·카메라·pHash 로 점수를 매겨 0.8 이상은
 		자동, 0.5~0.8 은 여기서 검토합니다. 지금까지 묶인 사진 {data.pairedCount}장.
 	</p>
+	{#if data.originals.total === 0}
+		<p class="notice error">
+			원본(역할: 원본) 라이브러리에 파일이 없습니다. 원본 폴더를 먼저 등록하세요.
+		</p>
+	{:else if data.originals.ready < data.originals.total}
+		<p class="notice">
+			원본 {data.originals.total}장 중 처리 완료 {data.originals.ready}장{#if data.originals.failed}
+				· 실패 {data.originals.failed}장(대시보드에서 사유 확인){/if}{#if data.originals.missing}
+				· 없어짐 {data.originals.missing}장{/if}. 페어링은 처리가 끝난 원본만 후보로 잡고, 원본이
+			처리되면 자동으로 다시 묶입니다.
+		</p>
+	{/if}
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
 	<form method="POST" action="?/rerun">

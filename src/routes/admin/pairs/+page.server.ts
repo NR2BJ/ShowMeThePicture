@@ -111,7 +111,28 @@ export const load: PageServerLoad = async () => {
 		.where(
 			sql`${photos.originalFileId} is not null and exists (select 1 from ${files} f where f.photo_id = ${photos.id} and f.variant_role = 'edit')`
 		);
-	return { review, auto, unpaired, pairedCount: Number(pairedCount) };
+	const [orig] = await d
+		.select({
+			total: sql<number>`count(*)::int`,
+			ready: sql<number>`count(*) filter (where ${files.derivativesReady})::int`,
+			failed: sql<number>`count(*) filter (where ${files.processError} is not null)::int`,
+			missing: sql<number>`count(*) filter (where ${files.status} = 'missing')::int`
+		})
+		.from(files)
+		.innerJoin(sources, eq(sources.id, files.sourceId))
+		.where(eq(sources.role, 'original'));
+	return {
+		review,
+		auto,
+		unpaired,
+		pairedCount: Number(pairedCount),
+		originals: {
+			total: Number(orig.total),
+			ready: Number(orig.ready),
+			failed: Number(orig.failed),
+			missing: Number(orig.missing)
+		}
+	};
 };
 
 export const actions: Actions = {

@@ -64,7 +64,8 @@ export async function scanSource(
 			size: files.size,
 			mtime: files.mtime,
 			status: files.status,
-			ready: files.derivativesReady
+			ready: files.derivativesReady,
+			failed: files.processError
 		})
 		.from(files)
 		.where(eq(files.sourceId, sourceId));
@@ -121,7 +122,7 @@ export async function scanSource(
 				.where(eq(files.id, prev.id));
 			toProcess.push(prev.id);
 			summary.changed++;
-		} else if (full && !prev.ready) {
+		} else if (full && (!prev.ready || prev.failed)) {
 			toProcess.push(prev.id);
 			summary.requeued++;
 		}

@@ -4,7 +4,9 @@
 	const totals = $derived({
 		files: data.sources.reduce((a, s) => a + s.fileCount, 0),
 		indexed: data.sources.reduce((a, s) => a + s.indexedCount, 0),
-		missing: data.sources.reduce((a, s) => a + s.missingCount, 0)
+		missing: data.sources.reduce((a, s) => a + s.missingCount, 0),
+		pending: data.sources.reduce((a, s) => a + s.pendingCount, 0),
+		failed: data.sources.reduce((a, s) => a + s.failedCount, 0)
 	});
 </script>
 
@@ -36,6 +38,8 @@
 						>
 						<td class="mono">{s.fileCount}</td>
 						<td class="mono">{s.indexedCount}</td>
+						<td class="mono">{s.pendingCount}</td>
+						<td class="mono" class:bad={s.failedCount > 0}>{s.failedCount}</td>
 						<td class="mono">{s.missingCount}</td>
 						<td class="mono dim"
 							>{s.lastScannedAt ? new Date(s.lastScannedAt).toLocaleString('ko-KR') : '-'}</td
@@ -49,6 +53,25 @@
 				>
 			</tbody>
 		</table>
+	{/if}
+
+	{#if data.failures.length}
+		<h2>처리 실패 (최근 {data.failures.length})</h2>
+		<table class="table">
+			<thead><tr><th>파일</th><th>라이브러리</th><th>사유</th></tr></thead>
+			<tbody>
+				{#each data.failures as f (f.id)}
+					<tr
+						><td class="mono">{f.relPath}</td><td class="mono dim">{f.source}</td><td
+							class="mono bad">{f.error}</td
+						></tr
+					>
+				{/each}
+			</tbody>
+		</table>
+		<p class="mono dim">
+			원인을 고친 뒤 라이브러리에서 '지금 스캔'을 누르면 실패한 파일을 다시 처리합니다.
+		</p>
 	{/if}
 
 	<h2>캐시</h2>
@@ -82,3 +105,9 @@
 		</table>
 	{/if}
 </section>
+
+<style>
+	.bad {
+		color: #d98a7a;
+	}
+</style>

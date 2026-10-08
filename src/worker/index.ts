@@ -1,9 +1,9 @@
 // 잡 워커 진입점. `pnpm worker`.
 import { ExifTool } from 'exiftool-vendored';
 import { PgBoss } from 'pg-boss';
-import { isNull, lt, or, sql } from 'drizzle-orm';
+import { eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { getDb } from '#lib/server/db/index.ts';
-import { sources } from '#lib/server/db/schema.ts';
+import { files, sources } from '#lib/server/db/schema.ts';
 import { loadConfig } from '#lib/server/env.ts';
 import { Q, type PairJob, type ProcessFileJob, type ScanSourceJob } from '#lib/server/jobs.ts';
 import { rebuildAllSmart } from '#lib/server/collections.ts';
@@ -49,7 +49,17 @@ for (let i = 0; i < PROCESS_CONCURRENCY; i++) {
 	await boss.work<ProcessFileJob>(Q.PROCESS_FILE, { batchSize: 1 }, async (jobs) => {
 		for (const job of jobs) {
 			const t0 = Date.now();
-			await processFile(ctx, job.data.fileId);
+			try {
+				await processFile(ctx, job.data.fileId);
+			} catch (e) {
+				const msg = (e instanceof Error ? e.message : String(e)).slice(0, 500);
+				await db
+					.update(files)
+					.set({ processError: msg, updatedAt: new Date() })
+					.where(eq(files.id, job.data.fileId));
+				log(`file ${job.data.fileId} FAILED: ${msg}`);
+				throw e;
+			}
 			log(`file ${job.data.fileId} done (${Date.now() - t0}ms)`);
 			await boss.send(Q.PAIR, { fileId: job.data.fileId } satisfies PairJob, {
 				singletonKey: `pair:${job.data.fileId}`,

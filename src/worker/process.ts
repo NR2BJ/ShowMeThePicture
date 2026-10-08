@@ -153,6 +153,7 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 			thumbhash: d.thumbhash,
 			status: 'active',
 			derivativesReady: true,
+			processError: null,
 			indexedAt: new Date(),
 			updatedAt: new Date()
 		})

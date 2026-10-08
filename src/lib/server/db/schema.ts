@@ -178,6 +178,8 @@ export const files = pgTable(
 		variantLabel: text('variant_label'),
 
 		derivativesReady: boolean('derivatives_ready').notNull().default(false),
+		/** 마지막 처리 실패 사유. 성공하면 null */
+		processError: text('process_error'),
 		indexedAt: ts('indexed_at'),
 		...timestamps
 	},

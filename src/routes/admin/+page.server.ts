@@ -2,18 +2,20 @@ import { fmtBytes, getCacheUsage } from '#lib/server/cacheusage.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import { queueCounts } from '#lib/server/queue.ts';
-import { listSourcesWithCounts } from '#lib/server/sources.ts';
+import { listSourcesWithCounts, recentFailures } from '#lib/server/sources.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
-	const [sources, queues, cache] = await Promise.all([
+	const [sources, queues, cache, failures] = await Promise.all([
 		listSourcesWithCounts(db()),
 		queueCounts(db()),
-		getCacheUsage(config.CACHE_DIR)
+		getCacheUsage(config.CACHE_DIR),
+		recentFailures(db())
 	]);
 	return {
 		sources,
 		queues,
+		failures,
 		cache: {
 			total: fmtBytes(cache.bytes),
 			files: cache.files,

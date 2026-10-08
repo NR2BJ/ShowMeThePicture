@@ -22,11 +22,24 @@ export async function openSource(
 	await mkdir(dir, { recursive: true });
 	const tmp = path.join(dir, `source-${process.pid}.preview.jpg`);
 	await rm(tmp, { force: true });
-	try {
-		await exiftool.extractJpgFromRaw(file.absPath, tmp);
-	} catch {
-		await exiftool.extractPreview(file.absPath, tmp);
+	// 카메라마다 내장 JPEG 태그가 다르다: Panasonic/Leica 는 JpgFromRaw, Samsung/Sony/Nikon 등은 PreviewImage,
+	// 일부는 OtherImage. 전부 없으면 ThumbnailImage 라도 쓴다 (작지만 깨지진 않게).
+	const errors: string[] = [];
+	let ok = false;
+	for (const tag of ['JpgFromRaw', 'PreviewImage', 'OtherImage', 'ThumbnailImage']) {
+		try {
+			await exiftool.extractBinaryTag(tag, file.absPath, tmp);
+			const st = await stat(tmp).catch(() => null);
+			if (st && st.size > 1024) {
+				ok = true;
+				break;
+			}
+			errors.push(`${tag}: empty`);
+		} catch (e) {
+			errors.push(`${tag}: ${e instanceof Error ? e.message.split('\n')[0] : String(e)}`);
+		}
 	}
+	if (!ok) throw new Error(`RAW 내장 프리뷰를 꺼내지 못했습니다 (${errors.join(' / ')})`);
 	return { input: tmp, cleanup: () => rm(tmp, { force: true }) };
 }
 

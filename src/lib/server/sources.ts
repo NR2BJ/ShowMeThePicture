@@ -23,6 +23,8 @@ export type SourceWithCounts = SourceRow & {
 	fileCount: number;
 	indexedCount: number;
 	missingCount: number;
+	failedCount: number;
+	pendingCount: number;
 };
 
 export function slugify(name: string): string {
@@ -73,7 +75,9 @@ export async function listSourcesWithCounts(db: Db): Promise<SourceWithCounts[]>
 		select s.*,
 		       count(f.id)::int                                             as file_count,
 		       count(f.id) filter (where f.derivatives_ready)::int           as indexed_count,
-		       count(f.id) filter (where f.status = 'missing')::int          as missing_count
+		       count(f.id) filter (where f.status = 'missing')::int          as missing_count,
+		       count(f.id) filter (where f.process_error is not null)::int   as failed_count,
+		       count(f.id) filter (where f.status = 'active' and not f.derivatives_ready and f.process_error is null)::int as pending_count
 		from sources s
 		left join files f on f.source_id = s.id
 		group by s.id
@@ -94,8 +98,31 @@ export async function listSourcesWithCounts(db: Db): Promise<SourceWithCounts[]>
 		updatedAt: r.updated_at as Date,
 		fileCount: Number(r.file_count),
 		indexedCount: Number(r.indexed_count),
-		missingCount: Number(r.missing_count)
+		missingCount: Number(r.missing_count),
+		failedCount: Number(r.failed_count),
+		pendingCount: Number(r.pending_count)
 	}));
+}
+
+/** 최근 처리 실패 (대시보드) */
+export async function recentFailures(
+	db: Db,
+	limit = 10
+): Promise<{ id: string; filename: string; relPath: string; source: string; error: string }[]> {
+	const rows = await db
+		.select({
+			id: files.id,
+			filename: files.filename,
+			relPath: files.relPathNfc,
+			source: sources.name,
+			error: files.processError
+		})
+		.from(files)
+		.innerJoin(sources, eq(sources.id, files.sourceId))
+		.where(sql`${files.processError} is not null`)
+		.orderBy(sql`${files.updatedAt} desc`)
+		.limit(limit);
+	return rows.map((r) => ({ ...r, error: r.error ?? '' }));
 }
 
 export async function getSourceBySlug(db: Db, slug: string): Promise<SourceRow | null> {
