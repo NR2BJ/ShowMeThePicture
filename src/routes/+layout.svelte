@@ -16,5 +16,5 @@
 	<title>{data.site.title}</title>
 </svelte:head>
 
-<Header title={data.site.title} />
+<Header title={data.site.title} admin={data.admin} />
 {@render children()}

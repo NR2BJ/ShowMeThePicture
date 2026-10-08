@@ -40,28 +40,51 @@ SvelteKit 3(Svelte 5) · TypeScript · Tailwind v4 · PostgreSQL 17 + pgvector �
 
 ## 로컬 개발 (Mac)
 
+Postgres 17 + pgvector 가 필요하다 (Docker 없이 Homebrew):
+
+```bash
+brew install pgvector postgresql@17          # pgvector 가 postgresql@17 에 묶인다
+LC_ALL=C /opt/homebrew/opt/postgresql@17/bin/pg_ctl -D /opt/homebrew/var/postgresql@17 -o "-p 5432" start
+psql -h localhost -d postgres -c "create role smtp login password 'smtp' createdb;" -c "create database smtp owner smtp;"
+psql -h localhost -d smtp -c "create extension vector; create extension pg_trgm;"
+```
+
+(macOS 에서 `LC_ALL` 없이 띄우면 "postmaster became multithreaded" 로 죽는다.)
+
 ```bash
 pnpm install
 cat > .env <<'ENV'
-DATABASE_URL=postgres://smtp:smtp@localhost:5432/smtp   # 없으면 랜딩이 빈 상태로 뜬다
-PHOTOS_ROOT=/Users/me/Pictures/test
-CACHE_DIR=./data/cache
+DATABASE_URL=postgres://smtp:smtp@localhost:5432/smtp
+PHOTOS_ROOT=/absolute/path/to/data/test-photos
+CACHE_DIR=/absolute/path/to/data/cache
 ENV
-pnpm dev
+pnpm db:migrate
+node --import tsx scripts/make-test-photos.ts   # 합성 테스트 사진 28장 (nx500/f31fd/film/edited A·B)
+pnpm dev                                        # http://127.0.0.1:5173
+pnpm worker                                     # 다른 터미널에서. 스캔·메타·파생본 처리
 ```
 
-- `pnpm check` 타입 검사 · `pnpm build` 프로덕션 빌드 · `pnpm format`
+첫 접속에서 `/admin/setup` 으로 관리자를 만들고, `/admin/sources` 에서 폴더를 등록하면 워커가 스캔한다.
+`node --import tsx scripts/dev-seed-sources.ts` 는 테스트 폴더들을 한 번에 등록한다.
+
+- `pnpm check` 타입 검사 · `pnpm test` 단위 테스트(vitest) · `pnpm build` 프로덕션 빌드 · `pnpm format`
 - `pnpm db:generate` 스키마 → 마이그레이션 SQL · `pnpm db:migrate` 적용
 - `pnpm test:schema` PGlite(인메모리 Postgres)로 마이그레이션 SQL 검증. 실제 DB 없이 돈다.
-- `pnpm worker` 잡 워커 (Postgres 필요)
+
+## 동작 (1단계 기준)
+
+- 관리자: `/admin/setup`(첫 계정) → `/admin/login` → `/admin`(대시보드: 라이브러리별 파일/처리/없어짐, 잡 큐) → `/admin/sources`(폴더 선택기로 등록, 지금 스캔, 삭제).
+- 워커: Source 마다 `poll_interval_min`(기본 30분)으로 주기 스캔. 신규/변경 파일 → SHA-256 → ExifTool → (RAW 면 내장 프리뷰) → sharp 로 thumb 480 / preview 1600 / full 2560 webp(sRGB) + thumbhash + pHash → Photo 연결. 같은 폴더·같은 stem 의 RAW+JPG 는 한 Photo(RAW 우선 표시).
+- 공개 페이지: `/archive`(공개 사진, 월별, B컷 토글은 설정/관리자), `/library/{slug}`(Source 통째로, 공개 설정된 것만 게스트에게), `/p/{id}`(사진 + 스펙 시트 드로어, ←/→/i/Esc, `\` 는 원본⇄보정 — 페어링은 2단계), `/`(공개 A컷 무작위 필름 스트립).
+- `/media/{file_id}/{thumb|preview|full}.webp?v=` 는 공개 사진만(관리자는 전부), `/media/{file_id}/original` 은 관리자만.
 
 ## 구조
 
 ```
 src/routes/            페이지와 API (+page.svelte, +server.ts)
 src/lib/components/    Header, FilmStrip, …
-src/lib/server/        env/config, db(schema, migrate), photos 쿼리
-src/worker/            pg-boss 워커 진입점
+src/lib/server/        env/config, db(schema, migrate), auth, sources, gallery 쿼리, fs(폴더 선택기)
+src/worker/            pg-boss 워커: scan(폴더 걷기), process(해시·EXIF·파생본·Photo), image(sharp)
 src/env.ts             환경변수 정의 (SvelteKit 3 defineEnvVars)
 drizzle/               생성된 마이그레이션 SQL
 docker/                Dockerfile (compose.build.yaml 이 참조)

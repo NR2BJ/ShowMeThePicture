@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 
-	let { title }: { title: string } = $props();
+	let { title, admin = null }: { title: string; admin?: { username: string } | null } = $props();
 
 	const links = [
 		{ href: '/collections', label: '컬렉션' },
@@ -20,7 +20,13 @@
 				{l.label}
 			</a>
 		{/each}
-		<a class="admin" href="/admin/login" title="관리자" aria-label="관리자 로그인">
+		<a
+			class="admin"
+			class:on={!!admin}
+			href={admin ? '/admin' : '/admin/login'}
+			title={admin ? '관리자 페이지' : '관리자 로그인'}
+			aria-label={admin ? '관리자 페이지' : '관리자 로그인'}
+		>
 			<svg
 				width="14"
 				height="14"
@@ -82,8 +88,12 @@
 		margin-left: 10px;
 		display: inline-flex;
 	}
-	nav .admin:hover {
+	nav .admin:hover,
+	nav .admin.on {
 		opacity: 0.9;
+	}
+	nav .admin.on {
+		color: var(--color-amber);
 	}
 	@media (max-width: 720px) {
 		header {

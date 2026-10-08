@@ -1,7 +1,5 @@
-import { config } from '#lib/server/config.ts';
 import type { LayoutServerLoad } from './$types';
 
 export const load: LayoutServerLoad = async ({ locals }) => ({
-	site: { title: config.SITE_TITLE },
 	admin: locals.admin ? { username: locals.admin.username } : null
 });

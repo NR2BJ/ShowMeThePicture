@@ -1,11 +1,8 @@
 <script lang="ts">
+	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import type { StripRow } from '#lib/types.ts';
 
 	let { rows }: { rows: StripRow[] } = $props();
-
-	function loaded(e: Event) {
-		(e.currentTarget as HTMLImageElement).classList.add('loaded');
-	}
 </script>
 
 <div class="strips" aria-label="무작위 사진 필름 스트립">
@@ -26,7 +23,7 @@
 									src={f.src}
 									alt=""
 									loading={copy === 0 && i < 8 ? 'eager' : 'lazy'}
-									onload={loaded}
+									use:fadeIn
 								/>
 							{/if}
 							<span class="rt">{f.label}</span>

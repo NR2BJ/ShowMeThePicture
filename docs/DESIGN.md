@@ -354,6 +354,12 @@ GET   /media/{file_id}/original                  관리자만
 
 1단계부터 게스트가 볼 수 있는 상태를 유지한다.
 
+진행 상태 (2026-10-09)
+
+- 0단계 완료. 1단계 완료: 관리자 setup/login(scrypt + 서명 쿠키, 세션 키는 DB 생성), 폴더 선택기 Source 등록, 주기 스캔 워커, ExifTool 메타, sharp 파생본(sRGB, thumbhash, pHash), `/media` 권한 서빙, `/library`, `/archive`, `/p`(스펙 시트), 랜딩 실제 사진. 합성 테스트 사진 28장으로 검증.
+- 1단계에서 미검증: RAW(SRW) 내장 프리뷰 경로 — 로컬에 RAW 샘플이 없어 서버에서 확인. HEIC 미지원.
+- 2단계로 넘긴 것: 원본↔보정 페어링(stem_norm/pHash 는 이미 저장됨), 롤 메타(folder_meta) 입력과 날짜 상속(지금은 EXIF 없는 스캔이 mtime 날짜로 보임), 컬렉션, 다중 보정 칩의 실제 전환.
+
 ---
 
 ## 10. 결정 기록
