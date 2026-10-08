@@ -69,3 +69,4 @@ docs/                  설계 문서, 목업
 - Svelte 5 runes 모드 강제(`vite.config.ts`). `export let` / `$:` 대신 `$props()` / `$derived` / `$state`.
 - DB 스키마는 `src/lib/server/db/schema.ts` 가 원본. 바꾸면 `pnpm db:generate` → 생성된 SQL 확인 → `pnpm test:schema` 로 PGlite 검증. 첫 마이그레이션에만 `CREATE EXTENSION vector, pg_trgm` 이 수동으로 들어가 있다.
 - 포맷은 prettier(`pnpm format`), 탭 들여쓰기, 작은따옴표.
+- 의존성 빌드 스크립트 허용은 `pnpm-workspace.yaml` 의 `allowBuilds` 로 한다(pnpm 11+에서 `onlyBuiltDependencies` 는 제거됨). CI(`CI=true pnpm install --frozen-lockfile`)는 허용 안 된 빌드 스크립트가 있으면 실패한다.

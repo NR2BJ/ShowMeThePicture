@@ -1,0 +1,4 @@
+# pnpm 12 설정. 의존성 빌드 스크립트 허용 목록.
+# esbuild 는 postinstall 로 플랫폼 바이너리를 확인한다 (tsx, drizzle-kit 가 쓴다). 허용하지 않으면 CI 설치가 ERR_PNPM_IGNORED_BUILDS 로 실패한다.
+allowBuilds:
+  esbuild: true
