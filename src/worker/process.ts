@@ -7,6 +7,7 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import type { ExifTool } from 'exiftool-vendored';
 import type { Db } from '#lib/server/db/index.ts';
 import { files, photos, sources } from '#lib/server/db/schema.ts';
+import { folderMetaForSource, pickFolderMeta } from '#lib/server/folders.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import { metadataJson, normalizeExif } from './exif.ts';
 import { openSource } from '#lib/server/derive.ts';
@@ -87,18 +88,38 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 		await src.cleanup();
 	}
 
-	// 촬영시각 결정: EXIF/XMP → 폴더명 → mtime
+	// 촬영시각 결정: EXIF/XMP → 폴더명 날짜 → 롤 메타(현상월 + 롤 내 순서) → mtime
 	let takenAt = ex.takenAt;
-	let takenAtSource: 'exif' | 'xmp' | 'folder' | 'mtime' | null = ex.takenAtSource;
+	let takenAtSource: 'exif' | 'xmp' | 'folder' | 'roll' | 'mtime' | null = ex.takenAtSource;
 	if (!takenAt) {
 		const fromPath = dateFromPath(file.relPath);
 		if (fromPath) {
 			takenAt = fromPath;
 			takenAtSource = 'folder';
-		} else {
-			takenAt = file.mtime;
-			takenAtSource = 'mtime';
 		}
+	}
+	if (!takenAt) {
+		const meta = pickFolderMeta(await folderMetaForSource(db, source.id), file.relPath);
+		if (meta?.developedAt) {
+			const dir = path.posix.dirname(file.relPath);
+			const siblings = await db
+				.select({ relPath: files.relPath })
+				.from(files)
+				.where(eq(files.sourceId, source.id));
+			const idx = siblings
+				.map((x) => x.relPath)
+				.filter((r) => path.posix.dirname(r) === dir)
+				.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+				.indexOf(file.relPath);
+			takenAt = new Date(
+				new Date(meta.developedAt + 'T12:00:00').getTime() + Math.max(0, idx) * 60_000
+			);
+			takenAtSource = 'roll';
+		}
+	}
+	if (!takenAt) {
+		takenAt = file.mtime;
+		takenAtSource = 'mtime';
 	}
 
 	const width = d.width || ex.width;

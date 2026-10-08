@@ -5,6 +5,7 @@ import { eq, inArray } from 'drizzle-orm';
 import type { PgBoss } from 'pg-boss';
 import type { Db } from '#lib/server/db/index.ts';
 import { files, sources } from '#lib/server/db/schema.ts';
+import { ensureFolderMeta } from '#lib/server/folders.ts';
 import { extOf, IMAGE_EXTS, isIgnoredDir, kindOf } from '#lib/server/fs.ts';
 import { Q, type ProcessFileJob } from '#lib/server/jobs.ts';
 import { normalizeStem, stemOf } from '#lib/server/stem.ts';
@@ -52,6 +53,10 @@ export async function scanSource(
 	if (!source) throw new Error(`source not found: ${sourceId}`);
 
 	const entries = await walk(source.rootPath);
+	const dirs = new Set(
+		entries.map((e) => path.posix.dirname(e.rel)).map((d) => (d === '.' ? '' : d))
+	);
+	await ensureFolderMeta(db, source, dirs);
 	const existing = await db
 		.select({
 			id: files.id,

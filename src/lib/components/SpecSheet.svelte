@@ -64,6 +64,22 @@
 				]
 			}
 		];
+		if (v.roll && (v.roll.filmStock || v.roll.camera || v.roll.developedAt)) {
+			const dev = v.roll.developedAt ? v.roll.developedAt.slice(0, 7).replace('-', '.') : null;
+			g.splice(2, 0, {
+				title: '필름',
+				rows: [
+					['롤', v.roll.title],
+					['현상', dev && v.roll.rollNo ? `${dev} · ${v.roll.rollNo}번째 롤` : dev],
+					['카메라', v.roll.camera],
+					['렌즈', v.roll.lens],
+					['필름', v.roll.filmStock],
+					['포맷', v.roll.filmFormat],
+					['스캐너', v.roll.scanner],
+					['메모', v.roll.notes]
+				]
+			});
+		}
 		if (showGps && v.gpsLat != null && v.gpsLon != null) {
 			g.push({ title: '위치', rows: [['좌표', `${v.gpsLat.toFixed(5)}, ${v.gpsLon.toFixed(5)}`]] });
 		}

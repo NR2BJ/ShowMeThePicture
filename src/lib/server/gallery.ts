@@ -3,6 +3,7 @@ import { and, asc, desc, eq, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
 import { mediaUrl, versionOf } from '#lib/media.ts';
 import type { Db } from './db';
 import { files, photos, sources } from './db/schema';
+import { folderMetaForSource, pickFolderMeta, toRollInfo, type RollInfo } from './folders';
 
 export type Scope = { kind: 'archive' } | { kind: 'library'; sourceId: string };
 export type ListOptions = {
@@ -146,6 +147,7 @@ export type Variant = {
 	caption: string | null;
 	metadata: Record<string, unknown> | null;
 	thumbhash: string | null;
+	roll: RollInfo | null;
 	urls: { thumb: string; preview: string; full: string };
 	source: {
 		name: string;
@@ -181,6 +183,7 @@ export async function getPhotoDetail(
 		.select({
 			f: files,
 			s: {
+				id: sources.id,
 				name: sources.name,
 				slug: sources.slug,
 				role: sources.role,
@@ -193,9 +196,13 @@ export async function getPhotoDetail(
 		.where(
 			and(eq(files.photoId, id), eq(files.status, 'active'), eq(files.derivativesReady, true))
 		);
+	const metaBySource = new Map<string, Awaited<ReturnType<typeof folderMetaForSource>>>();
+	for (const { s } of rows)
+		if (!metaBySource.has(s.id)) metaBySource.set(s.id, await folderMetaForSource(db, s.id));
 	const variants: Variant[] = rows
 		.map(({ f, s }) => {
 			const v = versionOf(f.contentHash, f.rotation);
+			const fm = pickFolderMeta(metaBySource.get(s.id) ?? [], f.relPath);
 			return {
 				id: f.id,
 				role: f.variantRole,
@@ -227,12 +234,13 @@ export async function getPhotoDetail(
 				caption: f.caption,
 				metadata: f.metadata ?? null,
 				thumbhash: b64(f.thumbhash),
+				roll: fm ? toRollInfo(fm) : null,
 				urls: {
 					thumb: mediaUrl(f.id, 'thumb', v),
 					preview: mediaUrl(f.id, 'preview', v),
 					full: mediaUrl(f.id, 'full', v)
 				},
-				source: s
+				source: { name: s.name, slug: s.slug, role: s.role, medium: s.medium, tier: s.tier }
 			};
 		})
 		.sort((a, b) => {

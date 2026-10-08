@@ -45,8 +45,10 @@
 					.replace(/\.\s?/g, '.')
 					.replace(/\.$/, '')
 			);
-		if (v.cameraModel) parts.push(v.cameraModel);
+		const camera = v.cameraModel ?? v.roll?.camera ?? null;
+		if (camera) parts.push(camera);
 		if (v.lens) parts.push(v.lens);
+		if (v.roll?.filmStock) parts.push(v.roll.filmStock);
 		return parts.join(' · ');
 	});
 	const q = $derived(`?ctx=${encodeURIComponent(data.ctx)}`);
