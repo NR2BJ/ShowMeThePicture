@@ -6,6 +6,7 @@ import { getDb } from '#lib/server/db/index.ts';
 import { sources } from '#lib/server/db/schema.ts';
 import { loadConfig } from '#lib/server/env.ts';
 import { Q, type PairJob, type ProcessFileJob, type ScanSourceJob } from '#lib/server/jobs.ts';
+import { rebuildAllSmart } from '#lib/server/collections.ts';
 import { pairAfterProcess, pairEditFile, unpairedEditIds } from '#lib/server/pairing.ts';
 import { processFile, type ProcessCtx } from './process.ts';
 import { scanSource } from './scan.ts';
@@ -40,6 +41,7 @@ await boss.work<ScanSourceJob>(Q.SCAN_SOURCE, async (jobs) => {
 		log(
 			`scan ${job.data.sourceId}: seen=${s.seen} added=${s.added} changed=${s.changed} missing=${s.missing} requeued=${s.requeued} (${Date.now() - t0}ms)`
 		);
+		await rebuildAllSmart(db);
 	}
 });
 
@@ -69,6 +71,7 @@ await boss.work<PairJob>(Q.PAIR, async (jobs) => {
 				else if (r.decision === 'review') review++;
 			}
 			log(`pair all: ${ids.length} edits → auto=${auto} review=${review}`);
+			await rebuildAllSmart(db);
 		} else if (job.data.fileId) {
 			const out = await pairAfterProcess(db, job.data.fileId);
 			for (const r of out)

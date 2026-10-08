@@ -1,4 +1,5 @@
 import { error, fail } from '@sveltejs/kit';
+import { addPhotoToCollection, manualCollections } from '#lib/server/collections.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import {
@@ -21,7 +22,14 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const scope = await scopeFromCtx(db(), ctx.replace(/:b$/, ''));
 	const nav = await neighbors(db(), photo, { scope, admin, includeB });
 	const showGps = admin || (await getSetting<boolean>(db(), 'show_gps', false));
-	return { photo, nav, ctx, showGps, admin };
+	return {
+		photo,
+		nav,
+		ctx,
+		showGps,
+		admin,
+		manualCollections: admin ? await manualCollections(db()) : []
+	};
 };
 
 export const actions: Actions = {
@@ -31,6 +39,14 @@ export const actions: Actions = {
 		const v = form.get('visibility') === 'public' ? 'public' : 'hidden';
 		await setPhotoVisibility(db(), params.id, v);
 		return { ok: true };
+	},
+	collect: async ({ params, request, locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const form = await request.formData();
+		const collectionId = String(form.get('collectionId') ?? '');
+		if (!collectionId) return fail(400, { error: 'collection' });
+		await addPhotoToCollection(db(), collectionId, params.id);
+		return { collected: true };
 	},
 	/** 관리자: 파일 하나의 방향을 저장하고 파생본을 다시 만든다 */
 	rotate: async ({ request, locals }) => {

@@ -194,6 +194,15 @@
 						target="_blank"
 						rel="noopener">원본 파일</a
 					>{/if}
+				{#if data.manualCollections.length}
+					<form method="POST" action="?/collect" class="collect">
+						<select name="collectionId">
+							{#each data.manualCollections as mc (mc.id)}<option value={mc.id}>{mc.title}</option
+								>{/each}
+						</select>
+						<button type="submit" class="pill quiet">컬렉션에 추가</button>
+					</form>
+				{/if}
 			{/if}
 		</div>
 	</div>
@@ -281,6 +290,15 @@
 	}
 	.controls form {
 		display: contents;
+	}
+	.collect select {
+		background: #141311;
+		border: 1px solid var(--color-ink-faint);
+		color: var(--color-ink-dim);
+		font-family: var(--font-mono);
+		font-size: 12px;
+		padding: 7px 10px;
+		border-radius: 999px;
 	}
 	.pill,
 	.chip {
