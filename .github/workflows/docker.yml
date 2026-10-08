@@ -9,6 +9,12 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+    # 이미지에 영향 없는 파일만 바뀌면 빌드를 건너뛴다
+    paths-ignore:
+      - 'docs/**'
+      - 'README.md'
+      - 'compose*.yaml'
+      - '.env.example'
   workflow_dispatch:
 
 concurrency:

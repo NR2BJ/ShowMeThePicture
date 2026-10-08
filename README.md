@@ -16,19 +16,19 @@ SvelteKit 3(Svelte 5) · TypeScript · Tailwind v4 · PostgreSQL 17 + pgvector �
 
 ## 배포 (Debian + Docker, Portainer)
 
-1. `main` 에 push 하면 GitHub Actions 가 `ghcr.io/nr2bj/showmethepicture:latest` 를 만든다 (`sha-…`, `v*` 태그도).
-2. Portainer → Stacks → Add stack → **Repository**
-   - Repository URL `https://github.com/NR2BJ/ShowMeThePicture`, Compose path `compose.yaml`
-   - Environment variables 에 [.env.example](.env.example) 의 값들을 넣는다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `SITE_ADDRESS`, `ORIGIN` …)
-   - GitOps updates 를 켜면 compose 가 바뀔 때 자동 재배포. 스택의 webhook URL 을 레포 Secrets `PORTAINER_WEBHOOK` 에 넣으면 이미지 빌드 직후에도 자동 재배포된다.
-3. 서버에서 직접 돌릴 때
+1. `main` 에 push 하면 GitHub Actions 가 `ghcr.io/nr2bj/showmethepicture:latest` 를 만든다 (`sha-…`, `v*` 태그도). 레포가 public 이라 pull 에 인증이 필요 없다.
+2. Portainer → Stacks → Add stack → **Web editor** 에 [compose.yaml](compose.yaml) 을 붙여넣는다. `${...}` 자리는 아래 Environment variables 에 넣어도 되고 그냥 값으로 바꿔 써도 된다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `SITE_ADDRESS`, `ORIGIN`). 이후 수정도 Portainer 에서 바로 한다. 레포의 compose 는 템플릿일 뿐 고정이 아니다.
+3. 새 이미지가 올라오면 스택에서 **Pull and redeploy**. 자동화하고 싶으면 대신 Repository 스택(GitOps)으로 만들고 스택 webhook URL 을 레포 Secrets `PORTAINER_WEBHOOK` 에 넣으면 빌드 직후 재배포된다.
+4. 서버에서 직접 돌릴 때
    ```bash
    cp .env.example .env     # 값 채우기. CACHE_HOST_PATH 는 SSD!
-   docker compose up -d     # 이미지 pull. 직접 빌드하려면 --build
+   docker compose up -d     # GHCR 이미지 pull
+   # 소스에서 직접 빌드할 때만:
+   docker compose -f compose.yaml -f compose.build.yaml up -d --build
    ```
-4. 첫 실행 후 관리자로 로그인해 라이브러리에서 폴더를 Source 로 등록한다.
+5. 첫 실행 후 관리자로 로그인해 라이브러리에서 폴더를 Source 로 등록한다.
 
-컨테이너: `db`, `app`(SSR + API, 기동 시 마이그레이션), `worker`(스캔·메타·파생본·페어링), `ml`(Immich ML, `/dev/dri`), `caddy`(TLS, `/media/*` 직접 서빙). Caddyfile 은 compose 안에 인라인(`configs`)이다. 레포가 private 이면 Portainer 에 ghcr.io 레지스트리(PAT, `read:packages`)를 등록해야 한다.
+컨테이너: `db`, `app`(SSR + API, 기동 시 마이그레이션), `worker`(스캔·메타·파생본·페어링), `ml`(Immich ML, `/dev/dri`), `caddy`(TLS, `/media/*` 직접 서빙). Caddyfile 은 compose 안에 인라인(`configs`)이라 레포 파일이 필요 없다. `compose.yaml` 에는 `build:` 가 없다 — 웹 에디터 스택은 빌드 컨텍스트가 없어서 넣으면 실패한다. 로컬 빌드는 `compose.build.yaml` override 로.
 
 ## 로컬 개발 (Mac)
 
@@ -56,7 +56,7 @@ src/lib/server/        env/config, db(schema, migrate), photos 쿼리
 src/worker/            pg-boss 워커 진입점
 src/env.ts             환경변수 정의 (SvelteKit 3 defineEnvVars)
 drizzle/               생성된 마이그레이션 SQL
-docker/                Dockerfile
+docker/                Dockerfile (compose.build.yaml 이 참조)
 .github/workflows/     GHCR 이미지 빌드
 docs/                  설계 문서, 목업
 ```

@@ -1,19 +1,20 @@
 name: showmethepicture
 
+# 이 파일은 Portainer 웹 에디터(Stacks → Add stack → Web editor)에 그대로 붙여넣는 용도다.
+# 이미지는 GitHub Actions 가 ghcr.io/nr2bj/showmethepicture 로 올린 것을 받으므로 레포 클론이 필요 없다.
+# ${...} 자리는 Portainer 의 Environment variables 로 채워도 되고, 그냥 값으로 바꿔 써도 된다.
+#
 # 설정의 경계 (docs/DESIGN.md §8.1)
-#  - 여기(compose + 환경변수)에는 "인프라"만 둔다: 마운트 경로, DB 비밀번호, 도메인/ORIGIN, 이미지 태그.
+#  - 여기에는 "인프라"만: 마운트 경로, DB 비밀번호, 도메인/ORIGIN, 이미지 태그.
 #  - 사진 폴더(Source) 등록, 사이트 제목, 공개 정책, 검색 모델 같은 "앱 설정"은 관리자 페이지에서 바꾸고
 #    DB(db-data 볼륨)에 저장된다. 재배포해도 유지된다.
 #  - PHOTOS_HOST_PATH 는 넓게(풀 전체 또는 photo123 의 부모) 잡고, 실제 폴더는 앱 안 폴더 선택기로 고른다.
-#    그래야 폴더를 더 등록할 때 compose 를 건드리지 않는다.
-#  - Portainer: Stacks → Add stack → Repository 로 이 레포를 지정하고, 아래 ${...} 값들을
-#    스택의 Environment variables 에 넣는다. 이미지는 GitHub Actions 가 ghcr.io 에 올린 것을 받는다.
+#
+# 새 이미지가 올라오면 Portainer 에서 스택의 "Pull and redeploy" 한 번이면 된다.
+# 소스에서 직접 빌드하려면: docker compose -f compose.yaml -f compose.build.yaml up -d --build
 
 x-app: &app
   image: ghcr.io/nr2bj/showmethepicture:${APP_TAG:-latest}
-  build:
-    context: .
-    dockerfile: docker/app.Dockerfile
   environment:
     NODE_ENV: production
     PORT: '3000'

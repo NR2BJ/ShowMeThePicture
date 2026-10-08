@@ -326,8 +326,8 @@ GET   /media/{file_id}/original                  관리자만
 
 - **compose + 환경변수 = 인프라만**: `PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_*`, `SITE_ADDRESS`, `ORIGIN`, `APP_TAG`, `IMMICH_ML_VERSION`. 이게 전부다.
 - **관리자 페이지 = 앱 설정 전부**: Source 등록(폴더 선택기), 사이트 제목·About, 랜딩 모드, 게스트 최대 해상도, GPS·B컷 정책, 검색 모델, 스캔 주기. `settings` 테이블과 `sources` 테이블에 저장되어 `db-data` 볼륨에 남는다. 재배포·이미지 업데이트에 영향받지 않는다. 세션 서명 키도 첫 기동 때 생성해 DB 에 둔다(환경변수 불필요).
-- 배포: `main` push → GitHub Actions → `ghcr.io/nr2bj/showmethepicture:latest`(+ `sha-…`, `v*`) → Portainer 의 Repository 스택이 pull. 스택 환경변수에 인프라 값만 넣는다. 스택 webhook 을 레포 Secrets `PORTAINER_WEBHOOK` 에 넣으면 빌드 직후 자동 재배포. compose 자체는 범용이라 서버마다 바꿀 게 없다.
-- 로컬 빌드도 가능: 같은 compose 에 `build:` 가 있어 `docker compose up --build` 면 레포에서 직접 만든다.
+- 배포: `main` push → GitHub Actions → `ghcr.io/nr2bj/showmethepicture:latest`(+ `sha-…`, `v*`). Portainer 에서는 **웹 에디터 스택**에 `compose.yaml` 을 붙여넣고 값만 바꾼다 — 레포의 compose 는 템플릿이지 고정이 아니며, 이후 수정은 Portainer 에서 한다. 새 이미지는 스택의 "Pull and redeploy" 로 받는다. 자동화를 원하면 Repository 스택(GitOps) + 레포 Secrets `PORTAINER_WEBHOOK` 조합이 선택지.
+- `compose.yaml` 에는 `build:` 를 두지 않는다(웹 에디터 스택은 빌드 컨텍스트가 없어 실패). 소스 빌드는 `compose.build.yaml` override: `docker compose -f compose.yaml -f compose.build.yaml up --build`.
 
 잡 체인(파일 1개): `scan → extract_metadata → derive → hash → embed → pair → rules`
 

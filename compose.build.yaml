@@ -1,0 +1,12 @@
+# 소스에서 직접 이미지를 만들 때만 덧씌우는 override.
+#   docker compose -f compose.yaml -f compose.build.yaml up -d --build
+# Portainer 웹 에디터 스택에는 넣지 않는다 (빌드 컨텍스트가 없어 실패한다).
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
+  worker:
+    build:
+      context: .
+      dockerfile: docker/app.Dockerfile
