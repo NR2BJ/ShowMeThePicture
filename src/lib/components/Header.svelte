@@ -25,21 +25,21 @@
 			class:on={!!admin}
 			href={admin ? '/admin' : '/admin/login'}
 			title={admin ? '관리자 페이지' : '관리자 로그인'}
-			aria-label={admin ? '관리자 페이지' : '관리자 로그인'}
 		>
 			<svg
-				width="14"
-				height="14"
+				width="13"
+				height="13"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke="currentColor"
-				stroke-width="1.6"
+				stroke-width="1.8"
 				stroke-linecap="round"
 				stroke-linejoin="round"
 				aria-hidden="true"
 			>
 				<circle cx="8" cy="15" r="4" /><path d="M10.9 12.1 21 2M15 8l3 3M18 5l3 3" />
 			</svg>
+			<span>{admin ? admin.username : '관리자'}</span>
 		</a>
 	</nav>
 </header>
@@ -84,13 +84,16 @@
 		color: var(--color-ink);
 	}
 	nav .admin {
-		opacity: 0.35;
-		margin-left: 10px;
 		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-left: 10px;
+		padding-left: 14px;
+		border-left: 1px solid var(--color-ink-faint);
+		color: var(--color-ink-dim);
 	}
-	nav .admin:hover,
-	nav .admin.on {
-		opacity: 0.9;
+	nav .admin:hover {
+		color: var(--color-ink);
 	}
 	nav .admin.on {
 		color: var(--color-amber);
