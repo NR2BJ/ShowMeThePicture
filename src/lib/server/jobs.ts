@@ -8,3 +8,4 @@ export const Q = {
 
 export type ScanSourceJob = { sourceId: string; full?: boolean };
 export type ProcessFileJob = { fileId: string };
+export type PairJob = { fileId?: string; all?: boolean };

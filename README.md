@@ -73,12 +73,14 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 
 ## 동작 (1단계 기준)
 
-- 관리자: `/admin/setup`(첫 계정) → `/admin/login` → `/admin`(대시보드: 라이브러리별 파일/처리/없어짐, 잡 큐) → `/admin/sources`(폴더 선택기로 등록, 지금 스캔, 삭제).
+- 관리자: `/admin/setup`(첫 계정) → `/admin/login` → `/admin`(대시보드: 라이브러리별 파일/처리/없어짐, 캐시, 잡 큐) → `/admin/sources`(폴더 선택기로 등록, 지금 스캔, 삭제) → `/admin/folders`(롤/폴더 메타: 현상월·카메라·필름, 저장 시 EXIF 없는 파일 날짜 적용) → `/admin/pairs`(원본↔보정 페어링 검토: 0.5~0.8 후보 맞음/아님, 자동 묶음 확정/풀기, 파일명으로 수동 연결, 전체 다시 페어링).
+- 페어링: 보정 파일이 처리되면 원본 후보를 찾아 점수를 매긴다 — 파일명 stem +0.5, EXIF 촬영시각 ±1초 +0.4, 카메라 +0.1, pHash 거리 ≤4 +0.5(≤10 +0.3). 0.8 이상은 자동으로 원본의 사진에 붙고(미확정 표시), 0.5~0.8 은 `/admin/pairs` 검토 큐, 그 미만은 단독 사진으로 남는다. 묶이면 사진의 tier 는 보정본 중 최고(A>B), 날짜는 원본을 따른다.
 - 워커: Source 마다 `poll_interval_min`(기본 30분)으로 주기 스캔. 신규/변경 파일 → SHA-256 → ExifTool → (RAW 면 내장 프리뷰) → sharp 로 thumb 480 / preview 1600 webp(sRGB) + thumbhash + pHash → Photo 연결. full 2560 은 열 때 생성. 같은 폴더·같은 stem 의 RAW+JPG 는 한 Photo(RAW 우선 표시).
-- 공개 페이지: `/archive`(공개 사진, 월별, B컷 토글은 설정/관리자), `/library/{slug}`(Source 통째로, 공개 설정된 것만 게스트에게), `/p/{id}`(사진 + 스펙 시트 드로어, ←/→/i/Esc, `\` 는 원본⇄보정 — 페어링은 2단계), `/`(공개 A컷 무작위 필름 스트립).
+- 공개 페이지: `/archive`(공개 사진, 월별, B컷 토글은 설정/관리자), `/library/{slug}`(Source 통째로, 그 폴더의 변형을 RAW 우선으로, 공개 설정된 것만 게스트에게), `/p/{id}`(사진 + 스펙 시트 드로어, ←/→/i/Esc, `\` 또는 버튼으로 원본⇄보정, 보정본이 여럿이면 칩, ↺↻ 회전 보기, 관리자는 방향 저장), `/`(공개 A컷 무작위 필름 스트립).
 - `/media/{file_id}/{thumb|preview|full}.webp?v=` 는 공개 사진만(관리자는 전부), `/media/{file_id}/original` 은 관리자만.
 
 ## 보안과 권한
+
 - **첫 관리자 생성**(`/admin/setup`)은 관리자가 0명일 때만 열리고, 앱이 기동하며 로그에 찍는 **설정 토큰**을 요구한다. `docker compose logs app | grep setup` 으로 확인한다. 계정을 만들면 토큰은 사라지고 페이지는 로그인으로만 간다.
 - **로그인**은 IP 당 10분에 실패 10회까지. 프록시 뒤에서 IP 를 제대로 보려면 compose 의 `ADDRESS_HEADER=X-Forwarded-For` 를 켠다(기본 켜져 있음). 세션은 HttpOnly·SameSite=Lax 쿠키이고 https 로 접속하면 Secure 가 붙는다. **`ORIGIN` 과 같은 주소로 접속해야 로그인이 유지된다**(https 로 설정해 두고 http://IP:3000 으로 들어가면 쿠키가 거부된다).
 - 폼 요청은 SvelteKit 이 `ORIGIN` 과 비교해 CSRF 를 막는다.
@@ -88,7 +90,9 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 - 사진 폴더 위치: 컨테이너 안에서는 항상 `/photos` 다. 실제 위치는 `PHOTOS_HOST_PATH` 로 준다(예: `/mnt/pool/photos`). 폴더 선택기의 `/photos/...` 는 그 아래를 가리킨다.
 
 ## 디스크 사용량
+
 서버 SSD 에 쌓이는 것은 세 가지다.
+
 - **캐시(`CACHE_HOST_PATH`)**: 사진마다 WebP 파생본. 스캔 때 미리 만드는 건 thumb(480px, 30~60KB)와 preview(1600px, 150~350KB)뿐이고, full(2560px, 400~900KB)은 **누가 그 사진을 열 때** 만들어 쌓인다. 실제 사진 기준 대략 **1,000장에 0.3~0.4GB**(미리 만드는 것) + 열어본 사진당 0.5~0.9MB. 관리자 대시보드에 현재 사용량이 보인다.
   - 전부 미리 만들고 싶으면 worker 에 `EAGER_FULL=1`.
   - SSD 가 빠듯하면 `CACHE_HOST_PATH` 를 HDD 풀로 둬도 된다. 썸네일을 읽을 때 디스크가 깨는 대신 용량 걱정이 없다.

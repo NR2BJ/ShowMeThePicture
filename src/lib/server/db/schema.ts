@@ -206,6 +206,25 @@ export const embeddings = pgTable(
 	(t) => [index('embeddings_hnsw_idx').using('hnsw', t.embedding.op('vector_cosine_ops'))]
 );
 
+// ---- pair_candidates: 자동 페어링이 확신하지 못한 보정본 → 관리자 검토 큐 ----
+export const pairCandidates = pgTable(
+	'pair_candidates',
+	{
+		editFileId: text('edit_file_id')
+			.primaryKey()
+			.references(() => files.id, { onDelete: 'cascade' }),
+		originalFileId: text('original_file_id')
+			.notNull()
+			.references(() => files.id, { onDelete: 'cascade' }),
+		score: real('score').notNull(),
+		method: pairMethod('method').notNull(),
+		/** 관리자가 거부한 후보는 다시 제안하지 않는다 */
+		rejected: boolean('rejected').notNull().default(false),
+		...timestamps
+	},
+	(t) => [index('pair_candidates_original_idx').on(t.originalFileId)]
+);
+
 // ---- folder_meta: 롤/세션 메타, 하위 폴더에 상속 ----
 export const folderMeta = pgTable(
 	'folder_meta',

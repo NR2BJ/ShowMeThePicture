@@ -5,7 +5,8 @@ import { isNull, lt, or, sql } from 'drizzle-orm';
 import { getDb } from '#lib/server/db/index.ts';
 import { sources } from '#lib/server/db/schema.ts';
 import { loadConfig } from '#lib/server/env.ts';
-import { Q, type ProcessFileJob, type ScanSourceJob } from '#lib/server/jobs.ts';
+import { Q, type PairJob, type ProcessFileJob, type ScanSourceJob } from '#lib/server/jobs.ts';
+import { pairAfterProcess, pairEditFile, unpairedEditIds } from '#lib/server/pairing.ts';
 import { processFile, type ProcessCtx } from './process.ts';
 import { scanSource } from './scan.ts';
 
@@ -48,9 +49,36 @@ for (let i = 0; i < PROCESS_CONCURRENCY; i++) {
 			const t0 = Date.now();
 			await processFile(ctx, job.data.fileId);
 			log(`file ${job.data.fileId} done (${Date.now() - t0}ms)`);
+			await boss.send(Q.PAIR, { fileId: job.data.fileId } satisfies PairJob, {
+				singletonKey: `pair:${job.data.fileId}`,
+				singletonSeconds: 5
+			});
 		}
 	});
 }
+
+await boss.work<PairJob>(Q.PAIR, async (jobs) => {
+	for (const job of jobs) {
+		if (job.data.all) {
+			const ids = await unpairedEditIds(db);
+			let auto = 0,
+				review = 0;
+			for (const id of ids) {
+				const r = await pairEditFile(db, id);
+				if (r.decision === 'auto') auto++;
+				else if (r.decision === 'review') review++;
+			}
+			log(`pair all: ${ids.length} edits → auto=${auto} review=${review}`);
+		} else if (job.data.fileId) {
+			const out = await pairAfterProcess(db, job.data.fileId);
+			for (const r of out)
+				if (r.decision !== 'skip')
+					log(
+						`pair ${r.editFileId}: ${r.decision}${r.originalFileId ? ` → ${r.originalFileId} (${r.score?.toFixed(2)})` : ''}`
+					);
+		}
+	}
+});
 
 /** 주기 스캔: 매 분 due 인 Source 를 큐에 넣는다. mergerfs 는 inotify 가 없다. */
 async function schedule() {

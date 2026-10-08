@@ -91,10 +91,60 @@ function toItem(r: {
 	};
 }
 
+/** 라이브러리 스코프: 그 Source 에 속한 variant 를 보여준다 (RAW 우선). 페어링 뒤에도 원본 폴더에서는 원본이 보인다. */
+async function listLibraryPhotos(
+	db: Db,
+	o: ListOptions & { scope: { kind: 'library'; sourceId: string } }
+) {
+	const vis = o.admin ? sql`` : sql`and p.visibility = 'public'`;
+	const tierC = o.includeB ? sql`` : sql`and (p.tier is null or p.tier <> 'B')`;
+	const rows = (await db.execute(sql`
+		select * from (
+			select distinct on (p.id) p.id, p.taken_at, p.tier, p.medium, p.visibility,
+			       f.id as file_id, f.width, f.height, f.thumbhash, f.content_hash, f.rotation, f.camera_model
+			from ${files} f join ${photos} p on p.id = f.photo_id
+			where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis} ${tierC}
+			order by p.id, (f.kind = 'raw') desc, f.id
+		) t
+		order by coalesce(t.taken_at, 'epoch'::timestamptz) desc, t.id desc
+		limit ${o.limit + 1} offset ${Math.max(0, o.page - 1) * o.limit}`)) as unknown as Record<
+		string,
+		unknown
+	>[];
+	const [{ total }] = (await db.execute(sql`
+		select count(distinct p.id)::int as total
+		from ${files} f join ${photos} p on p.id = f.photo_id
+		where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis} ${tierC}`)) as unknown as {
+		total: number;
+	}[];
+	const items = rows.slice(0, o.limit).map((r) =>
+		toItem({
+			id: r.id as string,
+			takenAt: (r.taken_at as Date | null) ?? null,
+			tier: (r.tier as 'A' | 'B' | null) ?? null,
+			medium: (r.medium as 'film' | 'digital' | null) ?? null,
+			visibility: r.visibility as 'public' | 'hidden',
+			fileId: r.file_id as string,
+			width: (r.width as number | null) ?? null,
+			height: (r.height as number | null) ?? null,
+			thumbhash: (r.thumbhash as Uint8Array | null) ?? null,
+			contentHash: (r.content_hash as string | null) ?? null,
+			rotation: Number(r.rotation ?? 0),
+			camera: (r.camera_model as string | null) ?? null
+		})
+	);
+	return { items, hasMore: rows.length > o.limit, total: Number(total) };
+}
+
 export async function listPhotos(
 	db: Db,
 	o: ListOptions
 ): Promise<{ items: GalleryItem[]; hasMore: boolean; total: number }> {
+	if (o.scope.kind === 'library')
+		return listLibraryPhotos(
+			db,
+			o as ListOptions & { scope: { kind: 'library'; sourceId: string } }
+		);
 	const conds = baseConds(o);
 	const rows = await db
 		.select(itemSelect)
