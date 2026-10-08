@@ -84,7 +84,7 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 - 폼 요청은 SvelteKit 이 `ORIGIN` 과 비교해 CSRF 를 막는다.
 - 원본 폴더는 컨테이너에 **read-only** 로 마운트되고, 앱은 사이드카도 쓰지 않는다. 폴더 선택기와 모든 경로 API 는 `/photos` 아래로만 제한된다(상위 탈출 불가).
 - 게스트는 공개(`visibility=public`) 사진의 파생본만 받는다. 숨긴 사진은 썸네일도 404. 원본 파일(`/media/{id}/original`)은 관리자 세션에서만.
-- 컨테이너는 root 로 돈다(Immich 와 같은 기본값). 그래서 **호스트의 파일 권한 때문에 읽기가 실패할 일은 없다**(mergerfs 는 `allow_other` 가 켜져 있어야 하는데 mergerfs 기본값이다). 캐시 폴더(`CACHE_HOST_PATH`)는 root 가 만들어 쓰므로 호스트에서 지울 때 sudo 가 필요하다. 비루트로 돌리고 싶으면 compose 의 `user: "1000:1000"` 주석을 풀고, 그 uid 가 사진을 읽고 캐시 폴더에 쓸 수 있어야 한다.
+- 컨테이너는 `PUID`/`PGID`(기본 1000:1000)로 돈다. entrypoint 가 root 로 시작해 `/cache` 소유권을 그 uid 로 맞춘 뒤 권한을 내린다. 사진 파일은 그 uid 가 읽을 수 있어야 한다 — 소유자가 1000 이면 그대로 맞고, 다른 사용자면 `.env` 의 PUID/PGID 를 그 값으로. 캐시 파일도 그 사용자 소유로 생긴다. root 로 돌리려면 `PUID=0`.
 - 사진 폴더 위치: 컨테이너 안에서는 항상 `/photos` 다. 실제 위치는 `PHOTOS_HOST_PATH` 로 준다(예: `/mnt/pool/photos`). 폴더 선택기의 `/photos/...` 는 그 아래를 가리킨다.
 
 ## 구조

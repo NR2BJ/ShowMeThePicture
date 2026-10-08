@@ -44,6 +44,28 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-
             type=semver,pattern={{version}}
+      # 1) 빌드해서 러너의 docker 에 올린다 (push 전 스모크 테스트용)
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/app.Dockerfile
+          platforms: linux/amd64
+          load: true
+          tags: smtp:smoke
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # 2) 컨테이너 스모크: PUID 로 권한이 내려가는지, sharp/exiftool 이 리눅스에서 도는지
+      - name: Smoke test image
+        run: |
+          set -eux
+          docker run --rm -e PUID=1000 -e PGID=1000 smtp:smoke id -u | grep -x 1000
+          docker run --rm -e PUID=0 smtp:smoke id -u | grep -x 0
+          mkdir -p /tmp/smoke-cache && sudo chown root:root /tmp/smoke-cache
+          docker run --rm -e PUID=1000 -e PGID=1000 -v /tmp/smoke-cache:/cache smtp:smoke sh -c 'touch /cache/ok && stat -c %u /cache/ok' | grep -x 1000
+          docker run --rm -e PUID=1000 smtp:smoke node -e "const s=require('sharp'); s({create:{width:8,height:8,channels:3,background:'#123'}}).webp().toBuffer().then(b=>{if(b.length<10)throw 1;console.log('sharp ok',b.length)})"
+          docker run --rm -e PUID=1000 smtp:smoke node -e "const {exiftool}=require('exiftool-vendored'); exiftool.version().then(v=>{console.log('exiftool',v); return exiftool.end()})"
+          docker run --rm -e PUID=1000 smtp:smoke node -e "require('pg-boss'); require('postgres'); console.log('deps ok')"
+      # 3) 같은 캐시로 다시 빌드해 GHCR 로 푸시 (레이어가 전부 캐시라 빠르다)
       - uses: docker/build-push-action@v6
         with:
           context: .
@@ -53,7 +75,6 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
-          cache-to: type=gha,mode=max
       # 선택: 레포 Secrets 에 PORTAINER_WEBHOOK(스택 webhook URL)을 넣으면 빌드 후 자동 재배포
       - name: Trigger Portainer redeploy (optional)
         env:

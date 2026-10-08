@@ -219,7 +219,7 @@ v0.1의 FastAPI + 별도 프론트 안을 버린 이유: 언어 둘, 툴체인 �
 compose 핵심:
 
 - `app`/`worker`: `volumes: [ "${PHOTOS_HOST_PATH}:/photos:ro", "${CACHE_HOST_PATH}:/cache" ]` — 캐시는 VM의 SSD 경로.
-- `app`: `ports: ["${APP_PORT:-3000}:3000"]`, `ORIGIN` 은 공개 URL.
+- `app`: `ports: ["${APP_PORT:-3000}:3000"]`, `ORIGIN` 은 공개 URL. 컨테이너는 entrypoint 가 `PUID`/`PGID`(기본 1000:1000)로 권한을 내려 실행 — 사진 파일 소유자와 맞춘다.
 - `ml`: `devices: ["/dev/dri:/dev/dri"]`만 있으면 된다(컨테이너가 root로 돌아 `group_add` 불필요). VM에서 `card0`, `card1`, `renderD128` 확인됨. 모델 캐시 볼륨.
 - `app`은 텍스트 임베딩(검색 질의)만 `ml`에 직접 요청, 이미지 임베딩은 `worker`가.
 

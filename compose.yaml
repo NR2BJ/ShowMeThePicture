@@ -25,14 +25,15 @@ x-app: &app
     PHOTOS_ROOT: /photos
     CACHE_DIR: /cache
     ML_URL: http://ml:3003
+    # 컨테이너가 이 uid/gid 로 돈다. 사진 파일을 읽을 수 있고 캐시에 쓸 수 있어야 한다.
+    PUID: ${PUID:-1000}
+    PGID: ${PGID:-1000}
     # 프록시 뒤에서 클라이언트 IP 를 보기 위해 (로그인 시도 제한). caddy 는 X-Forwarded-For 를 붙인다.
     ADDRESS_HEADER: X-Forwarded-For
     XFF_DEPTH: '1'
   volumes:
     - ${PHOTOS_HOST_PATH:?set PHOTOS_HOST_PATH}:/photos:ro
     - ${CACHE_HOST_PATH:?set CACHE_HOST_PATH}:/cache
-  # 비루트로 돌리려면: 그 uid 가 PHOTOS_HOST_PATH 를 읽고 CACHE_HOST_PATH 에 쓸 수 있어야 한다
-  # user: "1000:1000"
   restart: unless-stopped
 
 services:
@@ -54,7 +55,7 @@ services:
   app:
     <<: *app
     # 기동 시 마이그레이션 적용 후 SvelteKit 서버 시작
-    command: ['sh', '-c', 'pnpm db:migrate && node build']
+    command: ['sh', '-c', 'node --import tsx src/lib/server/db/migrate.ts && node build']
     ports:
       - '${APP_PORT:-3000}:3000' # 외부 reverse proxy 가 여기로 프록시
     depends_on:
@@ -63,7 +64,7 @@ services:
 
   worker:
     <<: *app
-    command: ['pnpm', 'worker']
+    command: ['node', '--import', 'tsx', 'src/worker/index.ts']
     depends_on:
       db:
         condition: service_healthy
