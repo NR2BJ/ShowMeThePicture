@@ -11,7 +11,7 @@ RUN apt-get update \
 	&& corepack enable
 
 WORKDIR /app
-COPY package.json pnpm-lock.yaml .npmrc ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 # devDependencies 도 설치한다: worker 가 tsx 로 소스를 직접 실행하고, 마이그레이션도 tsx 로 돈다.
 RUN pnpm install --frozen-lockfile --prod=false
 
