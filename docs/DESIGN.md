@@ -332,7 +332,7 @@ GET   /media/{file_id}/original                  관리자만
 
 잡 체인(파일 1개): `scan → extract_metadata → derive → hash → embed → pair → rules`
 
-- 파생본: thumb 480 / preview 1600 / full 2560(긴 변), WebP, sRGB 변환(AdobeRGB·ProPhoto 원본 대비). 경로 `cache/{id[:2]}/{id}/{size}.webp`, SSD.
+- 파생본: thumb 480 / preview 1600 은 스캔 때, full 2560(긴 변)은 사진을 열 때 생성(SSD 용량 절약, `EAGER_FULL=1` 로 미리 생성 가능). WebP, sRGB 변환(AdobeRGB·ProPhoto 원본 대비). 경로 `cache/{id[:2]}/{id}/{size}.webp`, SSD. 실제 사진 기준 1,000장당 0.3~0.4GB + 열어본 full.
 - `/media/*` 는 app 이 서빙한다: 공개 사진(또는 관리자 세션)만 통과, `Cache-Control: immutable`, SSD 캐시에서 스트리밍. 외부 프록시는 TLS·도메인만 맡는다.
 - RAW 원본 표시용: ExifTool 내장 프리뷰 추출 → 같은 파생본 파이프라인.
 - 배치: ExifTool stay_open, 임베딩 32장 단위, 워커 동시성은 HDD를 배려해 2~4.

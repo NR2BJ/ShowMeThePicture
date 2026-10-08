@@ -74,7 +74,7 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 ## 동작 (1단계 기준)
 
 - 관리자: `/admin/setup`(첫 계정) → `/admin/login` → `/admin`(대시보드: 라이브러리별 파일/처리/없어짐, 잡 큐) → `/admin/sources`(폴더 선택기로 등록, 지금 스캔, 삭제).
-- 워커: Source 마다 `poll_interval_min`(기본 30분)으로 주기 스캔. 신규/변경 파일 → SHA-256 → ExifTool → (RAW 면 내장 프리뷰) → sharp 로 thumb 480 / preview 1600 / full 2560 webp(sRGB) + thumbhash + pHash → Photo 연결. 같은 폴더·같은 stem 의 RAW+JPG 는 한 Photo(RAW 우선 표시).
+- 워커: Source 마다 `poll_interval_min`(기본 30분)으로 주기 스캔. 신규/변경 파일 → SHA-256 → ExifTool → (RAW 면 내장 프리뷰) → sharp 로 thumb 480 / preview 1600 webp(sRGB) + thumbhash + pHash → Photo 연결. full 2560 은 열 때 생성. 같은 폴더·같은 stem 의 RAW+JPG 는 한 Photo(RAW 우선 표시).
 - 공개 페이지: `/archive`(공개 사진, 월별, B컷 토글은 설정/관리자), `/library/{slug}`(Source 통째로, 공개 설정된 것만 게스트에게), `/p/{id}`(사진 + 스펙 시트 드로어, ←/→/i/Esc, `\` 는 원본⇄보정 — 페어링은 2단계), `/`(공개 A컷 무작위 필름 스트립).
 - `/media/{file_id}/{thumb|preview|full}.webp?v=` 는 공개 사진만(관리자는 전부), `/media/{file_id}/original` 은 관리자만.
 
@@ -86,6 +86,16 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 - 게스트는 공개(`visibility=public`) 사진의 파생본만 받는다. 숨긴 사진은 썸네일도 404. 원본 파일(`/media/{id}/original`)은 관리자 세션에서만.
 - 컨테이너는 `PUID`/`PGID`(기본 1000:1000)로 돈다. entrypoint 가 root 로 시작해 `/cache` 소유권을 그 uid 로 맞춘 뒤 권한을 내린다. 사진 파일은 그 uid 가 읽을 수 있어야 한다 — 소유자가 1000 이면 그대로 맞고, 다른 사용자면 `.env` 의 PUID/PGID 를 그 값으로. 캐시 파일도 그 사용자 소유로 생긴다. root 로 돌리려면 `PUID=0`.
 - 사진 폴더 위치: 컨테이너 안에서는 항상 `/photos` 다. 실제 위치는 `PHOTOS_HOST_PATH` 로 준다(예: `/mnt/pool/photos`). 폴더 선택기의 `/photos/...` 는 그 아래를 가리킨다.
+
+## 디스크 사용량
+서버 SSD 에 쌓이는 것은 세 가지다.
+- **캐시(`CACHE_HOST_PATH`)**: 사진마다 WebP 파생본. 스캔 때 미리 만드는 건 thumb(480px, 30~60KB)와 preview(1600px, 150~350KB)뿐이고, full(2560px, 400~900KB)은 **누가 그 사진을 열 때** 만들어 쌓인다. 실제 사진 기준 대략 **1,000장에 0.3~0.4GB**(미리 만드는 것) + 열어본 사진당 0.5~0.9MB. 관리자 대시보드에 현재 사용량이 보인다.
+  - 전부 미리 만들고 싶으면 worker 에 `EAGER_FULL=1`.
+  - SSD 가 빠듯하면 `CACHE_HOST_PATH` 를 HDD 풀로 둬도 된다. 썸네일을 읽을 때 디스크가 깨는 대신 용량 걱정이 없다.
+  - 캐시는 전부 재생성 가능하다. 지워도 다음 스캔(`지금 스캔`)과 열람 때 다시 만들어진다.
+- **DB 볼륨(`db-data`)**: 파일당 ExifTool 메타 JSON 10~30KB + 임베딩 3KB. 1만 장에 0.3~0.5GB.
+- **ML 모델(`ml-cache`)**: Immich ML 이 받는 CLIP 모델 1~3GB(3단계부터 의미 있음). 지금 당장 필요 없으면 compose 에서 `ml` 서비스를 빼도 된다.
+- 이미지 자체: app 약 0.6GB, immich-machine-learning(openvino) 약 2~3GB, pgvector 약 0.4GB.
 
 ## 구조
 

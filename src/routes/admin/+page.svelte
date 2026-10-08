@@ -51,6 +51,19 @@
 		</table>
 	{/if}
 
+	<h2>캐시</h2>
+	<p class="mono">
+		{data.cache.total} · 파일 {data.cache.files}
+		{#if data.cache.bySize.thumb}<span class="dim"> · thumb {data.cache.bySize.thumb}</span>{/if}
+		{#if data.cache.bySize.preview}<span class="dim">
+				· preview {data.cache.bySize.preview}</span
+			>{/if}
+		{#if data.cache.bySize.full}<span class="dim"> · full {data.cache.bySize.full}</span>{/if}
+	</p>
+	<p class="mono dim">
+		{data.cache.dir} · thumb/preview 는 스캔 때 생성, full 은 사진을 열 때 생성됩니다. 10분마다 다시 잽니다.
+	</p>
+
 	<h2>잡 큐</h2>
 	{#if data.queues.length === 0}
 		<p class="dim">큐가 비어 있거나 워커가 아직 돌지 않았습니다.</p>

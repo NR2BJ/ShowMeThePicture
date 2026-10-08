@@ -1,7 +1,7 @@
 // 파일 하나 처리: 해시 → ExifTool → (RAW 면 내장 프리뷰) → 파생본 → Photo 연결.
 import { createHash } from 'node:crypto';
 import { createReadStream } from 'node:fs';
-import { access, mkdir, rm } from 'node:fs/promises';
+import { access } from 'node:fs/promises';
 import path from 'node:path';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { ExifTool } from 'exiftool-vendored';
@@ -9,7 +9,9 @@ import type { Db } from '#lib/server/db/index.ts';
 import { files, photos, sources } from '#lib/server/db/schema.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import { metadataJson, normalizeExif } from './exif.ts';
-import { deriveAll, derivativeDirSafe, removeDerivatives } from './image.ts';
+import { openSource } from '#lib/server/derive.ts';
+import type { SizeName } from '#lib/media.ts';
+import { deriveAll, removeDerivatives } from './image.ts';
 
 export type ProcessCtx = {
 	db: Db;
@@ -63,25 +65,22 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 	const ex = normalizeExif(tags);
 	const metadata = metadataJson(tags);
 
-	// RAW 는 카메라 내장 프리뷰를 꺼내 쓴다 ("내가 현장에서 본 원본")
-	let input = abs;
-	let tmpPreview: string | null = null;
-	if (file.kind === 'raw') {
-		const dir = derivativeDirSafe(ctx.cacheDir, fileId);
-		await mkdir(dir, { recursive: true });
-		tmpPreview = path.join(dir, 'source.preview.jpg');
-		await rm(tmpPreview, { force: true });
-		try {
-			await ctx.exiftool.extractJpgFromRaw(abs, tmpPreview);
-		} catch {
-			await ctx.exiftool.extractPreview(abs, tmpPreview);
-		}
-		input = tmpPreview;
-	}
-
+	// RAW 는 카메라 내장 프리뷰를 꺼내 쓴다 ("내가 현장에서 본 원본"). 미리 만드는 건 thumb/preview 뿐,
+	// full 은 열 때 생성 (EAGER_FULL=1 이면 여기서도).
 	const fullEdge = await getSetting<number>(db, 'guest_max_edge', 2560);
-	const d = await deriveAll(input, ctx.cacheDir, fileId, fullEdge);
-	if (tmpPreview) await rm(tmpPreview, { force: true });
+	const eager: SizeName[] =
+		process.env.EAGER_FULL === '1' ? ['thumb', 'preview', 'full'] : ['thumb', 'preview'];
+	const src = await openSource(ctx.exiftool, ctx.cacheDir, {
+		id: fileId,
+		kind: file.kind,
+		absPath: abs
+	});
+	let d;
+	try {
+		d = await deriveAll(src.input, ctx.cacheDir, fileId, { eager, fullEdge });
+	} finally {
+		await src.cleanup();
+	}
 
 	// 촬영시각 결정: EXIF/XMP → 폴더명 → mtime
 	let takenAt = ex.takenAt;

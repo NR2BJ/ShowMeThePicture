@@ -1,10 +1,10 @@
-// 파생본(webp), thumbhash, pHash. sharp(libvips) 기반.
-import { mkdir, rename, rm } from 'node:fs/promises';
-import path from 'node:path';
-import sharp from 'sharp';
+// 워커용 파생본 생성: 미리 만드는 사이즈(thumb/preview) + thumbhash + pHash.
+// full(2560) 은 기본적으로 누가 열 때 /media 가 만든다 (EAGER_FULL=1 이면 여기서 미리).
+import { rm } from 'node:fs/promises';
 import { rgbaToThumbHash } from 'thumbhash';
 import { SIZES, type SizeName } from '#lib/media.ts';
-import { derivativeDir, derivativePath } from '#lib/server/media.ts';
+import { basePipeline, renderSize } from '#lib/server/derive.ts';
+import { derivativeDir } from '#lib/server/media.ts';
 
 export type DeriveResult = { width: number; height: number; thumbhash: Buffer; phash: Buffer };
 
@@ -47,41 +47,26 @@ export function hamming(a: Uint8Array, b: Uint8Array): number {
 	return d;
 }
 
+export type DeriveOptions = { eager: SizeName[]; fullEdge: number };
+
 /**
- * 입력(원본 또는 RAW 내장 프리뷰) → thumb/preview/full webp + thumbhash + pHash.
- * 색은 ICC 를 반영해 sRGB 로 변환하고(AdobeRGB/ProPhoto 대응), EXIF 방향을 적용한다.
+ * 입력(원본 또는 RAW 내장 프리뷰) → 지정한 사이즈 webp + thumbhash + pHash.
+ * 색은 ICC 를 반영해 sRGB 로, EXIF 방향은 적용.
  */
 export async function deriveAll(
 	input: string,
 	cacheDir: string,
 	fileId: string,
-	fullEdge: number = SIZES.full
+	opts: DeriveOptions
 ): Promise<DeriveResult> {
-	const base = sharp(input, { failOn: 'none', limitInputPixels: false }).rotate();
+	const base = basePipeline(input);
 	const meta = await base.metadata();
 	const oriented = (meta.orientation ?? 1) >= 5;
 	const width = oriented ? (meta.height ?? 0) : (meta.width ?? 0);
 	const height = oriented ? (meta.width ?? 0) : (meta.height ?? 0);
 
-	const dir = derivativeDir(cacheDir, fileId);
-	await mkdir(dir, { recursive: true });
-
-	const sizes: Record<SizeName, number> = {
-		thumb: SIZES.thumb,
-		preview: SIZES.preview,
-		full: fullEdge
-	};
-	for (const name of Object.keys(sizes) as SizeName[]) {
-		const edge = sizes[name];
-		const out = derivativePath(cacheDir, fileId, name);
-		const tmp = `${out}.tmp-${process.pid}`;
-		await base
-			.clone()
-			.resize({ width: edge, height: edge, fit: 'inside', withoutEnlargement: true })
-			.withIccProfile('srgb')
-			.webp({ quality: name === 'thumb' ? 78 : 84, effort: 4 })
-			.toFile(tmp);
-		await rename(tmp, out);
+	for (const size of opts.eager) {
+		await renderSize(base, cacheDir, fileId, size, size === 'full' ? opts.fullEdge : SIZES[size]);
 	}
 
 	const small = await base
@@ -102,10 +87,3 @@ export async function deriveAll(
 export async function removeDerivatives(cacheDir: string, fileId: string): Promise<void> {
 	await rm(derivativeDir(cacheDir, fileId), { recursive: true, force: true });
 }
-
-export const TMP_PREVIEW_SUFFIX = '.preview.jpg';
-export function tmpPreviewPath(cacheDir: string, fileId: string): string {
-	return path.join(derivativeDir(cacheDir, fileId), `source${TMP_PREVIEW_SUFFIX}`);
-}
-
-export { derivativeDir as derivativeDirSafe };

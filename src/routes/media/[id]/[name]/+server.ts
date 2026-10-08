@@ -9,7 +9,9 @@ import { SIZE_NAMES, type SizeName } from '#lib/media.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import { files, photos, sources } from '#lib/server/db/schema.ts';
-import { derivativePath } from '#lib/server/media.ts';
+import { ensureDerivative } from '#lib/server/derive.ts';
+import { getExifTool } from '#lib/server/exiftool.ts';
+import { getSetting } from '#lib/server/settings.ts';
 import type { RequestHandler } from './$types';
 
 const ORIGINAL_TYPES: Record<string, string> = {
@@ -34,6 +36,7 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 			contentHash: files.contentHash,
 			ready: files.derivativesReady,
 			relPath: files.relPath,
+			kind: files.kind,
 			ext: files.ext,
 			filename: files.filename,
 			size: files.size,
@@ -67,7 +70,15 @@ export const GET: RequestHandler = async ({ params, locals, request }) => {
 	if (!row.ready) error(404);
 	const size = m![1] as SizeName;
 	if (!SIZE_NAMES.includes(size)) error(404);
-	const p = derivativePath(config.CACHE_DIR, row.id, size);
+	// thumb/preview 는 워커가 미리 만든다. full 은 처음 열릴 때 여기서 만들어 캐시한다.
+	const edge = size === 'full' ? await getSetting<number>(db(), 'guest_max_edge', 2560) : undefined;
+	const p = await ensureDerivative(
+		getExifTool(),
+		config.CACHE_DIR,
+		{ id: row.id, kind: row.kind, absPath: path.join(row.rootPath, row.relPath) },
+		size,
+		edge
+	);
 	const st = await stat(p).catch(() => null);
 	if (!st) error(404);
 
