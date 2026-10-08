@@ -25,7 +25,7 @@
 	}
 	.meta {
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 14px;
 		letter-spacing: 0.06em;
 		color: var(--color-ink-dim);
 		margin: 0;

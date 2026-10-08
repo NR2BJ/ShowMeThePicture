@@ -111,9 +111,9 @@
 		top: 8px;
 		left: 8px;
 		font-family: var(--font-mono);
-		font-size: 10px;
+		font-size: 11px;
 		letter-spacing: 0.1em;
-		padding: 2px 6px;
+		padding: 3px 7px;
 		background: rgba(11, 11, 10, 0.75);
 		color: var(--color-ink-dim);
 	}

@@ -72,13 +72,13 @@
 	}
 	.note {
 		font-family: var(--font-mono);
-		font-size: 11px;
+		font-size: 13px;
 		line-height: 1.4;
 		letter-spacing: 0.04em;
 		color: var(--color-ink-dim);
 	}
 	footer a {
-		font-size: 14px;
+		font-size: 16px;
 		letter-spacing: 0.02em;
 	}
 	footer a:hover {

@@ -44,7 +44,7 @@
 		margin: 12px 0 10px;
 	}
 	.kicker {
-		font-size: 11px;
+		font-size: 12px;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		margin: 0 0 8px;
@@ -57,7 +57,7 @@
 		margin: 0;
 	}
 	.path {
-		font-size: 11px;
+		font-size: 12px;
 		margin: 0 0 24px;
 	}
 	@media (max-width: 720px) {

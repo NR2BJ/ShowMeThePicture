@@ -165,7 +165,7 @@
 		gap: 16px;
 	}
 	.photo.info {
-		grid-template-columns: 1fr 340px;
+		grid-template-columns: 1fr 380px;
 	}
 	figure {
 		position: relative;
@@ -217,7 +217,7 @@
 	}
 	.line {
 		margin: 0;
-		font-size: 12px;
+		font-size: 14px;
 		letter-spacing: 0.06em;
 	}
 	.controls {
@@ -232,10 +232,10 @@
 	.pill,
 	.chip {
 		font-family: var(--font-mono);
-		font-size: 11px;
-		letter-spacing: 0.1em;
+		font-size: 13px;
+		letter-spacing: 0.08em;
 		text-transform: uppercase;
-		padding: 7px 14px;
+		padding: 8px 16px;
 		border-radius: 999px;
 		border: 1px solid var(--color-ink);
 		background: transparent;
@@ -262,7 +262,7 @@
 	.chip {
 		border-color: var(--color-ink-faint);
 		color: var(--color-ink-dim);
-		padding: 6px 10px;
+		padding: 7px 12px;
 	}
 	.chip.on {
 		border-color: var(--color-amber);

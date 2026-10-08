@@ -17,7 +17,7 @@
 		justify-content: space-between;
 		align-items: baseline;
 		padding: 40px 0 20px;
-		font-size: 12px;
+		font-size: 14px;
 		letter-spacing: 0.08em;
 	}
 	a:hover {

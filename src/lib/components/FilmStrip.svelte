@@ -117,8 +117,8 @@
 		white-space: nowrap;
 		pointer-events: none;
 		font-family: var(--font-mono);
-		font-size: 10px;
-		line-height: 11px;
+		font-size: 11px;
+		line-height: 12px;
 		font-weight: 500;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
@@ -126,11 +126,11 @@
 		opacity: 0.9;
 	}
 	.rt {
-		top: -15px;
+		top: -16px;
 		left: 1px;
 	}
 	.rb {
-		bottom: -15px;
+		bottom: -16px;
 		right: 1px;
 	}
 	.rb::before {

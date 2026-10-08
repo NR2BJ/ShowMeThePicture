@@ -52,12 +52,12 @@
 	h2 {
 		font-family: var(--font-serif);
 		font-weight: 400;
-		font-size: 22px;
-		color: var(--color-ink-dim);
+		font-size: 26px;
+		color: var(--color-ink-soft);
 		margin: 44px 0 14px;
 	}
 	.head p {
-		font-size: 12px;
+		font-size: 14px;
 		letter-spacing: 0.06em;
 	}
 	.head a:hover {

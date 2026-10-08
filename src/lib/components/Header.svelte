@@ -27,8 +27,8 @@
 			title={admin ? '관리자 페이지' : '관리자 로그인'}
 		>
 			<svg
-				width="13"
-				height="13"
+				width="17"
+				height="17"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke="currentColor"
@@ -64,7 +64,7 @@
 	}
 	.brand {
 		font-family: var(--font-serif);
-		font-size: 30px;
+		font-size: 32px;
 		line-height: 1;
 		letter-spacing: 0.005em;
 	}
@@ -74,9 +74,9 @@
 		align-items: baseline;
 	}
 	nav a {
-		font-size: 14px;
-		letter-spacing: 0.02em;
-		color: var(--color-ink-dim);
+		font-size: 16px;
+		letter-spacing: 0.01em;
+		color: var(--color-ink-soft);
 		transition: color 0.2s;
 	}
 	nav a:hover,
@@ -90,7 +90,7 @@
 		margin-left: 10px;
 		padding-left: 14px;
 		border-left: 1px solid var(--color-ink-faint);
-		color: var(--color-ink-dim);
+		color: var(--color-ink-soft);
 	}
 	nav .admin:hover {
 		color: var(--color-ink);
@@ -109,7 +109,7 @@
 			gap: 16px;
 		}
 		nav a {
-			font-size: 13px;
+			font-size: 15px;
 		}
 	}
 </style>

@@ -117,7 +117,7 @@
 <style>
 	.sheet {
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 13.5px;
 		letter-spacing: 0.02em;
 		font-variant-numeric: tabular-nums;
 	}
@@ -127,15 +127,15 @@
 	h3 {
 		margin: 0 0 8px;
 		font-weight: 500;
-		font-size: 10px;
+		font-size: 11px;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: var(--color-amber);
 	}
 	dl {
 		display: grid;
-		grid-template-columns: 88px 1fr;
-		gap: 4px 12px;
+		grid-template-columns: 100px 1fr;
+		gap: 6px 14px;
 		margin: 0;
 	}
 	dt {
