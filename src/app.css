@@ -1,0 +1,37 @@
+@import 'tailwindcss';
+
+/* 디자인 토큰 (docs/DESIGN.md §7). Tailwind 유틸리티(bg-bg, text-ink, font-serif …)와
+   CSS 변수(var(--color-bg) …) 양쪽으로 쓸 수 있다. */
+@theme {
+	--color-bg: #0b0b0a; /* 암실. 순흑 아님 */
+	--color-ink: #e8e4dc;
+	--color-ink-dim: #837e75;
+	--color-ink-faint: #3a3733;
+	--color-amber: #d9a65a; /* 필름 가장자리 각인 */
+	--color-base: #1a1816; /* 필름 베이스 */
+
+	--font-serif: 'Instrument Serif', 'MaruBuri', Georgia, serif;
+	--font-sans: 'Pretendard Variable', Pretendard, system-ui, -apple-system, sans-serif;
+	--font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer base {
+	html {
+		background: var(--color-bg);
+		color: var(--color-ink);
+	}
+	body {
+		min-height: 100dvh;
+		font-family: var(--font-sans);
+		-webkit-font-smoothing: antialiased;
+		text-rendering: optimizeLegibility;
+	}
+	::selection {
+		background: var(--color-amber);
+		color: var(--color-bg);
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+}

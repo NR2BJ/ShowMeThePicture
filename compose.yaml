@@ -1,0 +1,119 @@
+name: showmethepicture
+
+# 설정의 경계 (docs/DESIGN.md §8.1)
+#  - 여기(compose + 환경변수)에는 "인프라"만 둔다: 마운트 경로, DB 비밀번호, 도메인/ORIGIN, 이미지 태그.
+#  - 사진 폴더(Source) 등록, 사이트 제목, 공개 정책, 검색 모델 같은 "앱 설정"은 관리자 페이지에서 바꾸고
+#    DB(db-data 볼륨)에 저장된다. 재배포해도 유지된다.
+#  - PHOTOS_HOST_PATH 는 넓게(풀 전체 또는 photo123 의 부모) 잡고, 실제 폴더는 앱 안 폴더 선택기로 고른다.
+#    그래야 폴더를 더 등록할 때 compose 를 건드리지 않는다.
+#  - Portainer: Stacks → Add stack → Repository 로 이 레포를 지정하고, 아래 ${...} 값들을
+#    스택의 Environment variables 에 넣는다. 이미지는 GitHub Actions 가 ghcr.io 에 올린 것을 받는다.
+
+x-app: &app
+  image: ghcr.io/nr2bj/showmethepicture:${APP_TAG:-latest}
+  build:
+    context: .
+    dockerfile: docker/app.Dockerfile
+  environment:
+    NODE_ENV: production
+    PORT: '3000'
+    ORIGIN: ${ORIGIN:-http://localhost}
+    DATABASE_URL: postgres://${POSTGRES_USER:-smtp}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-smtp}
+    PHOTOS_ROOT: /photos
+    CACHE_DIR: /cache
+    ML_URL: http://ml:3003
+  volumes:
+    - ${PHOTOS_HOST_PATH:?set PHOTOS_HOST_PATH}:/photos:ro
+    - ${CACHE_HOST_PATH:?set CACHE_HOST_PATH}:/cache
+  restart: unless-stopped
+
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smtp}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-smtp}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-smtp} -d ${POSTGRES_DB:-smtp}']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    <<: *app
+    # 기동 시 마이그레이션 적용 후 SvelteKit 서버 시작
+    command: ['sh', '-c', 'pnpm db:migrate && node build']
+    expose: ['3000']
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    command: ['pnpm', 'worker']
+    depends_on:
+      db:
+        condition: service_healthy
+      ml:
+        condition: service_started
+
+  ml:
+    # Immich 의 ML 서비스를 임베딩 엔진으로 재사용. OpenVINO 빌드가 /dev/dri 로 Intel Arc A380 을 쓴다.
+    image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_ML_VERSION:-release}-openvino
+    devices:
+      - /dev/dri:/dev/dri
+    volumes:
+      - ml-cache:/cache
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+    volumes:
+      - ${CACHE_HOST_PATH:?set CACHE_HOST_PATH}:/srv/cache:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+configs:
+  # Caddyfile 을 레포 파일 바인드 대신 인라인으로 둔다 (Portainer 의 git 스택은 상대경로 바인드가 까다롭다).
+  # `$$` 는 compose 치환을 피해 caddy 가 런타임에 읽는 환경변수 자리표시자다.
+  caddyfile:
+    content: |
+      {$$SITE_ADDRESS}
+
+      encode zstd gzip
+
+      # 파생 이미지는 caddy 가 SSD 캐시에서 직접 서빙 (불변 URL → 1년 캐시)
+      # /media/{file_id}/{thumb|preview|full}.webp -> /srv/cache/{id[:2]}/{id}/{size}.webp
+      @media path_regexp m ^/media/([0-9A-Za-z]{2})([0-9A-Za-z]+)/(thumb|preview|full)\.webp$
+      handle @media {
+        root * /srv/cache
+        rewrite * /{re.m.1}/{re.m.1}{re.m.2}/{re.m.3}.webp
+        header Cache-Control "public, max-age=31536000, immutable"
+        file_server
+      }
+
+      # 나머지(페이지, /api, 관리자 전용 원본)는 SvelteKit 서버로
+      handle {
+        reverse_proxy app:3000
+      }
+
+volumes:
+  db-data:
+  ml-cache:
+  caddy-data:
+  caddy-config:

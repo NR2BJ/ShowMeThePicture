@@ -1,0 +1,35 @@
+# agent worklog (kept out of git on purpose; see CLAUDE.md rule)
+worklog.md
+
+# secrets / local env
+.env
+.env.*
+!.env.example
+
+# OS
+.DS_Store
+
+# derived image cache / data volumes (never commit)
+cache/
+data/
+node_modules
+
+# Output
+.output
+.vercel
+.netlify
+.wrangler
+/.svelte-kit
+/build
+
+Thumbs.db
+
+# Env
+!.env.test
+
+# Vite
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# 세션별 미리보기 설정 (절대경로 포함)
+.claude/launch.json

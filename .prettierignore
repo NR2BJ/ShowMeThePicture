@@ -1,0 +1,6 @@
+node_modules
+build
+.svelte-kit
+drizzle
+docs/mockups
+pnpm-lock.yaml

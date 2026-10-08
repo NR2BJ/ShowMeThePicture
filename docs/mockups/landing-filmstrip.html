@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShowMeThePicture — 랜딩 목업: 필름 스트립</title>
+<!-- 목업 전용. 이미지는 picsum.photos 플레이스홀더, 실제 서비스에서는 /api/photos/random 결과를 씀 -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/maru-buri.css">
+<style>
+  :root {
+    --bg: #0b0b0a;
+    --ink: #e8e4dc;
+    --ink-dim: #837e75;
+    --amber: #d9a65a;
+    --base: #1a1816;          /* 필름 베이스 */
+    --serif: "Instrument Serif", "MaruBuri", serif;
+    --sans: "Pretendard Variable", Pretendard, -apple-system, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+    --fh: clamp(110px, 21vh, 210px);   /* 프레임 높이 */
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--sans); overflow: hidden; -webkit-font-smoothing: antialiased; }
+
+  header {
+    position: fixed; inset: 0 0 auto 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 28px 40px;
+  }
+  .brand { font-family: var(--serif); font-size: 30px; color: var(--ink); text-decoration: none; letter-spacing: .005em; }
+  .brand em { font-style: italic; color: var(--ink-dim); }
+  nav { display: flex; gap: 28px; align-items: baseline; }
+  nav a { color: var(--ink-dim); text-decoration: none; font-size: 14px; letter-spacing: .02em; transition: color .2s; }
+  nav a:hover { color: var(--ink); }
+  nav .admin { opacity: .35; margin-left: 10px; display: inline-flex; }
+  nav .admin:hover { opacity: .9; }
+
+  main {
+    height: 100%;
+    display: flex; flex-direction: column; justify-content: center;
+    gap: clamp(14px, 3.6vh, 36px);
+    padding: 72px 0;
+  }
+
+  /* 한 줄의 필름 */
+  .strip { width: 120vw; margin-left: -10vw; overflow: hidden; transform: rotate(var(--tilt, 0deg)); }
+  .track {
+    position: relative;
+    display: flex; gap: 10px; width: max-content;
+    padding: 28px 0;
+    background: var(--base);
+    animation: scroll var(--dur, 90s) linear infinite;
+  }
+  .strip[data-dir="right"] .track { animation-direction: reverse; }
+  .strip:hover .track { animation-play-state: paused; }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+
+  /* 스프로켓 구멍: 베이스 위에 배경색 사각형을 반복 */
+  .track::before, .track::after {
+    content: ""; position: absolute; left: 0; right: 0; height: 8px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='8'%3E%3Crect x='11' y='0' width='12' height='8' rx='1.5' fill='%230b0b0a'/%3E%3C/svg%3E") repeat-x;
+  }
+  .track::before { top: 6px; }
+  .track::after  { bottom: 6px; }
+
+  .frame {
+    position: relative; display: block; flex: none;
+    height: var(--fh); aspect-ratio: 3 / 2;
+    background: #000;
+  }
+  .frame img { width: 100%; height: 100%; object-fit: contain; display: block; opacity: 0; transition: opacity .7s ease; }
+  .frame img.loaded { opacity: 1; }
+  .frame:hover img { opacity: .92; }
+
+  /* 가장자리 각인(rebate): 실제 메타데이터 */
+  .rt, .rb {
+    position: absolute; white-space: nowrap; pointer-events: none;
+    font: 500 10px/11px var(--mono); letter-spacing: .14em; text-transform: uppercase;
+    color: var(--amber); opacity: .9;
+  }
+  .rt { top: -15px; left: 1px; }
+  .rb { bottom: -15px; right: 1px; }
+  .rb::before { content: "▸ "; opacity: .6; }
+
+  footer {
+    position: fixed; inset: auto 0 0 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 22px 40px;
+    font: 400 11px/1.4 var(--mono); color: var(--ink-dim); letter-spacing: .04em;
+  }
+  footer a { color: var(--ink); text-decoration: none; font-family: var(--sans); font-size: 14px; letter-spacing: .02em; }
+  footer a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+  @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
+  @media (max-width: 720px) {
+    :root { --fh: 96px; }
+    header, footer { padding: 18px 20px; }
+    .brand { font-size: 24px; }
+    nav { gap: 16px; } nav a { font-size: 13px; }
+    .strip:nth-child(3) { display: none; }
+    footer span { display: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="#">Show Me <em>the</em> Picture</a>
+  <nav>
+    <a href="#">컬렉션</a>
+    <a href="#">아카이브</a>
+    <a href="#">검색</a>
+    <a href="#">소개</a>
+    <a class="admin" href="#" title="관리자" aria-label="관리자 로그인">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M10.9 12.1 21 2M15 8l3 3M18 5l3 3"/></svg>
+    </a>
+  </nav>
+</header>
+
+<main id="strips" aria-label="무작위 사진 필름 스트립"></main>
+
+<footer>
+  <span>A컷 1,284장 중 42장 · 방문할 때마다 다시 섞입니다 · 올려두면 멈춥니다</span>
+  <a href="#">아카이브 보기 →</a>
+</footer>
+
+<script>
+  // 목업: 실제로는 /api/photos/random?n=42&tier=A 의 결과를 세 줄로 나눔
+  const rows = [
+    { dur: 110, tilt: -1.1, dir: 'left',  stock: 'KODAK COLORPLUS 200', start: 3  },
+    { dur: 135, tilt:  0.9, dir: 'right', stock: 'SAMSUNG NX500',       start: 17 },
+    { dur: 120, tilt: -0.7, dir: 'left',  stock: 'KODAK PORTRA 400',    start: 28 },
+  ];
+  // 종횡비 섞기: 3:2 위주, 세로·정사각·와이드 크롭 약간 (검정 여백 확인용)
+  const shapes = [[600,400],[600,400],[600,400],[600,400],[600,400],[600,400],[400,600],[500,500],[640,360],[600,450],[600,400],[400,600],[600,400],[560,400]];
+
+  const main = document.getElementById('strips');
+  rows.forEach((row, r) => {
+    const strip = document.createElement('section');
+    strip.className = 'strip';
+    strip.dataset.dir = row.dir;
+    strip.style.setProperty('--dur', row.dur + 's');
+    strip.style.setProperty('--tilt', row.tilt + 'deg');
+    const track = document.createElement('div');
+    track.className = 'track';
+    let html = '';
+    shapes.forEach(([w, h], i) => {
+      const n = row.start + i;
+      const seed = `smtp-${r}-${i}`;
+      html += `<a class="frame" href="#" title="사진 페이지로">
+        <img src="https://picsum.photos/seed/${seed}/${w}/${h}" alt="" onload="this.classList.add('loaded')">
+        <span class="rt">${row.stock}</span><span class="rb">${String(n).padStart(2,'0')}</span>
+      </a>`;
+    });
+    track.innerHTML = html + html;   // 끊김 없는 루프를 위해 두 번
+    strip.appendChild(track);
+    main.appendChild(strip);
+  });
+</script>
+</body>
+</html>
