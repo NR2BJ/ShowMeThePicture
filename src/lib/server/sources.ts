@@ -135,6 +135,22 @@ export async function getSourceById(db: Db, id: string): Promise<SourceRow | nul
 	return rows[0] ?? null;
 }
 
+export type SourcePatch = {
+	name?: string;
+	medium?: Medium | null;
+	tier?: Tier | null;
+	defaultVisibility?: 'public' | 'hidden';
+	libraryPublic?: boolean;
+	pollIntervalMin?: number;
+};
+
+export async function updateSource(db: Db, id: string, patch: SourcePatch): Promise<void> {
+	await db
+		.update(sources)
+		.set({ ...patch, updatedAt: new Date() })
+		.where(eq(sources.id, id));
+}
+
 /** Source 삭제: files 는 cascade, 파일이 하나도 안 남은 photos 는 정리. 원본 디스크는 건드리지 않는다. */
 export async function deleteSource(db: Db, id: string): Promise<void> {
 	await db.delete(sources).where(eq(sources.id, id));

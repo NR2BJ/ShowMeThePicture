@@ -214,6 +214,7 @@ export type PhotoDetail = {
 	tier: 'A' | 'B' | null;
 	medium: 'film' | 'digital' | null;
 	visibility: 'public' | 'hidden';
+	visibilityManual: boolean;
 	title: string | null;
 	caption: string | null;
 	primaryFileId: string | null;
@@ -305,6 +306,7 @@ export async function getPhotoDetail(
 		tier: p.tier,
 		medium: p.medium,
 		visibility: p.visibility,
+		visibilityManual: p.visibilityManual,
 		title: p.title,
 		caption: p.caption,
 		primaryFileId: p.primaryFileId,
@@ -344,7 +346,10 @@ export async function setPhotoVisibility(
 	id: string,
 	visibility: 'public' | 'hidden'
 ): Promise<void> {
-	await db.update(photos).set({ visibility, updatedAt: new Date() }).where(eq(photos.id, id));
+	await db
+		.update(photos)
+		.set({ visibility, visibilityManual: true, updatedAt: new Date() })
+		.where(eq(photos.id, id));
 }
 
 /** ctx 파라미터("archive" | "library:<slug>") → Scope. slug 가 없으면 archive. */

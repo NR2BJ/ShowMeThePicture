@@ -9,6 +9,7 @@ import {
 	setPhotoVisibility
 } from '#lib/server/gallery.ts';
 import { setFileRotation } from '#lib/server/rotation.ts';
+import { resetPhotoVisibility } from '#lib/server/visibility.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -38,6 +39,11 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const v = form.get('visibility') === 'public' ? 'public' : 'hidden';
 		await setPhotoVisibility(db(), params.id, v);
+		return { ok: true };
+	},
+	resetVisibility: async ({ params, locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		await resetPhotoVisibility(db(), params.id);
 		return { ok: true };
 	},
 	collect: async ({ params, request, locals }) => {

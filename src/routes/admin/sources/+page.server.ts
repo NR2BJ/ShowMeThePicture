@@ -9,10 +9,12 @@ import {
 	listSourcesWithCounts,
 	type NewSource
 } from '#lib/server/sources.ts';
+import { sourceVisibilityStats } from '#lib/server/visibility.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => ({
 	sources: await listSourcesWithCounts(db()),
+	stats: await sourceVisibilityStats(db()),
 	photosRoot: config.PHOTOS_ROOT
 });
 

@@ -128,7 +128,11 @@
 		<p class="line mono">
 			{dateLine}
 			{#if data.photo.tier}<span class="dim"> · {data.photo.tier}컷</span>{/if}
-			{#if data.photo.visibility === 'hidden'}<span class="dim"> · 숨김</span>{/if}
+			{#if data.photo.visibility === 'hidden'}<span class="dim">
+					· 숨김</span
+				>{/if}{#if data.admin && data.photo.visibilityManual}<span class="dim">
+					· 수동 설정</span
+				>{/if}
 		</p>
 		<div class="controls">
 			{#if canToggle}
@@ -188,6 +192,13 @@
 						>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
 					>
 				</form>
+				{#if data.photo.visibilityManual}
+					<form method="POST" action="?/resetVisibility">
+						<button type="submit" class="pill quiet" title="폴더 기본값으로 되돌립니다"
+							>기본값으로</button
+						>
+					</form>
+				{/if}
 				{#if current}<a
 						class="pill quiet"
 						href={`/media/${current.id}/original`}

@@ -8,7 +8,8 @@
 		{ href: '/admin/sources', label: '라이브러리' },
 		{ href: '/admin/folders', label: '폴더 정보' },
 		{ href: '/admin/pairs', label: '페어링' },
-		{ href: '/admin/collections', label: '컬렉션' }
+		{ href: '/admin/collections', label: '컬렉션' },
+		{ href: '/admin/visibility', label: '공개 설정' }
 	];
 	function current(href: string, exact?: boolean) {
 		return exact ? page.url.pathname === href : page.url.pathname.startsWith(href);

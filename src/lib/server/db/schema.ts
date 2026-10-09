@@ -105,6 +105,8 @@ export const photos = pgTable(
 		title: text('title'),
 		caption: text('caption'),
 		visibility: visibility('visibility').notNull().default('hidden'),
+		/** 관리자가 직접 바꾼 공개 여부(true 면 폴더 기본값 일괄 적용에서 제외) */
+		visibilityManual: boolean('visibility_manual').notNull().default(false),
 		/** A=걸작, B=보정은 했지만 그 정도는 아님, null=보정본 없음 */
 		tier: tier('tier'),
 		medium: medium('medium'),

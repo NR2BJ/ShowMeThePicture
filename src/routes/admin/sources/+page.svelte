@@ -6,11 +6,14 @@
 
 	let relPath = $state('');
 	let name = $state('');
-	let role: 'original' | 'edit' = $state('original');
+	let role = $state<'original' | 'edit'>('original');
+	let tier = $state<'A' | 'B'>('A');
 	let nameTouched = $state(false);
 	$effect(() => {
 		if (!nameTouched) name = relPath.split('/').filter(Boolean).pop() ?? '';
 	});
+	// 권장 기본값: 원본 → 숨김, 보정 A컷 → 공개, 보정 B컷 → 숨김
+	const recommended = $derived(role === 'edit' && tier === 'A' ? 'public' : 'hidden');
 	const roleLabel = (r: string) => (r === 'edit' ? '보정' : '원본');
 </script>
 
@@ -35,60 +38,54 @@
 		<p class="dim">아직 없습니다.</p>
 	{:else}
 		<table class="table">
-			<thead
-				><tr
-					><th>이름</th><th>역할</th><th>파일 / 처리 / 없어짐</th><th>기본 공개</th><th
-						>마지막 스캔</th
-					><th></th></tr
-				></thead
-			>
+			<thead>
+				<tr>
+					<th>이름</th>
+					<th>역할 · 컷</th>
+					<th>파일 / 처리 / 없어짐</th>
+					<th>새 사진</th>
+					<th>사진 공개 현황</th>
+					<th>폴더 페이지</th>
+					<th></th>
+				</tr>
+			</thead>
 			<tbody>
 				{#each data.sources as s (s.id)}
+					{@const st = data.stats[s.id]}
 					<tr>
-						<td
-							><a href={`/library/${s.slug}`}>{s.name}</a>
-							<div class="mono dim">{s.rootPath}</div></td
-						>
+						<td>
+							<a href={`/library/${s.slug}`}>{s.name}</a>
+							<div class="mono dim">{s.rootPath}</div>
+						</td>
 						<td class="mono"
 							>{roleLabel(s.role)}{s.medium
 								? ` · ${s.medium === 'film' ? '필름' : '디지털'}`
 								: ''}{s.tier ? ` · ${s.tier}컷` : ''}</td
 						>
 						<td class="mono">{s.fileCount} / {s.indexedCount} / {s.missingCount}</td>
-						<td class="mono"
-							>{s.defaultVisibility === 'public' ? '공개' : '숨김'}{s.libraryPublic
-								? ' · 라이브러리 공개'
-								: ''}</td
-						>
-						<td class="mono dim"
-							>{s.lastScannedAt ? new Date(s.lastScannedAt).toLocaleString('ko-KR') : '-'}</td
-						>
+						<td class="mono">{s.defaultVisibility === 'public' ? '공개' : '숨김'}</td>
+						<td class="mono">
+							공개 {st?.publicCount ?? 0} · 숨김 {st?.hiddenCount ?? 0}
+							{#if st?.manualCount}<span class="dim"> · 수동 {st.manualCount}</span>{/if}
+						</td>
+						<td class="mono">{s.libraryPublic ? '게스트 열림' : '관리자만'}</td>
 						<td class="actions">
+							<a class="btn quiet" href={`/admin/sources/${s.id}`}>수정</a>
 							<form method="POST" action="?/scan">
-								<input type="hidden" name="id" value={s.id} /><input
-									type="hidden"
-									name="full"
-									value="on"
-								/><button class="btn quiet" type="submit">지금 스캔</button>
-							</form>
-							<form
-								method="POST"
-								action="?/delete"
-								onsubmit={(e) => {
-									if (!confirm(`'${s.name}' 등록을 삭제할까요? 디스크 파일은 그대로 둡니다.`))
-										e.preventDefault();
-								}}
-							>
-								<input type="hidden" name="id" value={s.id} /><button
-									class="btn danger"
-									type="submit">삭제</button
-								>
+								<input type="hidden" name="id" value={s.id} />
+								<input type="hidden" name="full" value="on" />
+								<button class="btn quiet" type="submit">지금 스캔</button>
 							</form>
 						</td>
 					</tr>
 				{/each}
 			</tbody>
 		</table>
+		<p class="mono dim hint">
+			'새 사진' = 이 폴더에서 새로 찾는 사진의 공개 여부(기본값). '사진 공개 현황' = 지금 실제 상태.
+			'폴더 페이지' = /library/… 를 게스트에게 여는지. 컷(A/B)은 분류 라벨일 뿐이며, 게스트에게
+			보이는지는 사진마다의 공개 여부로만 정해집니다.
+		</p>
 	{/if}
 
 	<h2>폴더 추가</h2>
@@ -108,15 +105,15 @@
 			/></label
 		>
 		<div class="cols">
-			<label class="field"
-				><span>역할</span>
+			<label class="field">
+				<span>역할</span>
 				<select name="role" bind:value={role}>
 					<option value="original">원본 (카메라/스캔 파일)</option>
 					<option value="edit">보정 (export 한 파일)</option>
 				</select>
 			</label>
-			<label class="field"
-				><span>매체</span>
+			<label class="field">
+				<span>매체</span>
 				<select name="medium">
 					<option value="">— 지정 안 함</option>
 					<option value="digital">디지털</option>
@@ -124,30 +121,35 @@
 				</select>
 			</label>
 			{#if role === 'edit'}
-				<label class="field"
-					><span>컷</span>
-					<select name="tier">
+				<label class="field">
+					<span>컷 (분류 라벨)</span>
+					<select name="tier" bind:value={tier}>
 						<option value="A">A컷 (걸작)</option>
 						<option value="B">B컷</option>
 					</select>
 				</label>
 			{/if}
-			<label class="field"
-				><span>새 사진 기본 공개</span>
-				<select name="defaultVisibility">
-					<option value={role === 'edit' ? 'public' : 'hidden'}
-						>{role === 'edit' ? '공개' : '숨김'} (권장)</option
-					>
-					<option value={role === 'edit' ? 'hidden' : 'public'}
-						>{role === 'edit' ? '숨김' : '공개'}</option
-					>
-				</select>
+			<label class="field">
+				<span>이 폴더 사진의 공개 여부</span>
+				{#key recommended}
+					<select name="defaultVisibility">
+						<option value="public" selected={recommended === 'public'}
+							>공개 — 아카이브·랜딩·컬렉션에 보임</option
+						>
+						<option value="hidden" selected={recommended === 'hidden'}>숨김 — 관리자만</option>
+					</select>
+				{/key}
 			</label>
 		</div>
 		<label class="check mono"
-			><input type="checkbox" name="libraryPublic" /> 이 라이브러리 페이지를 게스트에게도 열기</label
+			><input type="checkbox" name="libraryPublic" /> 폴더 페이지(/library/…)를 게스트에게도 열기 — 그
+			안에서도 공개 사진만 보입니다</label
 		>
-		<button class="btn primary" type="submit" disabled={!relPath && false}>등록하고 스캔</button>
+		<p class="mono dim hint">
+			권장값이 자동으로 들어갑니다: 원본은 숨김, 보정 A컷은 공개, B컷은 숨김. 등록 뒤에는 '수정'에서
+			바꾸고 기존 사진에 일괄 적용할 수 있습니다.
+		</p>
+		<button class="btn primary" type="submit">등록하고 스캔</button>
 	</form>
 </section>
 
@@ -168,12 +170,17 @@
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 		gap: 0 16px;
 	}
+	.hint {
+		font-size: 12px;
+		margin: 10px 0 18px;
+		max-width: 760px;
+	}
 	.check {
 		display: flex;
 		gap: 8px;
 		align-items: center;
 		font-size: 12px;
-		margin: 4px 0 20px;
+		margin: 4px 0 8px;
 		color: var(--color-ink-dim);
 	}
 </style>
