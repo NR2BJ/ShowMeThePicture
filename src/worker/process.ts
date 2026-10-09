@@ -88,34 +88,52 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 		await src.cleanup();
 	}
 
-	// 촬영시각 결정: EXIF/XMP → 폴더명 날짜 → 롤 메타(현상월 + 롤 내 순서) → mtime
-	let takenAt = ex.takenAt;
-	let takenAtSource: 'exif' | 'xmp' | 'folder' | 'roll' | 'mtime' | null = ex.takenAtSource;
-	if (!takenAt) {
-		const fromPath = dateFromPath(file.relPath);
-		if (fromPath) {
-			takenAt = fromPath;
+	// 촬영시각 결정. 디지털: EXIF/XMP → 폴더명 날짜 → 롤 → mtime.
+	// 필름 스캔: 롤(현상월) → 폴더명 날짜 → EXIF(스캐너가 넣은 스캔일인 경우가 많아 뒤로) → mtime.
+	const isFilm = source.medium === 'film';
+	let takenAt: Date | null = null;
+	let takenAtSource: 'exif' | 'xmp' | 'folder' | 'roll' | 'mtime' | null = null;
+	const fromExif = () => {
+		if (!takenAt && ex.takenAt) {
+			takenAt = ex.takenAt;
+			takenAtSource = ex.takenAtSource;
+		}
+	};
+	const fromFolder = () => {
+		if (takenAt) return;
+		const d = dateFromPath(file.relPath);
+		if (d) {
+			takenAt = d;
 			takenAtSource = 'folder';
 		}
-	}
-	if (!takenAt) {
+	};
+	const fromRoll = async () => {
+		if (takenAt) return;
 		const meta = pickFolderMeta(await folderMetaForSource(db, source.id), file.relPath);
-		if (meta?.developedAt) {
-			const dir = path.posix.dirname(file.relPath);
-			const siblings = await db
-				.select({ relPath: files.relPath })
-				.from(files)
-				.where(eq(files.sourceId, source.id));
-			const idx = siblings
-				.map((x) => x.relPath)
-				.filter((r) => path.posix.dirname(r) === dir)
-				.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
-				.indexOf(file.relPath);
-			takenAt = new Date(
-				new Date(meta.developedAt + 'T12:00:00').getTime() + Math.max(0, idx) * 60_000
-			);
-			takenAtSource = 'roll';
-		}
+		if (!meta?.developedAt) return;
+		const dir = path.posix.dirname(file.relPath);
+		const siblings = await db
+			.select({ relPath: files.relPath })
+			.from(files)
+			.where(eq(files.sourceId, source.id));
+		const idx = siblings
+			.map((x) => x.relPath)
+			.filter((r) => path.posix.dirname(r) === dir)
+			.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+			.indexOf(file.relPath);
+		takenAt = new Date(
+			new Date(meta.developedAt + 'T12:00:00').getTime() + Math.max(0, idx) * 60_000
+		);
+		takenAtSource = 'roll';
+	};
+	if (isFilm) {
+		await fromRoll();
+		fromFolder();
+		fromExif();
+	} else {
+		fromExif();
+		fromFolder();
+		await fromRoll();
 	}
 	if (!takenAt) {
 		takenAt = file.mtime;

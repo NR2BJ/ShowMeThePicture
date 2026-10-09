@@ -70,6 +70,9 @@
 	{/each}
 
 	<h2>자동으로 묶임 · 미확정 ({data.auto.length})</h2>
+	{#if data.auto.length}<form method="POST" action="?/acceptAll" class="inline">
+			<button class="btn" type="submit">미확정 전부 확정</button>
+		</form>{/if}
 	{#if data.auto.length === 0}<p class="dim">없습니다.</p>{/if}
 	{#each data.auto as r (r.edit.id)}
 		<div class="pair">
@@ -101,6 +104,50 @@
 			</div>
 		</div>
 	{/each}
+
+	<h2>묶인 사진 전체 ({data.pairedCount}) · 잘못 묶인 건 여기서 '풀기'</h2>
+	{#if data.all.length === 0}<p class="dim">없습니다.</p>{/if}
+	{#each data.all as r (r.edit.id)}
+		<div class="pair compact">
+			<figure>
+				<img src={r.edit.thumb} alt="" />
+				<figcaption class="mono">보정 · {r.edit.filename}</figcaption>
+			</figure>
+			<div class="mid mono">
+				<span class="score">{r.score?.toFixed(2) ?? '-'}</span><span class="dim"
+					>{r.method}{r.confirmed ? ' · 확정' : ' · 미확정'}</span
+				>
+			</div>
+			<figure>
+				<img src={r.original.thumb} alt="" />
+				<figcaption class="mono">
+					원본 · {r.original.filename}<br /><span class="dim">{r.original.source}</span>
+				</figcaption>
+			</figure>
+			<div class="acts">
+				<a class="btn quiet" href={`/p/${r.photoId}`}>보기</a>
+				{#if !r.confirmed}<form method="POST" action="?/accept">
+						<input type="hidden" name="photoId" value={r.photoId} /><button
+							class="btn"
+							type="submit">확정</button
+						>
+					</form>{/if}
+				<form method="POST" action="?/unpair">
+					<input type="hidden" name="editId" value={r.edit.id} /><button
+						class="btn danger"
+						type="submit">풀기</button
+					>
+				</form>
+			</div>
+		</div>
+	{/each}
+	{#if data.page > 1 || data.hasMore}
+		<p class="mono dim pager">
+			{#if data.page > 1}<a href={`/admin/pairs?page=${data.page - 1}`}>← 이전</a>{/if}
+			<span>{data.page}</span>
+			{#if data.hasMore}<a href={`/admin/pairs?page=${data.page + 1}`}>다음 →</a>{/if}
+		</p>
+	{/if}
 
 	<h2>원본 없는 보정본 ({data.unpaired.length})</h2>
 	{#if data.unpaired.length === 0}<p class="dim">없습니다.</p>{/if}
@@ -168,6 +215,22 @@
 	.acts {
 		display: flex;
 		gap: 8px;
+		flex-wrap: wrap;
+	}
+	.inline {
+		margin: -6px 0 12px;
+	}
+	.pair.compact figure img {
+		height: 110px;
+		width: 165px;
+	}
+	.pair.compact {
+		grid-template-columns: 165px 70px 165px 1fr;
+	}
+	.pager {
+		display: flex;
+		gap: 16px;
+		padding: 16px 0;
 	}
 	.manual {
 		display: flex;

@@ -22,11 +22,20 @@
 		>
 		처럼 현상월_롤번호로 시작하면 스캔 때 날짜·롤 번호를 읽고,
 		<a href="/admin/gear">장비</a>에 등록된 이름이 폴더명에 있으면 카메라·렌즈·필름도 자동으로
-		채워진다. 저장하면 그 폴더 안의 EXIF 없는 파일 날짜가 현상월(파일명 순)로 맞춰진다. 사진 하나만
-		다른 장비면 그 사진 페이지의 정보 드로어에서 따로 고친다.
+		채워진다. 저장하면 그 폴더 안 파일의 날짜가 현상월(파일명 순)로 맞춰진다 — 스캐너가 EXIF 에 넣은
+		스캔 날짜도 덮어쓴다. 사진 하나만 다른 장비면 그 사진 페이지의 정보 드로어에서 따로 고친다.
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
-	{#if form?.saved}<p class="notice">저장했습니다. 날짜를 맞춘 파일 {form.applied}개.</p>{/if}
+	{#if form?.saved}<p class="notice">
+			'{form.title}' 저장. {#if form.hasDate}파일 {form.applied}개의 날짜를 현상월로 맞췄습니다.{:else}현상월이
+				비어 있어 날짜는 그대로 두었습니다.{/if}
+		</p>{/if}
+	{#if form?.all}<p class="notice">
+			폴더 {form.all.folders}개, 파일 {form.all.files}개의 날짜를 현상월로 맞췄습니다.
+		</p>{/if}
+	<form method="POST" action="?/applyAll" class="all">
+		<button class="btn quiet" type="submit">모든 폴더 날짜 다시 맞추기</button>
+	</form>
 
 	{#if data.folders.length === 0}
 		<p class="dim">아직 없습니다. 필름 라이브러리를 등록하고 스캔하면 폴더가 나타납니다.</p>
@@ -104,6 +113,9 @@
 <style>
 	code {
 		font-family: var(--font-mono);
+	}
+	.all {
+		margin: 0 0 18px;
 	}
 	.roll {
 		border: 1px solid var(--color-ink-faint);

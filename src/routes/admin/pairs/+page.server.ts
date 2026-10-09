@@ -45,8 +45,10 @@ async function thumbOf(id: string): Promise<Thumb | null> {
 	};
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ url }) => {
 	const d = db();
+	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
+	const PER = 40;
 	// 검토 큐
 	const cands = await d
 		.select()
@@ -121,10 +123,44 @@ export const load: PageServerLoad = async () => {
 		.from(files)
 		.innerJoin(sources, eq(sources.id, files.sourceId))
 		.where(eq(sources.role, 'original'));
+	// 묶인 사진 전체 (확정 여부 포함) — 실수로 확정한 것도 여기서 풀 수 있다
+	const allRows = await d
+		.select({
+			photoId: photos.id,
+			editId: files.id,
+			originalId: photos.originalFileId,
+			score: photos.pairConfidence,
+			method: photos.pairMethod,
+			confirmed: photos.pairConfirmed,
+			takenAt: photos.takenAt
+		})
+		.from(photos)
+		.innerJoin(files, and(eq(files.photoId, photos.id), eq(files.variantRole, 'edit')))
+		.where(sql`${photos.originalFileId} is not null`)
+		.orderBy(desc(photos.updatedAt))
+		.limit(PER + 1)
+		.offset((page - 1) * PER);
+	const all = [];
+	for (const r of allRows.slice(0, PER)) {
+		const edit = await thumbOf(r.editId);
+		const original = r.originalId ? await thumbOf(r.originalId) : null;
+		if (edit && original)
+			all.push({
+				photoId: r.photoId,
+				edit,
+				original,
+				score: r.score,
+				method: r.method,
+				confirmed: r.confirmed
+			});
+	}
 	return {
 		review,
 		auto,
 		unpaired,
+		all,
+		page,
+		hasMore: allRows.length > PER,
 		pairedCount: Number(pairedCount),
 		originals: {
 			total: Number(orig.total),
@@ -163,6 +199,20 @@ export const actions: Actions = {
 			.set({ pairConfirmed: true, updatedAt: new Date() })
 			.where(eq(photos.id, photoId));
 		return { ok: '확정했습니다' };
+	},
+	acceptAll: async () => {
+		const r = await db()
+			.update(photos)
+			.set({ pairConfirmed: true, updatedAt: new Date() })
+			.where(
+				and(
+					eq(photos.pairConfirmed, false),
+					sql`${photos.originalFileId} is not null`,
+					sql`exists (select 1 from ${files} f where f.photo_id = ${photos.id} and f.variant_role = 'edit')`
+				)
+			)
+			.returning({ id: photos.id });
+		return { ok: `${r.length}장을 한 번에 확정했습니다` };
 	},
 	unpair: async ({ request }) => {
 		const form = await request.formData();

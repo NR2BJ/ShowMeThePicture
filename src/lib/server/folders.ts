@@ -94,7 +94,7 @@ export function toRollInfo(r: FolderMetaRow): RollInfo {
 }
 
 /**
- * 폴더의 developed_at 을 그 아래 파일들의 촬영시각으로 준다 (EXIF 날짜가 없는 파일만).
+ * 폴더의 developed_at 을 그 아래 파일들의 촬영시각으로 준다 (수동으로 정한 날짜만 제외).
  * 롤 안 순서를 지키려고 파일명 순으로 1분씩 더한다.
  */
 export async function applyFolderDates(db: Db, sourceId: string, relDir: string): Promise<number> {
@@ -117,9 +117,8 @@ export async function applyFolderDates(db: Db, sourceId: string, relDir: string)
 		.filter((f) => {
 			const d = path.posix.dirname(f.relPath);
 			const inDir = relDir === '' ? true : d === relDir || d.startsWith(relDir + '/');
-			return (
-				inDir && (f.src === null || f.src === 'mtime' || f.src === 'folder' || f.src === 'roll')
-			);
+			// 스캐너가 넣은 EXIF 날짜(스캔일)도 덮어쓴다. 관리자가 직접 정한 날짜(manual)만 남긴다.
+			return inDir && f.src !== 'manual';
 		})
 		.sort((a, b) => a.relPath.localeCompare(b.relPath, undefined, { numeric: true }));
 	const base = new Date(meta.developedAt + 'T12:00:00');
@@ -166,6 +165,25 @@ export async function reparseFolderMeta(db: Db): Promise<number> {
 		}
 	}
 	return n;
+}
+
+/** 현상월이 있는 모든 폴더에 날짜를 다시 적용 */
+export async function applyAllFolderDates(db: Db): Promise<{ folders: number; files: number }> {
+	const rows = await db
+		.select({
+			sourceId: folderMeta.sourceId,
+			relDir: folderMeta.relDir,
+			developedAt: folderMeta.developedAt
+		})
+		.from(folderMeta);
+	let folders = 0;
+	let files = 0;
+	for (const r of rows) {
+		if (!r.developedAt) continue;
+		files += await applyFolderDates(db, r.sourceId, r.relDir);
+		folders++;
+	}
+	return { folders, files };
 }
 
 export async function updateFolderMeta(
