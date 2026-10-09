@@ -1,11 +1,17 @@
 <script lang="ts">
-	import type { Variant } from '#lib/server/gallery.ts';
+	import type { EffectiveMeta, Variant } from '#lib/server/gallery.ts';
 
 	let {
 		variant,
+		effective = null,
 		showGps = false,
 		admin = false
-	}: { variant: Variant; showGps?: boolean; admin?: boolean } = $props();
+	}: {
+		variant: Variant;
+		effective?: EffectiveMeta | null;
+		showGps?: boolean;
+		admin?: boolean;
+	} = $props();
 
 	const fmtDate = (iso: string | null) =>
 		iso
@@ -22,6 +28,7 @@
 		mtime: '파일 수정시각',
 		manual: '수동'
 	};
+	const tag = (s: string | null) => (s === 'manual' ? ' (수동)' : s === 'roll' ? ' (롤)' : '');
 
 	let showAll = $state(false);
 	const groups = $derived.by(() => {
@@ -34,14 +41,30 @@
 					['출처', v.takenAtSource ? (srcLabel[v.takenAtSource] ?? v.takenAtSource) : null]
 				]
 			},
-			{
-				title: '카메라',
-				rows: [
-					['제조사', v.cameraMake],
-					['기종', v.cameraModel],
-					['렌즈', v.lens]
-				]
-			},
+			effective
+				? {
+						title: '장비',
+						rows: [
+							['카메라', effective.camera ? effective.camera + tag(effective.from.camera) : null],
+							['렌즈', effective.lens ? effective.lens + tag(effective.from.lens) : null],
+							[
+								'필름',
+								effective.filmStock ? effective.filmStock + tag(effective.from.filmStock) : null
+							],
+							[
+								'EXIF 기종',
+								effective.from.camera !== 'exif' && v.cameraModel ? v.cameraModel : null
+							]
+						]
+					}
+				: {
+						title: '카메라',
+						rows: [
+							['제조사', v.cameraMake],
+							['기종', v.cameraModel],
+							['렌즈', v.lens]
+						]
+					},
 			{
 				title: '노출',
 				rows: [
@@ -64,16 +87,16 @@
 				]
 			}
 		];
-		if (v.roll && (v.roll.filmStock || v.roll.camera || v.roll.developedAt)) {
+		if (
+			v.roll &&
+			(v.roll.title || v.roll.developedAt || v.roll.filmFormat || v.roll.scanner || v.roll.notes)
+		) {
 			const dev = v.roll.developedAt ? v.roll.developedAt.slice(0, 7).replace('-', '.') : null;
 			g.splice(2, 0, {
-				title: '필름',
+				title: '롤',
 				rows: [
 					['롤', v.roll.title],
 					['현상', dev && v.roll.rollNo ? `${dev} · ${v.roll.rollNo}번째 롤` : dev],
-					['카메라', v.roll.camera],
-					['렌즈', v.roll.lens],
-					['필름', v.roll.filmStock],
 					['포맷', v.roll.filmFormat],
 					['스캐너', v.roll.scanner],
 					['메모', v.roll.notes]

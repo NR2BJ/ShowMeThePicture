@@ -110,6 +110,12 @@ export const photos = pgTable(
 		/** A=걸작, B=보정은 했지만 그 정도는 아님, null=보정본 없음 */
 		tier: tier('tier'),
 		medium: medium('medium'),
+		/** 사진별 장비 덮어쓰기 {camera, lens, filmStock}. null 이면 롤 메타/EXIF 를 따른다 */
+		metaOverride: jsonb('meta_override').$type<{
+			camera?: string | null;
+			lens?: string | null;
+			filmStock?: string | null;
+		}>(),
 		pairMethod: pairMethod('pair_method'),
 		pairConfidence: real('pair_confidence'),
 		pairConfirmed: boolean('pair_confirmed').notNull().default(false),
@@ -227,6 +233,28 @@ export const pairCandidates = pgTable(
 		...timestamps
 	},
 	(t) => [index('pair_candidates_original_idx').on(t.originalFileId)]
+);
+
+// ---- gear: 가진 장비 (카메라·렌즈·필름). 폴더명 파싱과 드롭다운의 재료 ----
+export const gearKind = pgEnum('gear_kind', ['camera', 'lens', 'film']);
+export const gear = pgTable(
+	'gear',
+	{
+		id: id(),
+		kind: gearKind('kind').notNull(),
+		/** 표시 이름 (예: Rollei 35S, Kodak ColorPlus 200) */
+		name: text('name').notNull(),
+		/** 폴더명에서 찾을 때 쓰는 별칭들 (예: rollei35s, colorplus200). 이름 자체도 항상 매칭 대상 */
+		aliases: text('aliases').array().notNull().default([]),
+		/** 고정렌즈 바디면 그 렌즈 이름 → 사진 렌즈 칸 자동 채움 */
+		fixedLens: text('fixed_lens'),
+		/** 35mm / 120 / … (카메라·필름) */
+		format: text('format'),
+		notes: text('notes'),
+		position: integer('position').notNull().default(0),
+		...timestamps
+	},
+	(t) => [uniqueIndex('gear_kind_name_uq').on(t.kind, t.name)]
 );
 
 // ---- folder_meta: 롤/세션 메타, 하위 폴더에 상속 ----

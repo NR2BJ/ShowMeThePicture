@@ -40,7 +40,7 @@ describe('stemOf', () => {
 
 describe('parseRollFolder', () => {
 	it('parses the agreed convention', () => {
-		expect(parseRollFolder('2509_01 Rollei 35S - Kodak ColorPlus 200')).toEqual({
+		expect(parseRollFolder('2509_01 Rollei 35S - Kodak ColorPlus 200')).toMatchObject({
 			developedAt: '2025-09-01',
 			rollNo: 1,
 			camera: 'Rollei 35S',
@@ -61,5 +61,47 @@ describe('parseRollFolder', () => {
 			rollNo: null,
 			label: '여자의변신은무죄'
 		});
+	});
+});
+
+describe('parseRollFolder with registered gear', () => {
+	const gear = [
+		{
+			kind: 'camera' as const,
+			name: 'Rollei 35S',
+			aliases: ['rollei35s'],
+			fixedLens: 'Sonnar 40mm f/2.8'
+		},
+		{ kind: 'camera' as const, name: 'Nikon FM2', aliases: [], fixedLens: null },
+		{
+			kind: 'film' as const,
+			name: 'Kodak ColorPlus 200',
+			aliases: ['colorplus 200', 'colorplus'],
+			fixedLens: null
+		},
+		{ kind: 'film' as const, name: 'Kodak Gold 200', aliases: ['gold200'], fixedLens: null }
+	];
+	it('finds camera and film without a separator, fills the fixed lens', () => {
+		const r = parseRollFolder('25.09_01 Rollei35s kodak colorplus 200', gear);
+		expect(r).toMatchObject({
+			developedAt: '2025-09-01',
+			rollNo: 1,
+			camera: 'Rollei 35S',
+			lens: 'Sonnar 40mm f/2.8',
+			filmStock: 'Kodak ColorPlus 200'
+		});
+	});
+	it('handles a leading dash and mixed order', () => {
+		const r = parseRollFolder('2509_02 - gold200 Nikon FM2', gear);
+		expect(r).toMatchObject({
+			rollNo: 2,
+			camera: 'Nikon FM2',
+			lens: null,
+			filmStock: 'Kodak Gold 200'
+		});
+	});
+	it('falls back to the dash convention when nothing is registered', () => {
+		const r = parseRollFolder('2509_03 Leica M6 - Portra 400', gear);
+		expect(r).toMatchObject({ camera: 'Leica M6', filmStock: 'Portra 400' });
 	});
 });

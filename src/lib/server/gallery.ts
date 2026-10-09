@@ -208,6 +208,40 @@ export type Variant = {
 	};
 };
 
+export type MetaSource = 'manual' | 'exif' | 'roll' | null;
+export type EffectiveMeta = {
+	camera: string | null;
+	lens: string | null;
+	filmStock: string | null;
+	from: { camera: MetaSource; lens: MetaSource; filmStock: MetaSource };
+};
+export type MetaOverride = {
+	camera?: string | null;
+	lens?: string | null;
+	filmStock?: string | null;
+} | null;
+
+/** 사진의 유효 장비: 수동 > (필름이면 롤 > EXIF, 디지털이면 EXIF > 롤) */
+export function effectiveMeta(
+	medium: 'film' | 'digital' | null,
+	override: MetaOverride,
+	exif: { camera: string | null; lens: string | null },
+	roll: RollInfo | null
+): EffectiveMeta {
+	const pick = (key: 'camera' | 'lens' | 'filmStock'): [string | null, MetaSource] => {
+		const o = override?.[key];
+		if (o) return [o, 'manual'];
+		const r = roll ? roll[key] : null;
+		const e = key === 'filmStock' ? null : exif[key];
+		if (medium === 'film') return r ? [r, 'roll'] : e ? [e, 'exif'] : [null, null];
+		return e ? [e, 'exif'] : r ? [r, 'roll'] : [null, null];
+	};
+	const [camera, fc] = pick('camera');
+	const [lens, fl] = pick('lens');
+	const [filmStock, ff] = pick('filmStock');
+	return { camera, lens, filmStock, from: { camera: fc, lens: fl, filmStock: ff } };
+}
+
 export type PhotoDetail = {
 	id: string;
 	takenAt: string | null;
@@ -220,6 +254,8 @@ export type PhotoDetail = {
 	primaryFileId: string | null;
 	originalFileId: string | null;
 	variants: Variant[];
+	metaOverride: MetaOverride;
+	effective: EffectiveMeta;
 };
 
 export async function getPhotoDetail(
@@ -300,6 +336,17 @@ export async function getPhotoDetail(
 				x.role === 'edit' ? (x.label === '기본' ? 0 : 1) : x.kind === 'raw' ? 2 : 3;
 			return rank(a) - rank(b) || a.filename.localeCompare(b.filename);
 		});
+	const base =
+		variants.find((v) => v.id === p.originalFileId) ??
+		variants.find((v) => v.id === p.primaryFileId) ??
+		variants[0];
+	const roll = base?.roll ?? variants.find((v) => v.roll)?.roll ?? null;
+	const effective = effectiveMeta(
+		p.medium,
+		(p.metaOverride as MetaOverride) ?? null,
+		{ camera: base?.cameraModel ?? null, lens: base?.lens ?? null },
+		roll
+	);
 	return {
 		id: p.id,
 		takenAt: p.takenAt ? p.takenAt.toISOString() : null,
@@ -311,7 +358,9 @@ export async function getPhotoDetail(
 		caption: p.caption,
 		primaryFileId: p.primaryFileId,
 		originalFileId: p.originalFileId,
-		variants
+		variants,
+		metaOverride: (p.metaOverride as MetaOverride) ?? null,
+		effective
 	};
 }
 
@@ -339,6 +388,17 @@ export async function neighbors(
 		.orderBy(asc(orderKey), asc(photos.id))
 		.limit(1);
 	return { prev: newer?.id ?? null, next: older?.id ?? null };
+}
+
+export async function setPhotoMetaOverride(db: Db, id: string, o: MetaOverride): Promise<void> {
+	const clean =
+		o && (o.camera || o.lens || o.filmStock)
+			? { camera: o.camera || null, lens: o.lens || null, filmStock: o.filmStock || null }
+			: null;
+	await db
+		.update(photos)
+		.set({ metaOverride: clean, updatedAt: new Date() })
+		.where(eq(photos.id, id));
 }
 
 export async function setPhotoVisibility(

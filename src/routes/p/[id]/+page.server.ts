@@ -6,8 +6,10 @@ import {
 	getPhotoDetail,
 	neighbors,
 	scopeFromCtx,
+	setPhotoMetaOverride,
 	setPhotoVisibility
 } from '#lib/server/gallery.ts';
+import { listGear } from '#lib/server/gear.ts';
 import { setFileRotation } from '#lib/server/rotation.ts';
 import { resetPhotoVisibility } from '#lib/server/visibility.ts';
 import { getSetting } from '#lib/server/settings.ts';
@@ -23,13 +25,20 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const scope = await scopeFromCtx(db(), ctx.replace(/:b$/, ''));
 	const nav = await neighbors(db(), photo, { scope, admin, includeB });
 	const showGps = admin || (await getSetting<boolean>(db(), 'show_gps', false));
+	const gearRows = admin ? await listGear(db()) : [];
+	const gear = {
+		camera: gearRows.filter((g) => g.kind === 'camera').map((g) => g.name),
+		lens: gearRows.filter((g) => g.kind === 'lens').map((g) => g.name),
+		film: gearRows.filter((g) => g.kind === 'film').map((g) => g.name)
+	};
 	return {
 		photo,
 		nav,
 		ctx,
 		showGps,
 		admin,
-		manualCollections: admin ? await manualCollections(db()) : []
+		manualCollections: admin ? await manualCollections(db()) : [],
+		gear
 	};
 };
 
@@ -45,6 +54,24 @@ export const actions: Actions = {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });
 		await resetPhotoVisibility(db(), params.id);
 		return { ok: true };
+	},
+	meta: async ({ params, request, locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const form = await request.formData();
+		if (form.get('clear') === 'on') {
+			await setPhotoMetaOverride(db(), params.id, null);
+			return { meta: true };
+		}
+		const s = (k: string) => {
+			const v = String(form.get(k) ?? '').trim();
+			return v ? v : null;
+		};
+		await setPhotoMetaOverride(db(), params.id, {
+			camera: s('camera'),
+			lens: s('lens'),
+			filmStock: s('filmStock')
+		});
+		return { meta: true };
 	},
 	collect: async ({ params, request, locals }) => {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });

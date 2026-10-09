@@ -1,4 +1,5 @@
 // 파일명 stem 정규화. 페어링 키(stem_norm)와 보정본 라벨(edit_label)을 만든다. 순수 함수 — 테스트 대상.
+import { matchGear } from './gear';
 
 /** Lightroom/Photoshop 류 접미사: -Edit, -Edit-2, _edit, -2, (1), " copy" */
 const SUFFIX_RE =
@@ -38,27 +39,60 @@ export function normalizeStem(
 }
 
 /** 롤 폴더명: `2509_01 Rollei 35S - Kodak ColorPlus 200` / `25.09_01 Rollei35s kodak colorplus 200` */
-export function parseRollFolder(name: string): {
+export function parseRollFolder(
+	name: string,
+	gear: {
+		kind: 'camera' | 'lens' | 'film';
+		name: string;
+		aliases: string[];
+		fixedLens: string | null;
+	}[] = []
+): {
 	developedAt: string | null; // YYYY-MM-01
 	rollNo: number | null;
 	camera: string | null;
+	lens: string | null;
 	filmStock: string | null;
 	label: string;
 } {
-	const m = name.normalize('NFC').match(/^(\d{2})\.?(\d{2})_(\d{1,3})\s*(.*)$/);
-	if (!m) return { developedAt: null, rollNo: null, camera: null, filmStock: null, label: name };
+	const m = name.normalize('NFC').match(/^(\d{2})\.?(\d{2})_(\d{1,3})\s*[-–]?\s*(.*)$/);
+	if (!m)
+		return {
+			developedAt: null,
+			rollNo: null,
+			camera: null,
+			lens: null,
+			filmStock: null,
+			label: name
+		};
 	const [, yy, mm, roll, rest] = m;
 	const developedAt = `20${yy}-${mm}-01`;
 	const rollNo = Number(roll);
+	// 1) 등록된 장비 이름으로 찾기 (구분자 불필요)
+	if (gear.length) {
+		const g = matchGear(rest, gear);
+		if (g.camera || g.filmStock) {
+			return {
+				developedAt,
+				rollNo,
+				camera: g.camera,
+				lens: g.lens,
+				filmStock: g.filmStock,
+				label: rest.trim()
+			};
+		}
+	}
+	// 2) ` - ` 구분자: 앞 카메라, 뒤 필름
 	const parts = rest.split(/\s+-\s+/);
 	if (parts.length >= 2) {
 		return {
 			developedAt,
 			rollNo,
 			camera: parts[0].trim() || null,
+			lens: null,
 			filmStock: parts.slice(1).join(' - ').trim() || null,
 			label: rest.trim()
 		};
 	}
-	return { developedAt, rollNo, camera: null, filmStock: null, label: rest.trim() };
+	return { developedAt, rollNo, camera: null, lens: null, filmStock: null, label: rest.trim() };
 }

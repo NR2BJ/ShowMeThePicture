@@ -1,9 +1,20 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '#lib/server/db/app.ts';
 import { applyFolderDates, listFolderMeta, updateFolderMeta } from '#lib/server/folders.ts';
+import { listGear } from '#lib/server/gear.ts';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => ({ folders: await listFolderMeta(db()) });
+export const load: PageServerLoad = async () => {
+	const gear = await listGear(db());
+	return {
+		folders: await listFolderMeta(db()),
+		gear: {
+			camera: gear.filter((g) => g.kind === 'camera').map((g) => g.name),
+			lens: gear.filter((g) => g.kind === 'lens').map((g) => g.name),
+			film: gear.filter((g) => g.kind === 'film').map((g) => g.name)
+		}
+	};
+};
 
 const str = (v: FormDataEntryValue | null) => {
 	const s = String(v ?? '').trim();

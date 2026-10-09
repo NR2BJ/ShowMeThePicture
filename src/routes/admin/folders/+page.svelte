@@ -1,4 +1,5 @@
 <script lang="ts">
+	import GearSelect from '#lib/components/GearSelect.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	const month = (d: string | null) => (d ? d.slice(0, 7) : '');
@@ -16,10 +17,13 @@
 <section class="admin-page">
 	<h1>폴더 정보</h1>
 	<p class="mono dim">
-		필름 롤처럼 EXIF 가 없는 폴더에 현상월·카메라·필름을 준다. 폴더명이 <code
-			>2509_01 Rollei 35S - Kodak ColorPlus 200</code
-		> 꼴이면 스캔 때 자동으로 채워지고, 저장하면 그 폴더 안의 EXIF 없는 파일 날짜가 현상월(파일명 순)로
-		맞춰진다.
+		필름 롤처럼 EXIF 가 없는 폴더에 현상월·카메라·렌즈·필름을 준다. 폴더명이 <code
+			>2509_01 Rollei35s colorplus200</code
+		>
+		처럼 현상월_롤번호로 시작하면 스캔 때 날짜·롤 번호를 읽고,
+		<a href="/admin/gear">장비</a>에 등록된 이름이 폴더명에 있으면 카메라·렌즈·필름도 자동으로
+		채워진다. 저장하면 그 폴더 안의 EXIF 없는 파일 날짜가 현상월(파일명 순)로 맞춰진다. 사진 하나만
+		다른 장비면 그 사진 페이지의 정보 드로어에서 따로 고친다.
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.saved}<p class="notice">저장했습니다. 날짜를 맞춘 파일 {form.applied}개.</p>{/if}
@@ -56,22 +60,24 @@
 						/></label
 					>
 					<label class="field"
-						><span>카메라</span><input
-							type="text"
+						><span>카메라</span><GearSelect
 							name="camera"
-							value={f.camera ?? ''}
-							list="cameras"
+							value={f.camera}
+							options={data.gear.camera}
 						/></label
 					>
 					<label class="field"
-						><span>렌즈</span><input type="text" name="lens" value={f.lens ?? ''} /></label
+						><span>렌즈</span><GearSelect
+							name="lens"
+							value={f.lens}
+							options={data.gear.lens}
+						/></label
 					>
 					<label class="field"
-						><span>필름</span><input
-							type="text"
+						><span>필름</span><GearSelect
 							name="filmStock"
-							value={f.filmStock ?? ''}
-							list="films"
+							value={f.filmStock}
+							options={data.gear.film}
 						/></label
 					>
 					<label class="field"
@@ -93,16 +99,6 @@
 			</form>
 		{/each}
 	{/each}
-	<datalist id="cameras">
-		{#each [...new Set(data.folders.map((f) => f.camera).filter(Boolean))] as c (c)}<option
-				value={c}
-			></option>{/each}
-	</datalist>
-	<datalist id="films">
-		{#each [...new Set(data.folders.map((f) => f.filmStock).filter(Boolean))] as c (c)}<option
-				value={c}
-			></option>{/each}
-	</datalist>
 </section>
 
 <style>

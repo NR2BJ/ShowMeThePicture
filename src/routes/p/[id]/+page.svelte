@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
+	import GearSelect from '#lib/components/GearSelect.svelte';
 	import SpecSheet from '#lib/components/SpecSheet.svelte';
 	import type { PageProps } from './$types';
 
@@ -45,10 +46,10 @@
 					.replace(/\.\s?/g, '.')
 					.replace(/\.$/, '')
 			);
-		const camera = v.cameraModel ?? v.roll?.camera ?? null;
-		if (camera) parts.push(camera);
-		if (v.lens) parts.push(v.lens);
-		if (v.roll?.filmStock) parts.push(v.roll.filmStock);
+		const e = data.photo.effective;
+		if (e.camera) parts.push(e.camera);
+		if (e.lens) parts.push(e.lens);
+		if (e.filmStock) parts.push(e.filmStock);
 		return parts.join(' · ');
 	});
 	const q = $derived(`?ctx=${encodeURIComponent(data.ctx)}`);
@@ -220,7 +221,51 @@
 
 	{#if info && current}
 		<aside class="drawer">
-			<SpecSheet variant={current} showGps={data.showGps} admin={data.admin} />
+			<SpecSheet
+				variant={current}
+				effective={data.photo.effective}
+				showGps={data.showGps}
+				admin={data.admin}
+			/>
+			{#if data.admin}
+				<form method="POST" action="?/meta" class="meta-edit">
+					<h3>장비 수정 (이 사진만)</h3>
+					<label
+						><span>카메라</span><GearSelect
+							name="camera"
+							value={data.photo.metaOverride?.camera ?? ''}
+							options={data.gear.camera}
+							placeholder="(자동)"
+						/></label
+					>
+					<label
+						><span>렌즈</span><GearSelect
+							name="lens"
+							value={data.photo.metaOverride?.lens ?? ''}
+							options={data.gear.lens}
+							placeholder="(자동)"
+						/></label
+					>
+					<label
+						><span>필름</span><GearSelect
+							name="filmStock"
+							value={data.photo.metaOverride?.filmStock ?? ''}
+							options={data.gear.film}
+							placeholder="(자동)"
+						/></label
+					>
+					<div class="row">
+						<button type="submit" class="pill quiet">저장</button>
+						{#if data.photo.metaOverride}<button
+								type="submit"
+								name="clear"
+								value="on"
+								class="pill quiet">자동으로</button
+							>{/if}
+						<a href="/admin/gear" class="dim">장비 등록</a>
+					</div>
+				</form>
+			{/if}
 		</aside>
 	{/if}
 </main>
@@ -354,6 +399,44 @@
 	.chip.on {
 		border-color: var(--color-amber);
 		color: var(--color-amber);
+	}
+	.meta-edit {
+		margin-top: 18px;
+		padding-top: 14px;
+		border-top: 1px solid var(--color-ink-faint);
+		display: grid;
+		gap: 8px;
+		font-family: var(--font-mono);
+		font-size: 12px;
+	}
+	.meta-edit h3 {
+		margin: 0 0 4px;
+		font-weight: 500;
+		font-size: 10px;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--color-amber);
+	}
+	.meta-edit label {
+		display: grid;
+		grid-template-columns: 60px 1fr;
+		align-items: center;
+		gap: 10px;
+		color: var(--color-ink-dim);
+	}
+	.meta-edit :global(select) {
+		background: #141311;
+		border: 1px solid var(--color-ink-faint);
+		color: var(--color-ink);
+		padding: 6px 8px;
+		font: inherit;
+		border-radius: 2px;
+	}
+	.meta-edit .row {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		margin-top: 4px;
 	}
 	.drawer {
 		grid-column: 2;

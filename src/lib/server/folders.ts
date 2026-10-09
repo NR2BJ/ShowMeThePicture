@@ -3,6 +3,7 @@ import path from 'node:path';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from './db';
 import { files, folderMeta, photos, sources } from './db/schema';
+import { listGear, toItems } from './gear';
 import { parseRollFolder } from './stem';
 
 export type FolderMetaRow = typeof folderMeta.$inferSelect;
@@ -35,11 +36,12 @@ export async function ensureFolderMeta(
 		.from(folderMeta)
 		.where(eq(folderMeta.sourceId, source.id));
 	const have = new Set(existing.map((r) => r.relDir));
+	const items = toItems(await listGear(db));
 	const rows: (typeof folderMeta.$inferInsert)[] = [];
 	for (const dir of relDirs) {
 		if (have.has(dir)) continue;
 		const name = path.posix.basename(dir) || source.name;
-		const parsed = parseRollFolder(name);
+		const parsed = parseRollFolder(name, items);
 		const isRoll = parsed.developedAt !== null;
 		if (!isRoll && source.medium !== 'film') continue;
 		rows.push({
@@ -49,6 +51,7 @@ export async function ensureFolderMeta(
 			developedAt: parsed.developedAt,
 			rollNo: parsed.rollNo,
 			camera: parsed.camera,
+			lens: parsed.lens,
 			filmStock: parsed.filmStock
 		});
 		have.add(dir);
@@ -138,6 +141,31 @@ export async function applyFolderDates(db: Db, sourceId: string, relDir: string)
 			where f.id = coalesce(p.original_file_id, p.primary_file_id) and p.id in ${ids}`);
 	}
 	return targets.length;
+}
+
+/** 등록된 장비로 폴더명을 다시 파싱해 비어 있는 칸만 채운다 (관리자가 입력한 값은 보존). */
+export async function reparseFolderMeta(db: Db): Promise<number> {
+	const items = toItems(await listGear(db));
+	const rows = await db.select().from(folderMeta);
+	let n = 0;
+	for (const r of rows) {
+		const parsed = parseRollFolder(path.posix.basename(r.relDir) || '', items);
+		const patch: Partial<typeof folderMeta.$inferInsert> = {};
+		if (!r.camera && parsed.camera) patch.camera = parsed.camera;
+		if (!r.lens && parsed.lens) patch.lens = parsed.lens;
+		if (!r.filmStock && parsed.filmStock) patch.filmStock = parsed.filmStock;
+		if (!r.developedAt && parsed.developedAt) patch.developedAt = parsed.developedAt;
+		if (r.rollNo == null && parsed.rollNo != null) patch.rollNo = parsed.rollNo;
+		if (Object.keys(patch).length) {
+			await db
+				.update(folderMeta)
+				.set({ ...patch, updatedAt: new Date() })
+				.where(eq(folderMeta.id, r.id));
+			if (patch.developedAt) await applyFolderDates(db, r.sourceId, r.relDir);
+			n++;
+		}
+	}
+	return n;
 }
 
 export async function updateFolderMeta(
