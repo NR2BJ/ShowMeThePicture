@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { thumbHashToDataURL } from 'thumbhash';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import type { GalleryItem } from '#lib/server/gallery.ts';
@@ -11,6 +12,11 @@
 	}: { items: GalleryItem[]; ctx?: string; targetHeight?: number; gap?: number } = $props();
 
 	let width = $state(0);
+	let root: HTMLDivElement | undefined = $state();
+	// bind:clientWidth 는 ResizeObserver 라 한 프레임 늦다. 첫 배치(와 뒤로 가기 스크롤 복원)가 맞도록 마운트 때 바로 잰다.
+	onMount(() => {
+		if (root) width = root.clientWidth;
+	});
 
 	type Cell = { it: GalleryItem; ar: number };
 	const rows = $derived.by(() => {
@@ -44,12 +50,13 @@
 	}
 </script>
 
-<div class="grid" bind:clientWidth={width} style:--gap="{gap}px">
+<div class="grid" bind:this={root} bind:clientWidth={width} style:--gap="{gap}px">
 	{#each rows as row, r (r)}
 		<div class="row" style:height="{row.h}px">
 			{#each row.cells as { it, ar } (it.id)}
 				<a
 					class="cell"
+					data-id={it.id}
 					href={`/p/${it.id}?ctx=${encodeURIComponent(ctx)}`}
 					style:width="{row.h * ar}px"
 					style:background-image={placeholder(it.thumbhash)

@@ -32,7 +32,7 @@ function b64(x: Uint8Array | null | undefined): string | null {
 	return x ? Buffer.from(x).toString('base64') : null;
 }
 
-function baseConds(o: { scope: Scope; admin: boolean; includeB: boolean }): SQL[] {
+export function baseConds(o: { scope: Scope; admin: boolean; includeB: boolean }): SQL[] {
 	const conds: SQL[] = [eq(files.derivativesReady, true), eq(files.status, 'active')];
 	if (!o.admin) conds.push(eq(photos.visibility, 'public'));
 	if (!o.includeB) conds.push(or(isNull(photos.tier), ne(photos.tier, 'B'))!);
@@ -44,9 +44,9 @@ function baseConds(o: { scope: Scope; admin: boolean; includeB: boolean }): SQL[
 	return conds;
 }
 
-const orderKey = sql`coalesce(${photos.takenAt}, 'epoch'::timestamptz)`;
+export const orderKey = sql`coalesce(${photos.takenAt}, 'epoch'::timestamptz)`;
 
-const itemSelect = {
+export const itemSelect = {
 	id: photos.id,
 	takenAt: photos.takenAt,
 	tier: photos.tier,
@@ -61,7 +61,7 @@ const itemSelect = {
 	camera: files.cameraModel
 };
 
-function toItem(r: {
+export function toItem(r: {
 	id: string;
 	takenAt: Date | null;
 	tier: 'A' | 'B' | null;

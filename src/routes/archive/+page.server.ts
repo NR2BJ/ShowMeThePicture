@@ -1,46 +1,46 @@
+import { isMonthKey } from '#lib/archive.ts';
+import {
+	ARCHIVE_PAGE,
+	ZONE,
+	archiveFlags,
+	archiveMonths,
+	listArchive
+} from '#lib/server/archive.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
-import { listPhotos, type GalleryItem } from '#lib/server/gallery.ts';
-import { getSetting } from '#lib/server/settings.ts';
 import type { PageServerLoad } from './$types';
 
-const LIMIT = 120;
-
-export type MonthGroup = { key: string; label: string; items: GalleryItem[] };
-
+/** 첫 페이지(또는 ?from=YYYY-MM 그 달부터)와 월 히스토그램. 이후 페이지는 /api/archive 로 이어 붙인다. */
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const admin = !!locals.admin;
-	const page = Math.max(1, Number(url.searchParams.get('page') ?? '1') || 1);
+	const fromRaw = url.searchParams.get('from');
+	const from = isMonthKey(fromRaw) ? fromRaw : null;
 	if (!config.DATABASE_URL)
 		return {
-			groups: [] as MonthGroup[],
-			page,
+			items: [],
 			hasMore: false,
+			months: [],
 			total: 0,
 			includeB: false,
 			canToggleB: false,
+			from,
+			zone: ZONE,
 			noDb: true
 		};
-	const policy = await getSetting<'hidden' | 'toggle' | 'public'>(db(), 'b_cut_policy', 'hidden');
-	const canToggleB = admin || policy === 'toggle';
-	const includeB = policy === 'public' || (canToggleB && url.searchParams.get('b') === '1');
-	const { items, hasMore, total } = await listPhotos(db(), {
-		scope: { kind: 'archive' },
-		admin,
+	const { includeB, canToggleB } = await archiveFlags(db(), admin, url);
+	const [page, months] = await Promise.all([
+		listArchive(db(), { admin, includeB, limit: ARCHIVE_PAGE, from }),
+		archiveMonths(db(), { admin, includeB })
+	]);
+	return {
+		items: page.items,
+		hasMore: page.hasMore,
+		months,
+		total: months.reduce((n, m) => n + m.count, 0),
 		includeB,
-		page,
-		limit: LIMIT
-	});
-	const groups: MonthGroup[] = [];
-	const fmt = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long' });
-	for (const it of items) {
-		const key = it.takenAt ? it.takenAt.slice(0, 7) : 'unknown';
-		let g = groups[groups.length - 1];
-		if (!g || g.key !== key) {
-			g = { key, label: it.takenAt ? fmt.format(new Date(it.takenAt)) : '날짜 없음', items: [] };
-			groups.push(g);
-		}
-		g.items.push(it);
-	}
-	return { groups, page, hasMore, total, includeB, canToggleB, noDb: false };
+		canToggleB,
+		from,
+		zone: ZONE,
+		noDb: false
+	};
 };
