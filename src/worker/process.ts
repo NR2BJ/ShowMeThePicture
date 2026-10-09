@@ -187,8 +187,8 @@ type SourceRow = typeof sources.$inferSelect;
  *  - 원본 source: 같은 폴더·같은 stem_norm 의 파일(RAW+JPG)은 한 Photo. 표시는 RAW 우선.
  *  - 보정 source: 파일 하나가 Photo 하나 (원본과의 페어링은 2단계).
  */
-async function attachPhoto(
-	ctx: ProcessCtx,
+export async function attachPhoto(
+	ctx: { db: Db },
 	fileId: string,
 	source: SourceRow,
 	info: { takenAt: Date | null; isRaw: boolean }

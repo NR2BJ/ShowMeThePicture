@@ -1,8 +1,13 @@
 import { error, fail, redirect } from '@sveltejs/kit';
+import { fromExposure, parseExposure } from '#lib/exposure.ts';
 import { db } from '#lib/server/db/app.ts';
-import { fromExposure, parseExposure } from '#lib/server/exposure.ts';
-import { enqueueScan } from '#lib/server/queue.ts';
-import { deleteSource, getSourceById, updateSource } from '#lib/server/sources.ts';
+import { enqueueRelink, enqueueScan } from '#lib/server/queue.ts';
+import {
+	changeSourceRole,
+	deleteSource,
+	getSourceById,
+	updateSource
+} from '#lib/server/sources.ts';
 import { applyVisibilityToSource, sourceVisibilityStats } from '#lib/server/visibility.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -24,17 +29,22 @@ export const actions: Actions = {
 		if (!s) return fail(404, { error: 'not found' });
 		const mediumRaw = String(form.get('medium') ?? '');
 		const tierRaw = String(form.get('tier') ?? '');
+		const role = String(form.get('role') ?? '') === 'edit' ? 'edit' : 'original';
+		const medium = mediumRaw === 'film' || mediumRaw === 'digital' ? mediumRaw : null;
+		const tier =
+			tierRaw === 'A' || tierRaw === 'B' ? tierRaw : role === 'edit' ? (s.tier ?? 'A') : null;
 		const { defaultVisibility, libraryPublic } = fromExposure(parseExposure(form.get('exposure')));
 		const poll = Number(form.get('pollIntervalMin'));
 		await updateSource(db(), s.id, {
 			name: String(form.get('name') ?? '').trim() || s.name,
-			medium: mediumRaw === 'film' || mediumRaw === 'digital' ? mediumRaw : null,
-			tier: s.role === 'edit' ? (tierRaw === 'A' || tierRaw === 'B' ? tierRaw : s.tier) : null,
 			defaultVisibility,
 			libraryPublic,
 			pollIntervalMin: Number.isInteger(poll) && poll >= 1 ? poll : s.pollIntervalMin
 		});
-		// 저장하면 기존 사진에도 바로 적용한다 (직접 바꾼 사진은 체크했을 때만 덮어쓴다)
+		// 역할·매체·컷: 역할이 바뀌면 파일 묶음/페어링을 워커가 다시 계산한다
+		const changed = await changeSourceRole(db(), s.id, role, medium, tier);
+		if (changed.relinkNeeded) await enqueueRelink(s.id);
+		// 공개 설정은 기존 사진에도 바로 적용 (직접 바꾼 사진은 체크했을 때만)
 		const applied = await applyVisibilityToSource(
 			db(),
 			s.id,
@@ -42,7 +52,7 @@ export const actions: Actions = {
 			form.get('includeManual') === 'on'
 		);
 		return {
-			ok: `저장했습니다. 사진 ${applied}장에 적용했습니다. 새로 찾는 사진도 같은 설정을 따릅니다.`
+			ok: `저장했습니다. 사진 ${applied}장에 공개 설정을 적용했습니다.${changed.relinkNeeded ? ` 역할이 바뀌어 ${changed.fileCount}개 파일의 묶음과 페어링을 다시 계산하는 중입니다 (워커).` : ''}`
 		};
 	},
 	bulk: async ({ params, request }) => {

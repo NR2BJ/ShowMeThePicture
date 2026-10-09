@@ -1,7 +1,13 @@
 <script lang="ts">
+	import { toExposure } from '#lib/exposure.ts';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	const s = $derived(data.s);
+	const exposure = $derived(toExposure(s.defaultVisibility, s.libraryPublic));
+	let role = $state<'original' | 'edit'>('original');
+	$effect(() => {
+		role = s.role;
+	});
 </script>
 
 <section class="admin-page">
@@ -16,33 +22,34 @@
 	<h2>현재 사진 공개 현황</h2>
 	<p class="mono">
 		공개 {data.stats.publicCount}장 · 숨김 {data.stats.hiddenCount}장 · 그중 직접 바꾼 것 {data
-			.stats.manualCount}장 <a href="/admin/visibility" class="dim">(직접 바꾼 사진 보기)</a>
+			.stats.manualCount}장
+		<a href="/admin/visibility" class="dim">(직접 바꾼 사진 보기)</a>
 	</p>
 
 	<h2>설정</h2>
 	<form method="POST" action="?/save" class="edit">
 		<label class="field"><span>이름</span><input type="text" name="name" value={s.name} /></label>
 		<div class="cols">
-			<label class="field"
-				><span>역할 (변경 불가)</span><input
-					type="text"
-					value={s.role === 'edit' ? '보정' : '원본'}
-					disabled
-				/></label
-			>
-			<label class="field"
-				><span>매체</span>
+			<label class="field">
+				<span>역할</span>
+				<select name="role" bind:value={role}>
+					<option value="original">원본 (카메라/스캔 파일)</option>
+					<option value="edit">보정 (export 한 파일)</option>
+				</select>
+			</label>
+			<label class="field">
+				<span>매체</span>
 				<select name="medium">
 					<option value="" selected={!s.medium}>— 지정 안 함</option>
 					<option value="digital" selected={s.medium === 'digital'}>디지털</option>
 					<option value="film" selected={s.medium === 'film'}>필름</option>
 				</select>
 			</label>
-			{#if s.role === 'edit'}
-				<label class="field"
-					><span>컷 (분류 라벨)</span>
+			{#if role === 'edit'}
+				<label class="field">
+					<span>컷 (분류 라벨)</span>
 					<select name="tier">
-						<option value="A" selected={s.tier === 'A'}>A컷</option>
+						<option value="A" selected={s.tier !== 'B'}>A컷</option>
 						<option value="B" selected={s.tier === 'B'}>B컷</option>
 					</select>
 				</label>
@@ -56,29 +63,33 @@
 				/></label
 			>
 		</div>
+		{#if role !== s.role}
+			<p class="notice">
+				역할을 바꾸면 이 폴더 파일의 사진 묶음(RAW+JPG / 보정본)과 페어링을 워커가 다시 계산합니다.
+				파생 이미지는 그대로 둡니다.
+			</p>
+		{/if}
 
 		<h2>게스트에게 보이는 범위</h2>
-		<div class="cols">
-			<label class="field"
-				><span>이 폴더에서 찾는 사진의 공개 여부</span>
-				<select name="defaultVisibility">
-					<option value="public" selected={s.defaultVisibility === 'public'}
-						>공개 — 아카이브·랜딩·컬렉션에 보임</option
-					>
-					<option value="hidden" selected={s.defaultVisibility === 'hidden'}>숨김 — 관리자만</option
-					>
-				</select>
-			</label>
-		</div>
+		<label class="field">
+			<span>공개 범위</span>
+			<select name="exposure">
+				<option value="private" selected={exposure === 'private'}>비공개 — 관리자만 본다</option>
+				<option value="photos" selected={exposure === 'photos'}
+					>사진만 공개 — 아카이브·랜딩·컬렉션에 보임, 폴더 페이지(/library/{s.slug})는 관리자만</option
+				>
+				<option value="all" selected={exposure === 'all'}
+					>사진 + 폴더 페이지 공개 — /library/{s.slug} 도 게스트에게 열림</option
+				>
+			</select>
+		</label>
+		<p class="mono dim hint">
+			저장하면 이 폴더의 기존 사진에도 바로 적용되고, 새로 찾는 사진도 같은 설정을 따릅니다. 폴더
+			페이지는 어차피 공개 사진만 보여주므로 '비공개'면 페이지도 닫힙니다.
+		</p>
 		<label class="check mono"
-			><input type="checkbox" name="applyExisting" /> 이미 있는 사진에도 지금 적용</label
-		>
-		<label class="check mono sub"
-			><input type="checkbox" name="includeManual" /> 직접 바꾼 사진까지 포함 (끄면 수동 설정은 유지)</label
-		>
-		<label class="check mono"
-			><input type="checkbox" name="libraryPublic" checked={s.libraryPublic} /> 폴더
-			페이지(/library/{s.slug})를 게스트에게 열기 — 그 안에서도 공개 사진만 보입니다</label
+			><input type="checkbox" name="includeManual" /> 사진 페이지에서 직접 바꾼 사진({data.stats
+				.manualCount}장)도 덮어쓰기</label
 		>
 		<button class="btn primary" type="submit">저장</button>
 	</form>
@@ -131,6 +142,11 @@
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 		gap: 0 16px;
 	}
+	.hint {
+		font-size: 12px;
+		margin: -6px 0 12px;
+		max-width: 760px;
+	}
 	.check {
 		display: flex;
 		gap: 8px;
@@ -138,9 +154,6 @@
 		font-size: 12px;
 		margin: 2px 0 12px;
 		color: var(--color-ink-dim);
-	}
-	.check.sub {
-		margin-left: 22px;
 	}
 	.bulk {
 		display: flex;

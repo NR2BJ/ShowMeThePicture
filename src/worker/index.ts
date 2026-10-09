@@ -1,14 +1,20 @@
 // 잡 워커 진입점. `pnpm worker`.
 import { ExifTool } from 'exiftool-vendored';
 import { PgBoss } from 'pg-boss';
-import { eq, isNull, lt, or, sql } from 'drizzle-orm';
+import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { getDb } from '#lib/server/db/index.ts';
 import { files, sources } from '#lib/server/db/schema.ts';
 import { loadConfig } from '#lib/server/env.ts';
-import { Q, type PairJob, type ProcessFileJob, type ScanSourceJob } from '#lib/server/jobs.ts';
+import {
+	Q,
+	type PairJob,
+	type ProcessFileJob,
+	type RelinkJob,
+	type ScanSourceJob
+} from '#lib/server/jobs.ts';
 import { rebuildAllSmart } from '#lib/server/collections.ts';
 import { pairAfterProcess, pairEditFile, unpairedEditIds } from '#lib/server/pairing.ts';
-import { processFile, type ProcessCtx } from './process.ts';
+import { attachPhoto, processFile, type ProcessCtx } from './process.ts';
 import { scanSource } from './scan.ts';
 
 const config = loadConfig(process.env);
@@ -89,6 +95,66 @@ await boss.work<PairJob>(Q.PAIR, async (jobs) => {
 					log(
 						`pair ${r.editFileId}: ${r.decision}${r.originalFileId ? ` → ${r.originalFileId} (${r.score?.toFixed(2)})` : ''}`
 					);
+		}
+	}
+});
+
+/** 역할이 바뀐 Source: 파생본은 그대로 두고 사진 묶음과 페어링만 다시 계산 */
+await boss.work<RelinkJob>(Q.RELINK_SOURCE, async (jobs) => {
+	for (const job of jobs) {
+		const t0 = Date.now();
+		try {
+			const [source] = await db
+				.select()
+				.from(sources)
+				.where(eq(sources.id, job.data.sourceId))
+				.limit(1);
+			if (!source) continue;
+			const rows = await db
+				.select({ id: files.id, takenAt: files.takenAt, kind: files.kind })
+				.from(files)
+				.where(
+					and(
+						eq(files.sourceId, source.id),
+						eq(files.status, 'active'),
+						eq(files.derivativesReady, true)
+					)
+				)
+				.orderBy(files.relPath);
+			// 역할을 연달아 바꾸면 relink 잡이 여러 개 쌓인다. 처리 중 역할이 또 바뀌었으면 이 잡은 접고 다음 잡에 맡긴다.
+			const superseded = async () => {
+				const [cur] = await db
+					.select({ role: sources.role, medium: sources.medium, tier: sources.tier })
+					.from(sources)
+					.where(eq(sources.id, source.id))
+					.limit(1);
+				return (
+					!cur ||
+					cur.role !== source.role ||
+					cur.medium !== source.medium ||
+					cur.tier !== source.tier
+				);
+			};
+			let stale = false;
+			for (const f of rows) {
+				if (await superseded()) {
+					stale = true;
+					break;
+				}
+				await attachPhoto({ db }, f.id, source, { takenAt: f.takenAt, isRaw: f.kind === 'raw' });
+			}
+			if (stale) {
+				log(`relink ${source.name}: 역할이 다시 바뀌어 중단, 다음 잡이 처리`);
+				continue;
+			}
+			let auto = 0;
+			for (const f of rows)
+				for (const r of await pairAfterProcess(db, f.id)) if (r.decision === 'auto') auto++;
+			await rebuildAllSmart(db);
+			log(`relink ${source.name}: files=${rows.length} auto-paired=${auto} (${Date.now() - t0}ms)`);
+		} catch (e) {
+			console.error(`[worker] relink ${job.data.sourceId} failed`, e);
+			throw e;
 		}
 	}
 });

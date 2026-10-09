@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
 	import FolderPicker from '#lib/components/FolderPicker.svelte';
-	import { EXPOSURE_SHORT, toExposure } from '#lib/server/exposure.ts';
+	import { EXPOSURE_SHORT, toExposure } from '#lib/exposure.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();

@@ -1,7 +1,7 @@
 // 원본 ↔ 보정 페어링 (docs/DESIGN.md §3.3).
 // 보정 파일 하나에 대해 원본 후보를 모으고 점수를 매겨 자동 연결 / 검토 큐 / 미페어링을 가른다.
 import path from 'node:path';
-import { and, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
+import { and, between, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Db } from './db';
 import { files, pairCandidates, photos, sources } from './db/schema';
 
@@ -108,7 +108,8 @@ export async function findCandidates(
 	) {
 		const lo = new Date(edit.takenAt.getTime() - 2000);
 		const hi = new Date(edit.takenAt.getTime() + 2000);
-		cands = await originalsWhere(db, sql`${files.takenAt} between ${lo} and ${hi}`);
+		// sql`` 안에 Date 를 그대로 넣으면 컬럼 인코더를 거치지 않아 postgres.js 가 Date 를 문자열로 못 바꾼다 → between() 으로 컬럼에 바인딩
+		cands = await originalsWhere(db, between(files.takenAt, lo, hi));
 	}
 	if (cands.length === 0 && edit.phash) {
 		const all = await originalsWhere(db, sql`${files.phash} is not null`);

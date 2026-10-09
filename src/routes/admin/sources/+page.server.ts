@@ -9,7 +9,7 @@ import {
 	listSourcesWithCounts,
 	type NewSource
 } from '#lib/server/sources.ts';
-import { fromExposure, parseExposure } from '#lib/server/exposure.ts';
+import { fromExposure, parseExposure } from '#lib/exposure.ts';
 import { sourceVisibilityStats } from '#lib/server/visibility.ts';
 import type { Actions, PageServerLoad } from './$types';
 

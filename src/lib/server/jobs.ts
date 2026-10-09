@@ -2,6 +2,7 @@
 export const Q = {
 	SCAN_SOURCE: 'scan-source',
 	PROCESS_FILE: 'process-file',
+	RELINK_SOURCE: 'relink-source',
 	EMBED: 'embed',
 	PAIR: 'pair'
 } as const;
@@ -9,3 +10,4 @@ export const Q = {
 export type ScanSourceJob = { sourceId: string; full?: boolean };
 export type ProcessFileJob = { fileId: string };
 export type PairJob = { fileId?: string; all?: boolean };
+export type RelinkJob = { sourceId: string };

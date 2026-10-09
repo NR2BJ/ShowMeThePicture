@@ -3,7 +3,7 @@ import { sql } from 'drizzle-orm';
 import { PgBoss } from 'pg-boss';
 import { config } from './config';
 import type { Db } from './db';
-import { Q, type PairJob, type ProcessFileJob, type ScanSourceJob } from './jobs';
+import { Q, type PairJob, type ProcessFileJob, type RelinkJob, type ScanSourceJob } from './jobs';
 
 let boss: PgBoss | null = null;
 let starting: Promise<PgBoss> | null = null;
@@ -46,6 +46,14 @@ export async function enqueuePairAll(): Promise<string | null> {
 	const b = await getBoss();
 	const data: PairJob = { all: true };
 	return b.send(Q.PAIR, data, { singletonKey: 'pair:all', singletonSeconds: 30 });
+}
+
+export async function enqueueRelink(sourceId: string): Promise<string | null> {
+	const b = await getBoss();
+	const data: RelinkJob = { sourceId };
+	// singletonKey 를 쓰지 않는다: 역할을 연달아 바꾸면 잡이 하나씩 쌓여야 마지막 상태가 반영된다.
+	// 처리 중 역할이 또 바뀐 잡은 worker 가 스스로 접는다 (relink-source 핸들러 참고).
+	return b.send(Q.RELINK_SOURCE, data);
 }
 
 export type QueueCount = { name: string; state: string; count: number };
