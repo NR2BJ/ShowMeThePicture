@@ -9,6 +9,7 @@ import {
 	listSourcesWithCounts,
 	type NewSource
 } from '#lib/server/sources.ts';
+import { fromExposure, parseExposure } from '#lib/server/exposure.ts';
 import { sourceVisibilityStats } from '#lib/server/visibility.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -31,8 +32,7 @@ export const actions: Actions = {
 			role,
 			medium: mediumRaw === 'film' || mediumRaw === 'digital' ? mediumRaw : null,
 			tier: tierRaw === 'A' || tierRaw === 'B' ? tierRaw : null,
-			defaultVisibility: form.get('defaultVisibility') === 'public' ? 'public' : 'hidden',
-			libraryPublic: form.get('libraryPublic') === 'on'
+			...fromExposure(parseExposure(form.get('exposure')))
 		};
 		if (role === 'edit' && !input.tier)
 			return fail(400, { error: '보정 폴더는 A컷/B컷을 골라야 합니다', values: input });

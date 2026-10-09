@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
 	import Pager from '#lib/components/Pager.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
 	import type { PageProps } from './$types';
@@ -6,7 +7,7 @@
 	const ctx = $derived(`library:${data.source.slug}`);
 </script>
 
-<section class="page">
+<section class="page" use:autoRefresh={data.source.rootPath ? 8000 : 60000}>
 	<header class="head">
 		<div>
 			<p class="mono dim kicker">

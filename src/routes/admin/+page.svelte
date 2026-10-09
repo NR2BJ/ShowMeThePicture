@@ -1,6 +1,11 @@
 <script lang="ts">
+	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
+	const busy = $derived(
+		data.sources.some((s) => s.pendingCount > 0) ||
+			data.queues.some((q) => q.state === 'active' || q.state === 'created')
+	);
 	const totals = $derived({
 		files: data.sources.reduce((a, s) => a + s.fileCount, 0),
 		indexed: data.sources.reduce((a, s) => a + s.indexedCount, 0),
@@ -10,8 +15,10 @@
 	});
 </script>
 
-<section class="admin-page">
-	<h1>대시보드</h1>
+<section class="admin-page" use:autoRefresh={busy ? 4000 : 20000}>
+	<h1>
+		대시보드 <span class="mono dim live">{busy ? '처리 중 · 4초마다 갱신' : '20초마다 갱신'}</span>
+	</h1>
 
 	<h2>라이브러리</h2>
 	{#if data.sources.length === 0}
@@ -109,5 +116,11 @@
 <style>
 	.bad {
 		color: #d98a7a;
+	}
+	.live {
+		font-size: 11px;
+		letter-spacing: 0.08em;
+		margin-left: 12px;
+		vertical-align: middle;
 	}
 </style>

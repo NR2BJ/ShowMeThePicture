@@ -1,5 +1,6 @@
 import { error, fail, redirect } from '@sveltejs/kit';
 import { db } from '#lib/server/db/app.ts';
+import { fromExposure, parseExposure } from '#lib/server/exposure.ts';
 import { enqueueScan } from '#lib/server/queue.ts';
 import { deleteSource, getSourceById, updateSource } from '#lib/server/sources.ts';
 import { applyVisibilityToSource, sourceVisibilityStats } from '#lib/server/visibility.ts';
@@ -23,28 +24,25 @@ export const actions: Actions = {
 		if (!s) return fail(404, { error: 'not found' });
 		const mediumRaw = String(form.get('medium') ?? '');
 		const tierRaw = String(form.get('tier') ?? '');
-		const defaultVisibility = form.get('defaultVisibility') === 'public' ? 'public' : 'hidden';
+		const { defaultVisibility, libraryPublic } = fromExposure(parseExposure(form.get('exposure')));
 		const poll = Number(form.get('pollIntervalMin'));
 		await updateSource(db(), s.id, {
 			name: String(form.get('name') ?? '').trim() || s.name,
 			medium: mediumRaw === 'film' || mediumRaw === 'digital' ? mediumRaw : null,
 			tier: s.role === 'edit' ? (tierRaw === 'A' || tierRaw === 'B' ? tierRaw : s.tier) : null,
 			defaultVisibility,
-			libraryPublic: form.get('libraryPublic') === 'on',
+			libraryPublic,
 			pollIntervalMin: Number.isInteger(poll) && poll >= 1 ? poll : s.pollIntervalMin
 		});
-		let applied = 0;
-		if (form.get('applyExisting') === 'on')
-			applied = await applyVisibilityToSource(
-				db(),
-				s.id,
-				defaultVisibility,
-				form.get('includeManual') === 'on'
-			);
+		// 저장하면 기존 사진에도 바로 적용한다 (직접 바꾼 사진은 체크했을 때만 덮어쓴다)
+		const applied = await applyVisibilityToSource(
+			db(),
+			s.id,
+			defaultVisibility,
+			form.get('includeManual') === 'on'
+		);
 		return {
-			ok: applied
-				? `저장했습니다. 기존 사진 ${applied}장에도 적용했습니다.`
-				: '저장했습니다. 새로 찾는 사진부터 적용됩니다.'
+			ok: `저장했습니다. 사진 ${applied}장에 적용했습니다. 새로 찾는 사진도 같은 설정을 따릅니다.`
 		};
 	},
 	bulk: async ({ params, request }) => {

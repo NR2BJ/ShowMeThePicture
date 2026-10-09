@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
 	import FolderPicker from '#lib/components/FolderPicker.svelte';
+	import { EXPOSURE_SHORT, toExposure } from '#lib/server/exposure.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -13,11 +15,12 @@
 		if (!nameTouched) name = relPath.split('/').filter(Boolean).pop() ?? '';
 	});
 	// 권장 기본값: 원본 → 숨김, 보정 A컷 → 공개, 보정 B컷 → 숨김
-	const recommended = $derived(role === 'edit' && tier === 'A' ? 'public' : 'hidden');
+	const recommended = $derived(role === 'edit' && tier === 'A' ? 'photos' : 'private');
 	const roleLabel = (r: string) => (r === 'edit' ? '보정' : '원본');
+	const busy = $derived(data.sources.some((s) => s.pendingCount > 0));
 </script>
 
-<section class="admin-page">
+<section class="admin-page" use:autoRefresh={busy ? 4000 : 20000}>
 	<h1>라이브러리</h1>
 	<p class="mono dim">
 		컨테이너의 <code>{data.photosRoot}</code> 아래에서 폴더를 고릅니다. 하위 폴더는 전부 재귀로 스캔되고,
@@ -43,9 +46,8 @@
 					<th>이름</th>
 					<th>역할 · 컷</th>
 					<th>파일 / 처리 / 없어짐</th>
-					<th>새 사진</th>
+					<th>공개 범위</th>
 					<th>사진 공개 현황</th>
-					<th>폴더 페이지</th>
 					<th></th>
 				</tr>
 			</thead>
@@ -63,12 +65,11 @@
 								: ''}{s.tier ? ` · ${s.tier}컷` : ''}</td
 						>
 						<td class="mono">{s.fileCount} / {s.indexedCount} / {s.missingCount}</td>
-						<td class="mono">{s.defaultVisibility === 'public' ? '공개' : '숨김'}</td>
+						<td class="mono">{EXPOSURE_SHORT[toExposure(s.defaultVisibility, s.libraryPublic)]}</td>
 						<td class="mono">
 							공개 {st?.publicCount ?? 0} · 숨김 {st?.hiddenCount ?? 0}
 							{#if st?.manualCount}<span class="dim"> · 수동 {st.manualCount}</span>{/if}
 						</td>
-						<td class="mono">{s.libraryPublic ? '게스트 열림' : '관리자만'}</td>
 						<td class="actions">
 							<a class="btn quiet" href={`/admin/sources/${s.id}`}>수정</a>
 							<form method="POST" action="?/scan">
@@ -82,9 +83,8 @@
 			</tbody>
 		</table>
 		<p class="mono dim hint">
-			'새 사진' = 이 폴더에서 새로 찾는 사진의 공개 여부(기본값). '사진 공개 현황' = 지금 실제 상태.
-			'폴더 페이지' = /library/… 를 게스트에게 여는지. 컷(A/B)은 분류 라벨일 뿐이며, 게스트에게
-			보이는지는 사진마다의 공개 여부로만 정해집니다.
+			'공개 범위' = 이 폴더 사진의 게스트 공개 여부(비공개 / 사진만 / 사진 + 폴더 페이지). '사진
+			공개 현황' = 지금 실제 상태(직접 바꾼 사진은 '수동'). 컷(A/B)은 분류 라벨일 뿐입니다.
 		</p>
 	{/if}
 
@@ -130,13 +130,14 @@
 				</label>
 			{/if}
 			<label class="field">
-				<span>이 폴더 사진의 공개 여부</span>
+				<span>게스트 공개 범위</span>
 				{#key recommended}
-					<select name="defaultVisibility">
-						<option value="public" selected={recommended === 'public'}
-							>공개 — 아카이브·랜딩·컬렉션에 보임</option
+					<select name="exposure">
+						<option value="private" selected={recommended === 'private'}>비공개 — 관리자만</option>
+						<option value="photos" selected={recommended === 'photos'}
+							>사진만 공개 — 아카이브·랜딩·컬렉션</option
 						>
-						<option value="hidden" selected={recommended === 'hidden'}>숨김 — 관리자만</option>
+						<option value="all">사진 + 폴더 페이지 공개 — /library/… 도 열림</option>
 					</select>
 				{/key}
 			</label>

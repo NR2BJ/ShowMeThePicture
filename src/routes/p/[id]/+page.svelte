@@ -54,13 +54,19 @@
 	});
 	const q = $derived(`?ctx=${encodeURIComponent(data.ctx)}`);
 
-	// 보기용 회전 (누구나). 관리자는 '방향 저장' 으로 파생본에 굽는다.
-	let turns = $state(0);
+	// 보기용 회전 (누구나). variant(원본/보정)마다 따로 기억하고, 각도는 누적값이라 ↺ 는 반시계로 90° 만 돈다.
+	let angles: Record<string, number> = $state({});
 	let box = $state({ w: 0, h: 0 });
 	$effect(() => {
 		void data.photo.id;
-		turns = 0;
+		angles = {};
 	});
+	const angle = $derived(current ? (angles[current.id] ?? 0) : 0);
+	const turns = $derived((((angle / 90) % 4) + 4) % 4);
+	function rotateBy(deg: number) {
+		if (!current) return;
+		angles = { ...angles, [current.id]: (angles[current.id] ?? 0) + deg };
+	}
 	const fit = $derived.by(() => {
 		const v = current;
 		if (!v?.width || !v?.height || !box.w || !box.h) return null;
@@ -115,7 +121,7 @@
 					height={current.height ?? undefined}
 					style:width={fit ? `${fit.w}px` : undefined}
 					style:height={fit ? `${fit.h}px` : undefined}
-					style:transform={turns ? `rotate(${turns * 90}deg)` : undefined}
+					style:transform={angle ? `rotate(${angle}deg)` : undefined}
 					use:fadeIn
 				/>
 			{/if}
@@ -157,24 +163,56 @@
 			<span class="chips rotate">
 				<button
 					type="button"
-					class="chip"
-					onclick={() => (turns = (turns + 3) % 4)}
-					title="왼쪽으로 회전"
-					aria-label="왼쪽으로 회전">↺</button
+					class="chip icon"
+					onclick={() => rotateBy(-90)}
+					title="왼쪽으로 90° (반시계)"
+					aria-label="왼쪽으로 90° 회전"
 				>
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
+							d="M3 3v5h5"
+						/></svg
+					>
+					<span>왼쪽</span>
+				</button>
 				<button
 					type="button"
-					class="chip"
-					onclick={() => (turns = (turns + 1) % 4)}
-					title="오른쪽으로 회전"
-					aria-label="오른쪽으로 회전">↻</button
+					class="chip icon"
+					onclick={() => rotateBy(90)}
+					title="오른쪽으로 90° (시계)"
+					aria-label="오른쪽으로 90° 회전"
 				>
-				{#if data.admin && turns && current}
+					<span>오른쪽</span>
+					<svg
+						width="14"
+						height="14"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						aria-hidden="true"
+						><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path
+							d="M21 3v5h-5"
+						/></svg
+					>
+				</button>
+				{#if data.admin && turns !== 0 && current}
 					<form method="POST" action="?/rotate">
 						<input type="hidden" name="fileId" value={current.id} />
 						<input type="hidden" name="rotation" value={(current.rotation + turns) % 4} />
 						<button type="submit" class="chip on" title="이 방향으로 파생본을 다시 만듭니다"
-							>방향 저장</button
+							>이 방향 저장</button
 						>
 					</form>
 				{/if}
@@ -386,10 +424,14 @@
 		display: inline-flex;
 		gap: 4px;
 	}
-	.chips.rotate .chip {
-		font-size: 15px;
-		line-height: 1;
-		padding: 5px 10px;
+	.chips.rotate .chip.icon {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 11px;
+		padding: 6px 10px;
+		text-transform: none;
+		letter-spacing: 0.04em;
 	}
 	.chip {
 		border-color: var(--color-ink-faint);
