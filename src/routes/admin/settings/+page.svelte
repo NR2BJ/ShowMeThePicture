@@ -58,7 +58,8 @@
 		<h2>검색</h2>
 		<p class="mono dim status">
 			ML 서버 {data.ml.url} · {data.ml.up ? '연결됨' : '연결 안 됨'} · 임베딩 {data.embed.done} / {data
-				.embed.total}장 ({data.embed.model})
+				.embed.total}장 ({data.embed.model}){#if data.embed.other}
+				· 다른 모델 것 {data.embed.other}개{/if}
 		</p>
 		<label class="field">
 			<span>임베딩 모델</span>
@@ -103,6 +104,21 @@
 		<button class="btn quiet" type="submit" disabled={data.noDb}
 			>모델 시험 (글 1줄 + 사진 1장)</button
 		>
+	</form>
+	<form
+		method="POST"
+		action="?/clearEmbeddings"
+		class="reembed"
+		onsubmit={(e) => {
+			if (
+				!confirm(
+					'임베딩을 전부 지울까요? 검색과 비슷한 사진이 비고, 다시 채우려면 전부 다시 계산합니다.'
+				)
+			)
+				e.preventDefault();
+		}}
+	>
+		<button class="btn danger" type="submit" disabled={data.noDb}>임베딩 전부 지우기</button>
 	</form>
 </section>
 
