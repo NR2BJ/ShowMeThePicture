@@ -18,6 +18,11 @@ export const variables = defineEnvVars({
 		schema: (v) => S.CACHE_DIR.parse(v),
 		description: '파생 이미지 캐시(SSD).'
 	},
+	ML_CACHE_DIR: {
+		schema: (v) => S.ML_CACHE_DIR.parse(v),
+		description:
+			'ml 컨테이너의 모델 캐시 볼륨(ml-cache)을 app 에 마운트한 경로. 비우면 설정의 모델 캐시 관리가 꺼진다.'
+	},
 	ML_URL: {
 		schema: (v) => S.ML_URL.parse(v),
 		description: 'Immich machine-learning 컨테이너 주소.'

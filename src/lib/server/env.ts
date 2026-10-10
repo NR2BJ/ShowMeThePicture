@@ -6,6 +6,8 @@ export const EnvSchema = z.object({
 	PHOTOS_ROOT: z.string().default('/photos'),
 	CACHE_DIR: z.string().default('/cache'),
 	ML_URL: z.string().default('http://ml:3003'),
+	/** ml 컨테이너의 모델 캐시 볼륨을 app 에도 마운트한 경로 (있으면 설정에서 모델 캐시를 보고 지울 수 있다) */
+	ML_CACHE_DIR: z.string().optional(),
 	SITE_TITLE: z.string().default('Show Me The Picture'),
 	SESSION_SECRET: z.string().default('dev-secret-change-me'),
 	GUEST_MAX_EDGE: z.coerce.number().int().positive().default(2560),

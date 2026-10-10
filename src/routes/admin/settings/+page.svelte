@@ -128,6 +128,50 @@
 		>
 	</form>
 
+	<h2>받아 둔 모델</h2>
+	{#if data.modelCaches === null}
+		<p class="mono dim status">
+			ml 컨테이너의 모델 캐시가 app 에 안 붙어 있습니다. compose 의 app 서비스에 ml-cache 볼륨을
+			/mlcache 로 마운트하고 ML_CACHE_DIR=/mlcache 를 주면 여기서 용량을 보고 지울 수 있습니다.
+		</p>
+	{:else if data.modelCaches.length === 0}
+		<p class="mono dim status">아직 받아 둔 모델이 없습니다.</p>
+	{:else}
+		<table class="table caches">
+			<thead><tr><th>모델</th><th>용량</th><th>글 / 사진</th><th></th></tr></thead>
+			<tbody>
+				{#each data.modelCaches as m (m.name)}
+					<tr>
+						<td class="mono"
+							>{m.name}{#if m.name === data.searchModel}
+								<span class="dim"> · 사용 중</span>{/if}</td
+						>
+						<td class="mono">{m.size}</td>
+						<td class="mono dim">{m.textual ? '글' : '-'} / {m.visual ? '사진' : '-'}</td>
+						<td class="actions">
+							{#if m.name !== data.searchModel}
+								<form
+									method="POST"
+									action="?/deleteModelCache"
+									use:enhance={track((v) => (working = v))}
+									onsubmit={(e) => {
+										if (
+											!confirm(`${m.name} 캐시(${m.size})를 지울까요? 다시 고르면 다시 받습니다.`)
+										)
+											e.preventDefault();
+									}}
+								>
+									<input type="hidden" name="name" value={m.name} />
+									<button class="btn danger" type="submit" disabled={working}>지우기</button>
+								</form>
+							{/if}
+						</td>
+					</tr>
+				{/each}
+			</tbody>
+		</table>
+	{/if}
+
 	<h2>임베딩</h2>
 	<div class="acts">
 		<form method="POST" action="?/testModel" use:enhance={track((v) => (testing = v))}>
@@ -211,5 +255,13 @@
 		gap: 8px;
 		flex-wrap: wrap;
 		margin: 0 0 12px;
+	}
+	.caches {
+		max-width: 900px;
+		margin: 0 0 20px;
+	}
+	.caches td.actions {
+		white-space: nowrap;
+		text-align: right;
 	}
 </style>

@@ -25,6 +25,8 @@ x-app: &app
     PHOTOS_ROOT: /photos
     CACHE_DIR: /cache
     ML_URL: http://ml:3003
+    # ml-cache 볼륨을 app 에도 붙여 설정 화면에서 받아 둔 모델을 보고 지울 수 있게 (선택)
+    ML_CACHE_DIR: /mlcache
     # 컨테이너가 이 uid/gid 로 돈다. 사진 파일을 읽을 수 있고 캐시에 쓸 수 있어야 한다.
     PUID: ${PUID:-1000}
     PGID: ${PGID:-1000}
@@ -34,6 +36,7 @@ x-app: &app
   volumes:
     - ${PHOTOS_HOST_PATH:?set PHOTOS_HOST_PATH}:/photos:ro
     - ${CACHE_HOST_PATH:?set CACHE_HOST_PATH}:/cache
+    - ml-cache:/mlcache
   restart: unless-stopped
 
 services:

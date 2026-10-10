@@ -3,6 +3,8 @@ import { fail } from '@sveltejs/kit';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import { embedImage, embedText, mlPing, MlError, normalizeNllbLang } from '#lib/server/ml.ts';
+import { deleteModelCache, listModelCaches } from '#lib/server/mlcache.ts';
+import { fmtBytes } from '#lib/server/cacheusage.ts';
 import { derivativePath } from '#lib/server/media.ts';
 import { readFile } from 'node:fs/promises';
 import { and, eq } from 'drizzle-orm';
@@ -24,6 +26,7 @@ export const load: PageServerLoad = async () => {
 			searchLanguage: 'ko',
 			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0, other: 0 },
 			ml: { url: config.ML_URL, up: false },
+			modelCaches: null,
 			noDb: true
 		};
 	return {
@@ -35,6 +38,12 @@ export const load: PageServerLoad = async () => {
 		searchLanguage: normalizeNllbLang(await getSetting<string>(db(), 'search_language', 'ko')),
 		embed: await embeddingStats(db()),
 		ml: { url: config.ML_URL, up: await mlPing(config.ML_URL) },
+		// 받아 둔 모델 캐시 (ml-cache 볼륨이 app 에 마운트돼 있을 때만)
+		modelCaches:
+			(await listModelCaches(config.ML_CACHE_DIR))?.map((m) => ({
+				...m,
+				size: fmtBytes(m.bytes)
+			})) ?? null,
 		noDb: false
 	};
 };
@@ -70,6 +79,17 @@ export const actions: Actions = {
 				ok: `저장했습니다. 모델이 바뀌었습니다 — '모델 시험'으로 올라오는지 확인한 뒤 '빠진 임베딩 채우기'를 누르세요. 그 전에도 새로 처리되는 사진은 새 모델로 임베딩됩니다.`
 			};
 		return { ok: '저장했습니다.' };
+	},
+	deleteModelCache: async ({ request, locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const form = await request.formData();
+		const name = String(form.get('name') ?? '');
+		const current = await getSetting<string>(db(), 'search_model', DEFAULT_SEARCH_MODEL);
+		if (name === current) return fail(400, { error: '지금 쓰는 모델의 캐시는 지우지 않습니다.' });
+		const ok = await deleteModelCache(config.ML_CACHE_DIR, name);
+		return ok
+			? { ok: `${name} 캐시를 지웠습니다.` }
+			: fail(404, { error: '그 모델 캐시가 없습니다.' });
 	},
 	clearEmbeddings: async ({ locals }) => {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });
