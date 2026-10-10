@@ -62,23 +62,26 @@ export function cosine(a: number[], b: number[]): number {
 export const hubAdjust = (sim: number, cq: number, ai: number, abar: number) =>
 	sim - cq * (ai - abar);
 
-/** 비슷한 컷 묶기: 순위순으로 보며 앞서 남긴 사진(또는 그 묶음의 어느 컷)과 코사인이 threshold 이상이면 그 묶음에 넣는다
- *  (single-linkage — 연사처럼 조금씩 다른 컷이 사슬로 이어져도 한 묶음). 같은 무대·같은 배경 연사 수십 장이 결과를 메우는 걸 막는다.
- *  threshold ≤ 0 이면 묶지 않는다. 대표는 묶음에서 순위가 가장 높은 컷, dup 은 묶인 나머지 장수. */
-export const DEFAULT_DUP_THRESHOLD = 0.85;
+/** 비슷한 컷 묶기: 순위순으로 보며 앞서 남긴 대표 컷과 코사인이 threshold 이상이면 그 대표 밑에 넣는다.
+ *  대표하고만 비교한다 — 묶음의 아무 컷과 비교하면(single-linkage) 조금씩 다른 사진이 사슬로 이어져 공연 사진 한 장 뒤에
+ *  45장이 숨는 식으로 서로 다른 장면까지 한 덩어리가 된다(SO400M 에서 실제로 그랬다). 같은 무대·같은 배경 연사만 묶는 게 목적.
+ *  threshold ≤ 0 이면 묶지 않는다. dup 은 대표 뒤에 묶인 장수. */
+export const DEFAULT_DUP_THRESHOLD = 0.92;
+/** 예전 기본값. 설정 저장 때 같이 저장돼 있던 값이라 사용자가 고른 게 아니므로 새 기본값으로 읽는다. */
+export const LEGACY_DUP_DEFAULT = 0.85;
 export function collapseNearDuplicates<T extends { vec: number[] }>(
 	items: T[],
 	threshold: number
 ): { kept: (T & { dup: number })[]; collapsed: number } {
 	if (!(threshold > 0)) return { kept: items.map((it) => ({ ...it, dup: 0 })), collapsed: 0 };
-	const groups: { rep: T; members: T[] }[] = [];
+	const groups: { rep: T; n: number }[] = [];
 	for (const it of items) {
-		const g = groups.find((g) => g.members.some((m) => cosine(m.vec, it.vec) >= threshold));
-		if (g) g.members.push(it);
-		else groups.push({ rep: it, members: [it] });
+		const g = groups.find((g) => cosine(g.rep.vec, it.vec) >= threshold);
+		if (g) g.n++;
+		else groups.push({ rep: it, n: 0 });
 	}
 	return {
-		kept: groups.map((g) => ({ ...g.rep, dup: g.members.length - 1 })),
+		kept: groups.map((g) => ({ ...g.rep, dup: g.n })),
 		collapsed: items.length - groups.length
 	};
 }

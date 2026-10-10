@@ -92,7 +92,10 @@
 							3
 						)} / 평균 {data.mean.toFixed(3)} / 기준 {Number.isFinite(split.cut)
 							? split.cut.toFixed(3)
-							: '—'} · z {z.toFixed(1)}</span
+							: '—'} · z {z.toFixed(1)} ·
+						<a href={`/search?q=${encodeURIComponent(data.q)}${data.raw ? '' : '&raw=1'}`}
+							>{data.raw ? '보정·묶기 켜기' : '모델 순서 그대로 보기'}</a
+						></span
 					>
 				{/if}
 			</p>
@@ -149,6 +152,11 @@
 		margin: 4px 0 14px;
 		font-size: 16px;
 		line-height: 1.6;
+	}
+	.more a {
+		color: var(--color-amber);
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.more button,
 	.nomatch button {

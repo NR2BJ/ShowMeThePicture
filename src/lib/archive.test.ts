@@ -69,8 +69,8 @@ describe('splitByRelevance', () => {
 
 describe('collapseNearDuplicates', () => {
 	const v = (x: number, y: number) => [x, y];
-	it('순위가 높은 컷이 대표, 사슬로 이어진 컷도 한 묶음', () => {
-		// a≈b, b≈c (a 와 c 는 기준 미만이지만 b 를 통해 이어짐), d 는 다름
+	it('대표하고만 비교한다 — 사슬로 이어진 다른 장면은 묶지 않는다', () => {
+		// a≈b, b≈c 이지만 a 와 c 는 기준 미만 → c 는 따로, d 는 다름
 		const items = [
 			{ id: 'a', vec: v(1, 0) },
 			{ id: 'b', vec: v(0.98, 0.2) },
@@ -78,8 +78,8 @@ describe('collapseNearDuplicates', () => {
 			{ id: 'd', vec: v(0, 1) }
 		];
 		const r = collapseNearDuplicates(items, 0.95);
-		expect(r.kept.map((k) => `${k.id}+${k.dup}`)).toEqual(['a+2', 'd+0']);
-		expect(r.collapsed).toBe(2);
+		expect(r.kept.map((k) => `${k.id}+${k.dup}`)).toEqual(['a+1', 'c+0', 'd+0']);
+		expect(r.collapsed).toBe(1);
 	});
 	it('기준 0 이면 묶지 않는다', () => {
 		const r = collapseNearDuplicates(

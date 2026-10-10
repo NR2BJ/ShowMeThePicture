@@ -12,16 +12,25 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200);
 	const admin = !!locals.admin;
 	if (!config.DATABASE_URL)
-		return { q, ...EMPTY, error: null, stats: null, admin, floor: null as number | null };
+		return {
+			q,
+			...EMPTY,
+			raw: false,
+			error: null,
+			stats: null,
+			admin,
+			floor: null as number | null
+		};
 	const stats = await embeddingStats(db());
 	const floor = await searchFloor(db(), stats.model);
-	if (!q) return { q, ...EMPTY, error: null, stats, admin, floor };
+	if (!q) return { q, ...EMPTY, raw: false, error: null, stats, admin, floor };
 	try {
-		const r = await searchByText(db(), { admin, text: q, limit: 60 });
-		return { q, ...r, error: null, stats, admin, floor };
+		const raw = admin && url.searchParams.get('raw') === '1';
+		const r = await searchByText(db(), { admin, text: q, limit: 60, raw });
+		return { q, ...r, raw, error: null, stats, admin, floor };
 	} catch (e) {
 		const msg = e instanceof MlError ? e.message : '검색 중 문제가 생겼습니다';
 		console.error('[search]', e);
-		return { q, ...EMPTY, error: msg, stats, admin, floor };
+		return { q, ...EMPTY, raw: false, error: msg, stats, admin, floor };
 	}
 };

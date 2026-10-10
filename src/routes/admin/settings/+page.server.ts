@@ -13,6 +13,7 @@ import { enqueueEmbedMany } from '#lib/server/queue.ts';
 import {
 	clearEmbeddings,
 	embeddingStats,
+	dupThreshold,
 	filesNeedingEmbedding,
 	searchFloor
 } from '#lib/server/search.ts';
@@ -45,7 +46,7 @@ export const load: PageServerLoad = async () => {
 		searchModel,
 		searchLanguage: normalizeNllbLang(await getSetting<string>(db(), 'search_language', 'ko')),
 		searchFloor: await searchFloor(db(), searchModel),
-		searchDup: await getSetting<number>(db(), 'search_dup', DEFAULT_DUP_THRESHOLD),
+		searchDup: await dupThreshold(db()),
 		embed: await embeddingStats(db()),
 		ml: { url: config.ML_URL, up: await mlPing(config.ML_URL) },
 		// 받아 둔 모델 캐시 (ml-cache 볼륨이 app 에 마운트돼 있을 때만)
