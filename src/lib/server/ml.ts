@@ -70,17 +70,35 @@ export async function embedText(
 	const fd = new FormData();
 	fd.append('text', text);
 	// 설정 언어가 한국어라도 영어로 치면 영어로 보낸다 (NLLB 는 입력 언어를 알아야 제대로 인코딩한다)
-	const language = needsLanguage(cfg.model) ? (detectNllbLang(text) ?? cfg.language) : null;
+	const language = needsLanguage(cfg.model)
+		? (detectNllbLang(text) ?? normalizeNllbLang(cfg.language))
+		: null;
 	const options = language ? { language } : {};
 	return predict(cfg, { clip: { textual: { modelName: cfg.model, options } } }, fd, timeoutMs);
 }
 
-/** NLLB 텍스트 인코더용 언어 코드 추정: 한글 → kor_Hang, 가나 → jpn_Jpan, 라틴 글자만 → eng_Latn.
- *  한자만 있으면 한국 한자·일본 한자·중국어를 가를 수 없어 null(설정값, 기본 한국어). */
+/** Immich ML 의 NLLB 언어 옵션은 로케일 키(ko, en, ja, zh-CN …)다 — 안에서 FLORES 코드(kor_Hang)로 바꾼다.
+ *  예전 설정값이 FLORES 코드면 로케일 키로 되돌린다. */
+const FLORES_TO_LOCALE: Record<string, string> = {
+	kor_Hang: 'ko',
+	eng_Latn: 'en',
+	jpn_Jpan: 'ja',
+	jpn_Hira: 'ja',
+	zho_Hans: 'zh-CN',
+	zho_Hant: 'zh-TW'
+};
+export function normalizeNllbLang(v: string | null | undefined): string {
+	const s = (v ?? '').trim();
+	if (!s) return 'ko';
+	return FLORES_TO_LOCALE[s] ?? s;
+}
+
+/** 질의 글자로 언어 추정: 한글 → ko, 가나 → ja, 라틴 글자만 → en.
+ *  한자만 있으면 한국 한자·일본 한자·중국어를 가를 수 없어 null(설정값, 기본 ko). */
 export function detectNllbLang(text: string): string | null {
-	if (/[\u3131-\u318e\uac00-\ud7a3]/.test(text)) return 'kor_Hang';
-	if (/[\u3040-\u30ff]/.test(text)) return 'jpn_Jpan';
-	if (/[A-Za-z]/.test(text) && !/[^\x00-\x7f]/.test(text)) return 'eng_Latn';
+	if (/[\u3131-\u318e\uac00-\ud7a3]/.test(text)) return 'ko';
+	if (/[\u3040-\u30ff]/.test(text)) return 'ja';
+	if (/[A-Za-z]/.test(text) && !/[^\x00-\x7f]/.test(text)) return 'en';
 	return null;
 }
 

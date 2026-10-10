@@ -5,14 +5,14 @@ import { config } from './config';
 import type { Db } from './db';
 import { embeddings, files, photos } from './db/schema';
 import { baseConds, itemSelect, toItem, type GalleryItem } from './gallery';
-import { embedText, vectorLiteral, type MlConfig } from './ml';
+import { embedText, normalizeNllbLang, vectorLiteral, type MlConfig } from './ml';
 import { getSetting } from './settings';
 
 export async function mlConfig(db: Db): Promise<MlConfig> {
 	return {
 		url: config.ML_URL,
 		model: await getSetting<string>(db, 'search_model', DEFAULT_SEARCH_MODEL),
-		language: await getSetting<string>(db, 'search_language', 'kor_Hang')
+		language: normalizeNllbLang(await getSetting<string>(db, 'search_language', 'ko'))
 	};
 }
 

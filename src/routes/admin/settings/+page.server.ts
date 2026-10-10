@@ -2,7 +2,7 @@
 import { fail } from '@sveltejs/kit';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
-import { embedImage, embedText, mlPing, MlError } from '#lib/server/ml.ts';
+import { embedImage, embedText, mlPing, MlError, normalizeNllbLang } from '#lib/server/ml.ts';
 import { derivativePath } from '#lib/server/media.ts';
 import { readFile } from 'node:fs/promises';
 import { and, eq } from 'drizzle-orm';
@@ -21,7 +21,7 @@ export const load: PageServerLoad = async () => {
 			stripRows: 3,
 			showGps: false,
 			searchModel: DEFAULT_SEARCH_MODEL,
-			searchLanguage: 'kor_Hang',
+			searchLanguage: 'ko',
 			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0, other: 0 },
 			ml: { url: config.ML_URL, up: false },
 			noDb: true
@@ -32,7 +32,7 @@ export const load: PageServerLoad = async () => {
 		stripRows: await getSetting<number>(db(), 'landing_rows', 3),
 		showGps: await getSetting<boolean>(db(), 'show_gps', false),
 		searchModel: await getSetting<string>(db(), 'search_model', DEFAULT_SEARCH_MODEL),
-		searchLanguage: await getSetting<string>(db(), 'search_language', 'kor_Hang'),
+		searchLanguage: normalizeNllbLang(await getSetting<string>(db(), 'search_language', 'ko')),
 		embed: await embeddingStats(db()),
 		ml: { url: config.ML_URL, up: await mlPing(config.ML_URL) },
 		noDb: false
@@ -63,7 +63,7 @@ export const actions: Actions = {
 		await setSetting(
 			db(),
 			'search_language',
-			String(form.get('searchLanguage') ?? '').trim() || 'kor_Hang'
+			normalizeNllbLang(String(form.get('searchLanguage') ?? ''))
 		);
 		if (model !== prevModel)
 			return {
@@ -83,7 +83,7 @@ export const actions: Actions = {
 		const cfg = {
 			url: config.ML_URL,
 			model: await getSetting<string>(d, 'search_model', DEFAULT_SEARCH_MODEL),
-			language: await getSetting<string>(d, 'search_language', 'kor_Hang')
+			language: normalizeNllbLang(await getSetting<string>(d, 'search_language', 'ko'))
 		};
 		try {
 			const t0 = Date.now();

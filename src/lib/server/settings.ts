@@ -18,7 +18,7 @@ export type AppSettings = {
 	scan_poll_minutes: number;
 	/** 검색 임베딩 모델 (Immich ML 모델 zoo 이름) */
 	search_model: string;
-	/** nllb 계열 텍스트 인코더의 질의 언어 코드 (SigLIP2 등은 무시) */
+	/** nllb 계열 텍스트 인코더의 질의 언어 (Immich 로케일 키: ko, en, ja, zh-CN; SigLIP2 등은 무시) */
 	search_language: string;
 };
 
@@ -38,7 +38,7 @@ export function settingsDefaults(env: {
 		show_gps: false,
 		scan_poll_minutes: env.SCAN_POLL_MINUTES,
 		search_model: 'ViT-B-16-SigLIP2__webli',
-		search_language: 'kor_Hang'
+		search_language: 'ko'
 	};
 }
 
