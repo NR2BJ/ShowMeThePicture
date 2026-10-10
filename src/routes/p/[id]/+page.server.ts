@@ -28,6 +28,11 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const showGps = admin || (await getSetting<boolean>(db(), 'show_gps', false));
 	const gearRows = admin ? await listGear(db()) : [];
 	const gear = {
+		fixedLens: Object.fromEntries(
+			gearRows
+				.filter((g) => g.kind === 'camera' && g.fixedLens)
+				.map((g) => [g.name, g.fixedLens as string])
+		) as Record<string, string>,
 		camera: gearRows.filter((g) => g.kind === 'camera').map((g) => g.name),
 		lens: gearRows.filter((g) => g.kind === 'lens').map((g) => g.name),
 		film: gearRows.filter((g) => g.kind === 'film').map((g) => g.name)

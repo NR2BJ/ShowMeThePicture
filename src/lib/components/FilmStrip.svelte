@@ -37,12 +37,15 @@
 </div>
 
 <style>
+	/* 크기는 전부 화면 높이에 비례 — 4K 100% 에서도 얇지 않고, 작은 창에서도 세 줄이 들어간다 */
 	.strips {
-		--fh: clamp(110px, 21vh, 210px);
+		--fh: clamp(96px, 21vh, 520px);
+		--hole: clamp(6px, 0.75vh, 16px);
+		--lab: clamp(11px, 1vh, 20px);
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: clamp(14px, 3.6vh, 36px);
+		gap: clamp(10px, 2.6vh, 60px);
 		height: 100%;
 	}
 	.strip {
@@ -54,9 +57,9 @@
 	.track {
 		position: relative;
 		display: flex;
-		gap: 10px;
+		gap: clamp(8px, 0.9vh, 20px);
 		width: max-content;
-		padding: 28px 0;
+		padding: clamp(14px, 2.2vh, 48px) 0;
 		background: var(--color-base);
 		animation: scroll var(--dur, 90s) linear infinite;
 	}
@@ -78,15 +81,16 @@
 		position: absolute;
 		left: 0;
 		right: 0;
-		height: 8px;
+		height: var(--hole);
 		background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='8'%3E%3Crect x='11' y='0' width='12' height='8' rx='1.5' fill='%230b0b0a'/%3E%3C/svg%3E")
 			repeat-x;
+		background-size: calc(var(--hole) * 4.25) var(--hole);
 	}
 	.track::before {
-		top: 6px;
+		top: calc(var(--hole) * 0.75);
 	}
 	.track::after {
-		bottom: 6px;
+		bottom: calc(var(--hole) * 0.75);
 	}
 	.frame {
 		position: relative;
@@ -117,8 +121,8 @@
 		white-space: nowrap;
 		pointer-events: none;
 		font-family: var(--font-mono);
-		font-size: 11px;
-		line-height: 12px;
+		font-size: var(--lab);
+		line-height: 1.1;
 		font-weight: 500;
 		letter-spacing: 0.14em;
 		text-transform: uppercase;
@@ -126,11 +130,11 @@
 		opacity: 0.9;
 	}
 	.rt {
-		top: -16px;
+		top: calc(var(--lab) * -1.45);
 		left: 1px;
 	}
 	.rb {
-		bottom: -16px;
+		bottom: calc(var(--lab) * -1.45);
 		right: 1px;
 	}
 	.rb::before {

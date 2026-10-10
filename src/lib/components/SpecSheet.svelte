@@ -87,17 +87,13 @@
 				]
 			}
 		];
-		if (
-			v.roll &&
-			(v.roll.title || v.roll.developedAt || v.roll.filmFormat || v.roll.scanner || v.roll.notes)
-		) {
+		if (v.roll && (v.roll.title || v.roll.developedAt || v.roll.scanner || v.roll.notes)) {
 			const dev = v.roll.developedAt ? v.roll.developedAt.slice(0, 7).replace('-', '.') : null;
 			g.splice(2, 0, {
 				title: '롤',
 				rows: [
 					['롤', v.roll.title],
 					['현상', dev && v.roll.rollNo ? `${dev} · ${v.roll.rollNo}번째 롤` : dev],
-					['포맷', v.roll.filmFormat],
 					['스캐너', v.roll.scanner],
 					['메모', v.roll.notes]
 				]

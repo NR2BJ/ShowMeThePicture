@@ -1,11 +1,9 @@
 <script lang="ts">
-	import FormatInput from '#lib/components/FormatInput.svelte';
-	import GearSelect from '#lib/components/GearSelect.svelte';
+	import RollForm from '#lib/components/RollForm.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	type Folder = (typeof data.folders)[number];
 
-	const month = (d: string | null) => (d ? d.slice(0, 7) : '');
 	const ym = (d: string | null) => (d ? d.slice(0, 7).replace('-', '.') : '-');
 	const pending = $derived(data.folders.filter((f) => !f.confirmedAt));
 	const confirmed = $derived(data.folders.filter((f) => f.confirmedAt));
@@ -21,70 +19,6 @@
 	// 확정 탭에서 '수정'으로 펼친 행
 	let open = $state<Record<string, boolean>>({});
 </script>
-
-{#snippet rollForm(f: Folder, compact: boolean)}
-	<form method="POST" action={`?/save&tab=${data.tab}`} class="roll" class:compact>
-		<input type="hidden" name="id" value={f.id} />
-		{#if !compact}
-			<div class="head">
-				<span class="mono">{f.relDir || '(루트)'}</span>
-				<span class="mono dim">{f.fileCount}장</span>
-			</div>
-		{/if}
-		<div class="grid">
-			<label class="field"
-				><span>제목</span><input type="text" name="title" value={f.title ?? ''} /></label
-			>
-			<label class="field"
-				><span>현상월</span><input
-					type="month"
-					name="developedAt"
-					value={month(f.developedAt)}
-				/></label
-			>
-			<label class="field"
-				><span>롤 번호</span><input
-					type="text"
-					name="rollNo"
-					inputmode="numeric"
-					value={f.rollNo ?? ''}
-				/></label
-			>
-			<label class="field"
-				><span>카메라</span><GearSelect
-					name="camera"
-					value={f.camera}
-					options={data.gear.camera}
-				/></label
-			>
-			<label class="field"
-				><span>렌즈</span><GearSelect name="lens" value={f.lens} options={data.gear.lens} /></label
-			>
-			<label class="field"
-				><span>필름</span><GearSelect
-					name="filmStock"
-					value={f.filmStock}
-					options={data.gear.film}
-				/></label
-			>
-			<label class="field"
-				><span>포맷</span><FormatInput name="filmFormat" value={f.filmFormat} kind="film" /></label
-			>
-			<label class="field"
-				><span>스캐너</span><input type="text" name="scanner" value={f.scanner ?? ''} /></label
-			>
-			<label class="field wide"
-				><span>메모</span><input type="text" name="notes" value={f.notes ?? ''} /></label
-			>
-		</div>
-		<div class="acts">
-			<button class="btn" type="submit">저장하고 날짜 맞추기</button>
-			{#if compact}
-				<button class="btn quiet" type="button" onclick={() => (open[f.id] = false)}>닫기</button>
-			{/if}
-		</div>
-	</form>
-{/snippet}
 
 <section class="admin-page">
 	<h1>폴더 정보</h1>
@@ -131,7 +65,7 @@
 		{#each pendingBySource as [name, rows] (name)}
 			<h2>{name}</h2>
 			{#each rows as f (f.id)}
-				{@render rollForm(f, false)}
+				<RollForm folder={f} gear={data.gear} fixedLens={data.fixedLens} tab={data.tab} />
 			{/each}
 		{/each}
 	{:else if confirmed.length === 0}
@@ -147,7 +81,6 @@
 					<th>카메라</th>
 					<th>렌즈</th>
 					<th>필름</th>
-					<th>포맷</th>
 					<th>장수</th>
 					<th></th>
 				</tr>
@@ -165,7 +98,6 @@
 						<td class="mono">{f.camera ?? '-'}</td>
 						<td class="mono">{f.lens ?? '-'}</td>
 						<td class="mono">{f.filmStock ?? '-'}</td>
-						<td class="mono">{f.filmFormat ?? '-'}</td>
 						<td class="mono dim">{f.fileCount}</td>
 						<td
 							><button class="btn quiet" type="button" onclick={() => (open[f.id] = !open[f.id])}
@@ -175,7 +107,16 @@
 					</tr>
 					{#if open[f.id]}
 						<tr class="editrow">
-							<td colspan="10">{@render rollForm(f, true)}</td>
+							<td colspan="9">
+								<RollForm
+									folder={f}
+									gear={data.gear}
+									fixedLens={data.fixedLens}
+									tab={data.tab}
+									compact
+									onclose={() => (open[f.id] = false)}
+								/>
+							</td>
 						</tr>
 					{/if}
 				{/each}
@@ -214,47 +155,6 @@
 	.tabs .n {
 		opacity: 0.7;
 		margin-left: 4px;
-	}
-	.roll {
-		border: 1px solid var(--color-ink-faint);
-		border-radius: 2px;
-		padding: 14px 16px 16px;
-		margin: 0 0 14px;
-	}
-	.roll.compact {
-		border: 0;
-		padding: 6px 0 10px;
-		margin: 0;
-	}
-	.head {
-		display: flex;
-		justify-content: space-between;
-		margin: 0 0 12px;
-		font-size: 13px;
-	}
-	.grid {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-		gap: 0 14px;
-	}
-	.grid .field {
-		margin-bottom: 12px;
-	}
-	.grid .wide {
-		grid-column: 1 / -1;
-	}
-	.grid input[type='month'] {
-		background: #141311;
-		border: 1px solid var(--color-ink-faint);
-		color: var(--color-ink);
-		padding: 11px 13px;
-		font: inherit;
-		border-radius: 2px;
-		color-scheme: dark;
-	}
-	.acts {
-		display: flex;
-		gap: 8px;
 	}
 	.confirmed td {
 		vertical-align: top;

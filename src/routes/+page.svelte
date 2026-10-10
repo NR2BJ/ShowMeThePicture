@@ -42,55 +42,27 @@
 
 <main class="landing">
 	<FilmStrip {rows} />
-	<footer>
-		<span class="note">
-			{#if data.frames.length}
-				방문할 때마다 다시 섞입니다 · 올려두면 멈춥니다
-			{:else}
-				아직 등록된 사진이 없습니다 · 관리자로 로그인해 라이브러리에 폴더를 등록하세요
-			{/if}
-		</span>
-		<a href="/archive">아카이브 보기 →</a>
-	</footer>
+	{#if data.frames.length === 0}
+		<p class="empty mono">
+			아직 등록된 사진이 없습니다 · 관리자로 로그인해 라이브러리에 폴더를 등록하세요
+		</p>
+	{/if}
 </main>
 
 <style>
 	.landing {
 		height: 100dvh;
 		overflow: hidden;
-		padding: 72px 0 64px;
+		padding: 72px 0 36px;
 		box-sizing: border-box;
 	}
-	footer {
+	.empty {
 		position: fixed;
 		inset: auto 0 0 0;
 		z-index: 10;
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
 		padding: 22px 40px;
-	}
-	.note {
-		font-family: var(--font-mono);
 		font-size: 13px;
-		line-height: 1.4;
 		letter-spacing: 0.04em;
 		color: var(--color-ink-dim);
-	}
-	footer a {
-		font-size: 16px;
-		letter-spacing: 0.02em;
-	}
-	footer a:hover {
-		text-decoration: underline;
-		text-underline-offset: 4px;
-	}
-	@media (max-width: 720px) {
-		footer {
-			padding: 18px 20px;
-		}
-		.note {
-			display: none;
-		}
 	}
 </style>

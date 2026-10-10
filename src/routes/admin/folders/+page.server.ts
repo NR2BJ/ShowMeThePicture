@@ -17,6 +17,12 @@ export const load: PageServerLoad = async ({ url }) => {
 	return {
 		folders,
 		tab,
+		// 고정렌즈 바디 → 렌즈 (카메라를 고르면 렌즈 칸이 자동으로 잠긴다)
+		fixedLens: Object.fromEntries(
+			gear
+				.filter((g) => g.kind === 'camera' && g.fixedLens)
+				.map((g) => [g.name, g.fixedLens as string])
+		) as Record<string, string>,
 		gear: {
 			camera: gear.filter((g) => g.kind === 'camera').map((g) => g.name),
 			lens: gear.filter((g) => g.kind === 'lens').map((g) => g.name),
@@ -54,7 +60,6 @@ export const actions: Actions = {
 			camera: str(form.get('camera')),
 			lens: str(form.get('lens')),
 			filmStock: str(form.get('filmStock')),
-			filmFormat: str(form.get('filmFormat')),
 			scanner: str(form.get('scanner')),
 			notes: str(form.get('notes'))
 		});

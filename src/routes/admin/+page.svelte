@@ -6,6 +6,7 @@
 		data.sources.some((s) => s.pendingCount > 0) ||
 			data.queues.some((q) => q.state === 'active' || q.state === 'created')
 	);
+	const sm = $derived(data.summary);
 	const totals = $derived({
 		files: data.sources.reduce((a, s) => a + s.fileCount, 0),
 		indexed: data.sources.reduce((a, s) => a + s.indexedCount, 0),
@@ -19,6 +20,52 @@
 	<h1>
 		대시보드 <span class="mono dim live">{busy ? '처리 중 · 4초마다 갱신' : '20초마다 갱신'}</span>
 	</h1>
+
+	<div class="cards">
+		<a class="card" href="/admin/sources">
+			<span class="k mono">라이브러리</span>
+			<span class="v">{data.sources.length}<small>폴더</small></span>
+			<span class="s mono dim"
+				>파일 {totals.files} · 처리 {totals.indexed}{#if totals.pending}
+					· 대기 {totals.pending}{/if}{#if totals.failed}
+					· <b class="bad">실패 {totals.failed}</b>{/if}{#if totals.missing}
+					· 없어짐 {totals.missing}{/if}</span
+			>
+		</a>
+		<a class="card" href="/admin/visibility">
+			<span class="k mono">사진</span>
+			<span class="v">{sm.photos.total}<small>장</small></span>
+			<span class="s mono dim"
+				>공개 {sm.photos.pub} · 숨김 {sm.photos.hidden}{#if sm.photos.manual}
+					· 수동 {sm.photos.manual}{/if}<br />A컷 {sm.photos.a} · B컷 {sm.photos.b} · 원본만 {sm
+					.photos.original}</span
+			>
+		</a>
+		<a class="card" href="/admin/pairs" class:attn={sm.pairs.review > 0}>
+			<span class="k mono">페어링</span>
+			<span class="v">{sm.pairs.review}<small>검토 필요</small></span>
+			<span class="s mono dim"
+				>미확정 {sm.pairs.auto} · 확정 {sm.pairs.confirmed} · 원본 없음 {sm.pairs.unpaired}</span
+			>
+		</a>
+		<a class="card" href="/admin/folders?tab=pending" class:attn={sm.folders.pending > 0}>
+			<span class="k mono">폴더 정보</span>
+			<span class="v">{sm.folders.pending}<small>미확정</small></span>
+			<span class="s mono dim">확정 {sm.folders.confirmed}</span>
+		</a>
+		<a class="card" href="/admin/gear">
+			<span class="k mono">장비</span>
+			<span class="v">{sm.gear.camera + sm.gear.lens + sm.gear.film}<small>개</small></span>
+			<span class="s mono dim"
+				>카메라 {sm.gear.camera} · 렌즈 {sm.gear.lens} · 필름 {sm.gear.film}</span
+			>
+		</a>
+		<a class="card" href="/admin/collections">
+			<span class="k mono">컬렉션</span>
+			<span class="v">{sm.collections.total}<small>개</small></span>
+			<span class="s mono dim">공개 {sm.collections.pub}</span>
+		</a>
+	</div>
 
 	<h2>라이브러리</h2>
 	{#if data.sources.length === 0}
@@ -114,6 +161,47 @@
 </section>
 
 <style>
+	.cards {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+		gap: 10px;
+		margin: 0 0 28px;
+	}
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+		padding: 14px 16px;
+		border: 1px solid var(--color-ink-faint);
+		color: inherit;
+	}
+	.card:hover {
+		border-color: var(--color-amber);
+	}
+	.card.attn {
+		border-color: var(--color-amber);
+	}
+	.card .k {
+		font-size: 11px;
+		letter-spacing: 0.1em;
+		text-transform: uppercase;
+		color: var(--color-ink-dim);
+	}
+	.card .v {
+		font-family: var(--font-serif);
+		font-size: 34px;
+		line-height: 1;
+	}
+	.card .v small {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		margin-left: 8px;
+		color: var(--color-ink-dim);
+	}
+	.card .s {
+		font-size: 12px;
+		line-height: 1.5;
+	}
 	.bad {
 		color: #d98a7a;
 	}

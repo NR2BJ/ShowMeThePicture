@@ -8,6 +8,18 @@
 	let { data }: PageProps = $props();
 
 	let info = $state(false);
+	// 장비 수정 폼: 고정렌즈 바디를 고르면 렌즈 칸이 잠긴다
+	// svelte-ignore state_referenced_locally
+	let ovCamera = $state(data.photo.metaOverride?.camera ?? '');
+	$effect(() => {
+		ovCamera = data.photo.metaOverride?.camera ?? '';
+	});
+	const ovCameraOptions = $derived(
+		ovCamera && !data.gear.camera.includes(ovCamera)
+			? [ovCamera, ...data.gear.camera]
+			: data.gear.camera
+	);
+	const ovLocked = $derived(data.gear.fixedLens[ovCamera] ?? null);
 	let currentId: string | null = $state(null);
 	const current = $derived(
 		data.photo.variants.find((v) => v.id === currentId) ??
@@ -269,21 +281,27 @@
 				<form method="POST" action="?/meta" class="meta-edit">
 					<h3>장비 수정 (이 사진만)</h3>
 					<label
-						><span>카메라</span><GearSelect
-							name="camera"
-							value={data.photo.metaOverride?.camera ?? ''}
-							options={data.gear.camera}
-							placeholder="(자동)"
-						/></label
+						><span>카메라</span>
+						<select name="camera" bind:value={ovCamera}>
+							<option value="">(자동)</option>
+							{#each ovCameraOptions as o (o)}<option value={o}>{o}</option>{/each}
+						</select></label
 					>
-					<label
-						><span>렌즈</span><GearSelect
-							name="lens"
-							value={data.photo.metaOverride?.lens ?? ''}
-							options={data.gear.lens}
-							placeholder="(자동)"
-						/></label
-					>
+					{#if ovLocked}
+						<input type="hidden" name="lens" value={ovLocked} />
+						<div class="ro">
+							<span>렌즈</span><span class="mono dim">{ovLocked} · 고정 렌즈</span>
+						</div>
+					{:else}
+						<label
+							><span>렌즈</span><GearSelect
+								name="lens"
+								value={data.photo.metaOverride?.lens ?? ''}
+								options={data.gear.lens}
+								placeholder="(자동)"
+							/></label
+						>
+					{/if}
 					<label
 						><span>필름</span><GearSelect
 							name="filmStock"
@@ -459,7 +477,8 @@
 		text-transform: uppercase;
 		color: var(--color-amber);
 	}
-	.meta-edit label {
+	.meta-edit label,
+	.meta-edit .ro {
 		display: grid;
 		grid-template-columns: 60px 1fr;
 		align-items: center;
