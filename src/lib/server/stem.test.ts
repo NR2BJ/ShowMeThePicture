@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { gearKeys } from './gear';
 import { normalizeStem, parseRollFolder, stemOf } from './stem';
 
 describe('normalizeStem', () => {
@@ -66,20 +67,11 @@ describe('parseRollFolder', () => {
 
 describe('parseRollFolder with registered gear', () => {
 	const gear = [
-		{
-			kind: 'camera' as const,
-			name: 'Rollei 35S',
-			aliases: ['rollei35s'],
-			fixedLens: 'Sonnar 40mm f/2.8'
-		},
-		{ kind: 'camera' as const, name: 'Nikon FM2', aliases: [], fixedLens: null },
-		{
-			kind: 'film' as const,
-			name: 'Kodak ColorPlus 200',
-			aliases: ['colorplus 200', 'colorplus'],
-			fixedLens: null
-		},
-		{ kind: 'film' as const, name: 'Kodak Gold 200', aliases: ['gold200'], fixedLens: null }
+		{ kind: 'camera' as const, name: 'Rollei 35S', fixedLens: 'Sonnar 40mm f/2.8' },
+		{ kind: 'camera' as const, name: 'Nikon FM2', fixedLens: null },
+		{ kind: 'film' as const, name: 'Kodak ColorPlus 200', fixedLens: null },
+		{ kind: 'film' as const, name: 'Kodak Gold 200', fixedLens: null },
+		{ kind: 'film' as const, name: "LomoChrome Color '92 Sun-kissed 400", fixedLens: null }
 	];
 	it('finds camera and film without a separator, fills the fixed lens', () => {
 		const r = parseRollFolder('25.09_01 Rollei35s kodak colorplus 200', gear);
@@ -103,5 +95,29 @@ describe('parseRollFolder with registered gear', () => {
 	it('falls back to the dash convention when nothing is registered', () => {
 		const r = parseRollFolder('2509_03 Leica M6 - Portra 400', gear);
 		expect(r).toMatchObject({ camera: 'Leica M6', filmStock: 'Portra 400' });
+	});
+	it('matches without the brand word, but never a sibling that only shares the brand', () => {
+		expect(parseRollFolder('2510_01 Rollei35s colorplus200', gear).filmStock).toBe(
+			'Kodak ColorPlus 200'
+		);
+		expect(parseRollFolder('2510_02 Rollei35s kodak 200', gear).filmStock).toBeNull();
+		expect(parseRollFolder('2510_03 Rollei35s Kodak Gold 200', gear).filmStock).toBe(
+			'Kodak Gold 200'
+		);
+		expect(parseRollFolder('2510_04 Rollei35s lomosunkissed400', gear).filmStock).toBe(
+			"LomoChrome Color '92 Sun-kissed 400"
+		);
+	});
+});
+
+describe('gearKeys', () => {
+	it('full name, brand-less suffixes, prefixes and one long distinctive word', () => {
+		expect(gearKeys('Kodak ColorPlus 200')).toEqual(
+			expect.arrayContaining(['kodakcolorplus200', 'colorplus200', 'kodakcolorplus', 'colorplus'])
+		);
+		expect(gearKeys('Kodak Gold 200')).not.toContain('kodak');
+		expect(gearKeys('Kodak Gold 200')).not.toContain('200');
+		expect(gearKeys('Fuji Speed 400')).not.toContain('speed');
+		expect(gearKeys('NX500')).toEqual(['nx500']);
 	});
 });

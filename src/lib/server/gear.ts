@@ -8,7 +8,6 @@ export type GearRow = typeof gear.$inferSelect;
 export type GearItem = {
 	kind: GearKind;
 	name: string;
-	aliases: string[];
 	fixedLens: string | null;
 };
 
@@ -28,7 +27,38 @@ export type GearMatch = {
 };
 
 /**
- * 문자열에서 등록된 장비를 찾는다. 긴 이름부터 시도해 "Kodak ColorPlus 200" 이 "Kodak" 보다 먼저 잡히게.
+ * 장비 이름에서 폴더명에 나올 법한 열쇠들을 만든다 (별칭 대신).
+ *  - 이름 전체 (공백·대소문자 무시): "Kodak ColorPlus 200" → kodakcolorplus200
+ *  - 앞 단어(브랜드)들을 뺀 나머지: colorplus200, 200 (5자 이상에 글자가 있어야 — "200" 같은 숫자만은 제외)
+ *  - 뒤 단어들을 뺀 앞부분: kodakcolorplus (단어 2개 이상)
+ *  - 유독 긴 단어 하나: colorplus, ultramax, sunkissed (6자 이상 글자 단어 중 가장 긴 것)
+ * 긴 열쇠가 먼저 잡히므로 "Kodak Gold 200" 폴더에 ColorPlus 가 붙는 일은 없다 (gold200 만 Gold 에 맞음).
+ */
+export function gearKeys(name: string): string[] {
+	const tokens = name
+		.normalize('NFC')
+		.split(/[\s\-_.·'’]+/)
+		.map((t) => norm(t))
+		.filter(Boolean);
+	const keys = new Set<string>();
+	const ok = (k: string, minLen: number) => k.length >= minLen && /[a-z가-힣]/.test(k);
+	if (tokens.length === 0) return [];
+	keys.add(tokens.join(''));
+	for (let i = 1; i < tokens.length; i++) {
+		const k = tokens.slice(i).join('');
+		if (ok(k, 5)) keys.add(k);
+	}
+	for (let j = tokens.length - 1; j >= 2; j--) {
+		const k = tokens.slice(0, j).join('');
+		if (ok(k, 5)) keys.add(k);
+	}
+	const longest = [...tokens].filter((t) => ok(t, 6)).sort((a, b) => b.length - a.length)[0];
+	if (longest) keys.add(longest);
+	return [...keys].filter((k) => k.length >= 2);
+}
+
+/**
+ * 문자열에서 등록된 장비를 찾는다. 긴 열쇠부터 시도해 "Kodak ColorPlus 200" 이 "Kodak" 보다 먼저 잡히게.
  * 찾은 토큰은 rest 에서 제거한다. 고정렌즈 카메라는 렌즈를 같이 채운다.
  */
 export function matchGear(text: string, items: GearItem[]): GearMatch {
@@ -36,8 +66,7 @@ export function matchGear(text: string, items: GearItem[]): GearMatch {
 	const n = norm(text);
 	const used: { start: number; end: number }[] = [];
 	const candidates = items
-		.flatMap((g) => [g.name, ...g.aliases].map((a) => ({ g, key: norm(a) })))
-		.filter((c) => c.key.length >= 2)
+		.flatMap((g) => gearKeys(g.name).map((key) => ({ g, key })))
 		.sort((a, b) => b.key.length - a.key.length);
 	const consumed = new Set<string>();
 	for (const c of candidates) {
@@ -77,12 +106,7 @@ export async function listGear(db: Db): Promise<GearRow[]> {
 }
 
 export function toItems(rows: GearRow[]): GearItem[] {
-	return rows.map((r) => ({
-		kind: r.kind,
-		name: r.name,
-		aliases: r.aliases ?? [],
-		fixedLens: r.fixedLens
-	}));
+	return rows.map((r) => ({ kind: r.kind, name: r.name, fixedLens: r.fixedLens }));
 }
 
 export async function addGear(
@@ -90,7 +114,6 @@ export async function addGear(
 	input: {
 		kind: GearKind;
 		name: string;
-		aliases: string[];
 		fixedLens: string | null;
 		format: string | null;
 		notes: string | null;
@@ -102,7 +125,6 @@ export async function addGear(
 		.onConflictDoUpdate({
 			target: [gear.kind, gear.name],
 			set: {
-				aliases: input.aliases,
 				fixedLens: input.fixedLens,
 				format: input.format,
 				notes: input.notes,
@@ -118,7 +140,6 @@ export async function updateGear(
 	id: string,
 	patch: {
 		name: string;
-		aliases: string[];
 		fixedLens: string | null;
 		format: string | null;
 		notes: string | null;

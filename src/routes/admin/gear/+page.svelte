@@ -25,14 +25,6 @@
 			<label class="field"
 				><span>이름 (표시용)</span><input type="text" name="name" value={g.name} required /></label
 			>
-			<label class="field"
-				><span>별칭 (선택, 쉼표로 구분)</span><input
-					type="text"
-					name="aliases"
-					value={(g.aliases ?? []).join(', ')}
-					placeholder="예: colorplus200"
-				/></label
-			>
 			{#if g.kind === 'camera'}
 				<label class="field"
 					><span>고정 렌즈 (있으면)</span><input
@@ -64,13 +56,12 @@
 	<h1>장비</h1>
 	<p class="mono dim">
 		가진 카메라·렌즈·필름을 등록해 두면 롤 폴더명에서 자동으로 찾아내고, 폴더 정보와 사진별 수정에서
-		드롭다운으로 고릅니다. 이름은 띄어쓰기·대소문자를 무시하고 그대로 찾으므로(Rollei 35S ↔
-		rollei35s) 별칭은 폴더명에 줄여 쓴 말이 있을 때만 — 예: 'Kodak ColorPlus 200' 을 폴더명엔
-		'colorplus200' 으로 쓴다면 별칭에 colorplus200. 고정렌즈 바디는 렌즈를 적어 두면 폴더 정보에서
-		그 카메라를 고를 때 렌즈가 자동으로 잠깁니다. 포맷은 디지털은 센서(1" 이하 · 1" · 4/3 · APS-C ·
-		APS-H · FF · 4433), 필름은 규격(110 · 135 · 120 · 220 · 4x5 · 8x10)만 고릅니다 — 하프/풀,
-		645/6x6 같은 프레임은 바디가 정하므로 따로 두지 않습니다. 조리개·셔터 같은 노출 값은 필름에서는
-		다루지 않습니다.
+		드롭다운으로 고릅니다. 폴더명은 띄어쓰기·대소문자를 무시하고 찾고, 브랜드를 뺀
+		나머지(colorplus200)나 유독 긴 단어 하나(ultramax)만 있어도 잡힙니다 — 못 찾으면 폴더 정보에서
+		손으로 고르면 됩니다. 고정렌즈 바디는 렌즈를 적어 두면 폴더 정보에서 그 카메라를 고를 때 렌즈가
+		자동으로 잠깁니다. 포맷은 디지털은 센서(1" 이하 · 1" · 4/3 · APS-C · APS-H · FF · 4433), 필름은
+		규격(110 · 135 · 120 · 220 · 4x5 · 8x10)만 고릅니다 — 하프/풀, 645/6x6 같은 프레임은 바디가
+		정하므로 따로 두지 않습니다.
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
@@ -85,18 +76,16 @@
 		<table class="table gear">
 			<colgroup>
 				<col style="width: 7%" />
-				<col style="width: 22%" />
-				<col style="width: 16%" />
-				<col style="width: 15%" />
-				<col style="width: 11%" />
+				<col style="width: 26%" />
+				<col style="width: 18%" />
+				<col style="width: 12%" />
 				<col />
-				<col style="width: 1%" />
+				<col style="width: 250px" />
 			</colgroup>
 			<thead>
 				<tr>
 					<th>종류</th>
 					<th>이름</th>
-					<th>별칭</th>
 					<th>고정 렌즈</th>
 					<th>포맷</th>
 					<th>메모</th>
@@ -108,7 +97,6 @@
 					<tr class:group-start={isFirst(i) && i > 0}>
 						<td class="mono dim">{isFirst(i) ? label(g.kind) : ''}</td>
 						<td class="wrap">{g.name}</td>
-						<td class="mono dim wrap">{(g.aliases ?? []).join(', ')}</td>
 						<td class="mono wrap">{g.kind === 'camera' ? (g.fixedLens ?? '-') : ''}</td>
 						<td class="mono">{g.format ?? '-'}</td>
 						<td class="dim wrap">{g.notes ?? ''}</td>
@@ -162,7 +150,7 @@
 						</td>
 					</tr>
 					{#if open[g.id]}
-						<tr class="editrow"><td colspan="7">{@render editForm(g)}</td></tr>
+						<tr class="editrow"><td colspan="6">{@render editForm(g)}</td></tr>
 					{/if}
 				{/each}
 			</tbody>
@@ -188,13 +176,6 @@
 						: kind === 'lens'
 							? '예: Nikkor 50mm f/1.4'
 							: '예: Rollei 35S'}
-				/></label
-			>
-			<label class="field"
-				><span>별칭 (선택, 쉼표로 구분)</span><input
-					type="text"
-					name="aliases"
-					placeholder={kind === 'film' ? '예: colorplus200' : '예: 7sii'}
 				/></label
 			>
 			{#if kind === 'camera'}

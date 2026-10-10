@@ -44,7 +44,6 @@ export function parseRollFolder(
 	gear: {
 		kind: 'camera' | 'lens' | 'film';
 		name: string;
-		aliases: string[];
 		fixedLens: string | null;
 	}[] = []
 ): {

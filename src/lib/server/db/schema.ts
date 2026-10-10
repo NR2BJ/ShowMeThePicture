@@ -243,8 +243,6 @@ export const gear = pgTable(
 		kind: gearKind('kind').notNull(),
 		/** 표시 이름 (예: Rollei 35S, Kodak ColorPlus 200) */
 		name: text('name').notNull(),
-		/** 폴더명에서 찾을 때 쓰는 별칭들 (예: rollei35s, colorplus200). 이름 자체도 항상 매칭 대상 */
-		aliases: text('aliases').array().notNull().default([]),
 		/** 고정렌즈 바디면 그 렌즈 이름 → 사진 렌즈 칸 자동 채움 */
 		fixedLens: text('fixed_lens'),
 		/** 35mm / 120 / … (카메라·필름) */

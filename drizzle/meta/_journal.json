@@ -57,6 +57,13 @@
       "when": 1791629726776,
       "tag": "0007_folder_confirmed",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791636064448,
+      "tag": "0008_gear_no_aliases",
+      "breakpoints": true
     }
   ]
 }

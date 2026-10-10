@@ -25,14 +25,9 @@ export const actions: Actions = {
 		const kind: GearKind = kindRaw === 'lens' ? 'lens' : kindRaw === 'film' ? 'film' : 'camera';
 		const name = str(form.get('name'));
 		if (!name) return fail(400, { error: '이름을 입력하세요' });
-		const aliases = String(form.get('aliases') ?? '')
-			.split(/[,\n]/)
-			.map((s) => s.trim())
-			.filter(Boolean);
 		await addGear(db(), {
 			kind,
 			name,
-			aliases,
 			fixedLens: kind === 'camera' ? str(form.get('fixedLens')) : null,
 			format: str(form.get('format')),
 			notes: str(form.get('notes'))
@@ -45,13 +40,8 @@ export const actions: Actions = {
 		const id = String(form.get('id') ?? '');
 		const name = str(form.get('name'));
 		if (!id || !name) return fail(400, { error: '이름을 입력하세요' });
-		const aliases = String(form.get('aliases') ?? '')
-			.split(/[,\n]/)
-			.map((s) => s.trim())
-			.filter(Boolean);
 		const row = await updateGear(db(), id, {
 			name,
-			aliases,
 			fixedLens: form.has('fixedLens') ? str(form.get('fixedLens')) : null,
 			format: str(form.get('format')),
 			notes: str(form.get('notes'))
