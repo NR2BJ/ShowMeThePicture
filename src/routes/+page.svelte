@@ -41,7 +41,7 @@
 </script>
 
 <main class="landing">
-	<FilmStrip {rows} />
+	<FilmStrip {rows} frameVh={data.stripVh} />
 	{#if data.frames.length === 0}
 		<p class="empty mono">
 			아직 등록된 사진이 없습니다 · 관리자로 로그인해 라이브러리에 폴더를 등록하세요

@@ -1,6 +1,8 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
+	// svelte-ignore state_referenced_locally
+	let stripVh = $state(data.stripVh);
 </script>
 
 <section class="admin-page">
@@ -21,6 +23,25 @@
 				+ B컷</label
 			>
 		</div>
+		<div class="field">
+			<span
+				>필름 프레임 크기 <output class="mono" for="stripVh">{stripVh}</output>%
+				<span class="dim">(화면 높이 기준)</span></span
+			>
+			<input
+				id="stripVh"
+				type="range"
+				name="stripVh"
+				min="12"
+				max="32"
+				step="1"
+				bind:value={stripVh}
+			/>
+		</div>
+		<p class="mono dim hint">
+			세 줄이 화면에 다 들어가는 건 대략 22% 까지이고, 더 키우면 위아래가 잘린 채 흐릅니다. 저장하면
+			게스트에게도 같은 크기로 보입니다.
+		</p>
 		<p class="mono dim hint">
 			공개 상태인 보정본 중에서 무작위로 고릅니다. 보정본 없이 원본만 있는 사진은 랜딩에 나오지
 			않습니다.
@@ -35,6 +56,10 @@
 </section>
 
 <style>
+	input[type='range'] {
+		width: min(100%, 420px);
+		accent-color: var(--color-amber);
+	}
 	.edit {
 		max-width: 760px;
 	}

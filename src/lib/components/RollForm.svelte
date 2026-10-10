@@ -78,7 +78,7 @@
 			<span>렌즈</span>
 			{#if locked}
 				<input type="hidden" name="lens" value={locked} />
-				<div class="locked mono">{locked} <span class="dim">· 고정 렌즈</span></div>
+				<div class="locked" title="고정 렌즈">{locked}</div>
 			{:else}
 				<GearSelect name="lens" value={f.lens} options={gear.lens} />
 			{/if}
@@ -133,21 +133,6 @@
 	}
 	.grid .wide {
 		grid-column: 1 / -1;
-	}
-	.grid input[type='month'] {
-		background: #141311;
-		border: 1px solid var(--color-ink-faint);
-		color: var(--color-ink);
-		padding: 11px 13px;
-		font: inherit;
-		border-radius: 2px;
-		color-scheme: dark;
-	}
-	.locked {
-		padding: 11px 13px;
-		border: 1px dashed var(--color-ink-faint);
-		border-radius: 2px;
-		font-size: 13px;
 	}
 	.acts {
 		display: flex;

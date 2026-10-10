@@ -26,11 +26,11 @@
 				><span>이름 (표시용)</span><input type="text" name="name" value={g.name} required /></label
 			>
 			<label class="field"
-				><span>별칭 (쉼표로 구분)</span><input
+				><span>별칭 (선택, 쉼표로 구분)</span><input
 					type="text"
 					name="aliases"
 					value={(g.aliases ?? []).join(', ')}
-					placeholder="폴더명에서 찾을 때 쓰는 이름"
+					placeholder="예: colorplus200"
 				/></label
 			>
 			{#if g.kind === 'camera'}
@@ -63,12 +63,14 @@
 <section class="admin-page">
 	<h1>장비</h1>
 	<p class="mono dim">
-		가진 카메라·렌즈·필름을 등록해 두면 롤 폴더명에서 자동으로 찾아내고(띄어쓰기·대소문자 무시, 별칭
-		가능), 폴더 정보와 사진별 수정에서 드롭다운으로 고릅니다. 고정렌즈 바디는 렌즈를 적어 두면 폴더
-		정보에서 그 카메라를 고를 때 렌즈가 자동으로 잠깁니다. 포맷은 디지털은 센서(1" 이하 · 1" · 4/3 ·
-		APS-C · APS-H · FF · 4433), 필름은 규격(110 · 135 · 120 · 220 · 4x5 · 8x10)만 고릅니다 —
-		하프/풀, 645/6x6 같은 프레임은 바디가 정하므로 따로 두지 않습니다. 조리개·셔터 같은 노출 값은
-		필름에서는 다루지 않습니다.
+		가진 카메라·렌즈·필름을 등록해 두면 롤 폴더명에서 자동으로 찾아내고, 폴더 정보와 사진별 수정에서
+		드롭다운으로 고릅니다. 이름은 띄어쓰기·대소문자를 무시하고 그대로 찾으므로(Rollei 35S ↔
+		rollei35s) 별칭은 폴더명에 줄여 쓴 말이 있을 때만 — 예: 'Kodak ColorPlus 200' 을 폴더명엔
+		'colorplus200' 으로 쓴다면 별칭에 colorplus200. 고정렌즈 바디는 렌즈를 적어 두면 폴더 정보에서
+		그 카메라를 고를 때 렌즈가 자동으로 잠깁니다. 포맷은 디지털은 센서(1" 이하 · 1" · 4/3 · APS-C ·
+		APS-H · FF · 4433), 필름은 규격(110 · 135 · 120 · 220 · 4x5 · 8x10)만 고릅니다 — 하프/풀,
+		645/6x6 같은 프레임은 바디가 정하므로 따로 두지 않습니다. 조리개·셔터 같은 노출 값은 필름에서는
+		다루지 않습니다.
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
@@ -189,12 +191,10 @@
 				/></label
 			>
 			<label class="field"
-				><span>별칭 (쉼표로 구분)</span><input
+				><span>별칭 (선택, 쉼표로 구분)</span><input
 					type="text"
 					name="aliases"
-					placeholder={kind === 'film'
-						? '폴더명에서 찾을 때, 예: colorplus200, colorplus'
-						: '폴더명에서 찾을 때, 예: rollei35s'}
+					placeholder={kind === 'film' ? '예: colorplus200' : '예: 7sii'}
 				/></label
 			>
 			{#if kind === 'camera'}

@@ -2,10 +2,15 @@
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import type { StripRow } from '#lib/types.ts';
 
-	let { rows }: { rows: StripRow[] } = $props();
+	// frameVh: 프레임 높이(화면 높이 %), 관리자 설정값
+	let { rows, frameVh = 21 }: { rows: StripRow[]; frameVh?: number } = $props();
 </script>
 
-<div class="strips" aria-label="무작위 사진 필름 스트립">
+<div
+	class="strips"
+	aria-label="무작위 사진 필름 스트립"
+	style:--fh="clamp(96px, {frameVh}vh, 640px)"
+>
 	{#each rows as row, r (r)}
 		<section class="strip" data-dir={row.dir} style:--dur="{row.dur}s" style:--tilt="{row.tilt}deg">
 			<div class="track">
@@ -39,13 +44,12 @@
 <style>
 	/* 크기는 전부 화면 높이에 비례 — 4K 100% 에서도 얇지 않고, 작은 창에서도 세 줄이 들어간다 */
 	.strips {
-		--fh: clamp(96px, 21vh, 520px);
 		--hole: clamp(6px, 0.75vh, 16px);
 		--lab: clamp(11px, 1vh, 20px);
 		display: flex;
 		flex-direction: column;
 		justify-content: center;
-		gap: clamp(10px, 2.6vh, 60px);
+		gap: clamp(10px, 2.2vh, 56px);
 		height: 100%;
 	}
 	.strip {
@@ -59,7 +63,8 @@
 		display: flex;
 		gap: clamp(8px, 0.9vh, 20px);
 		width: max-content;
-		padding: clamp(14px, 2.2vh, 48px) 0;
+		/* 각인 글자가 구멍 띠와 겹치지 않도록 띠(1.3vh) + 글자(1.1vh) + 여유만큼 */
+		padding: clamp(18px, 3vh, 64px) 0;
 		background: var(--color-base);
 		animation: scroll var(--dur, 90s) linear infinite;
 	}
@@ -79,6 +84,7 @@
 	.track::after {
 		content: '';
 		position: absolute;
+		z-index: 0; /* 구멍 띠는 항상 프레임·각인 아래 (::after 가 위로 올라와 아래 숫자를 가리던 것) */
 		left: 0;
 		right: 0;
 		height: var(--hole);
@@ -94,6 +100,7 @@
 	}
 	.frame {
 		position: relative;
+		z-index: 1;
 		display: block;
 		flex: none;
 		height: var(--fh);
@@ -130,11 +137,11 @@
 		opacity: 0.9;
 	}
 	.rt {
-		top: calc(var(--lab) * -1.45);
+		top: calc(var(--lab) * -1.35);
 		left: 1px;
 	}
 	.rb {
-		bottom: calc(var(--lab) * -1.45);
+		bottom: calc(var(--lab) * -1.35);
 		right: 1px;
 	}
 	.rb::before {

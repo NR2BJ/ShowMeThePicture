@@ -290,7 +290,7 @@
 					{#if ovLocked}
 						<input type="hidden" name="lens" value={ovLocked} />
 						<div class="ro">
-							<span>렌즈</span><span class="mono dim">{ovLocked} · 고정 렌즈</span>
+							<span>렌즈</span><span class="mono dim">{ovLocked}</span>
 						</div>
 					{:else}
 						<label
