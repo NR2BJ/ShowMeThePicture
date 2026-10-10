@@ -9,6 +9,7 @@ import {
 	monthLabel,
 	parseFilter
 } from './archive';
+import { splitByRelevance } from './search';
 import type { GalleryItem } from './server/gallery';
 
 const sp = (q: string) => new URLSearchParams(q);
@@ -38,6 +39,22 @@ describe('parseFilter', () => {
 		expect(archiveHref({ medium: ['film'] }, { from: '2025-09' })).toBe(
 			'/archive?medium=film&from=2025-09'
 		);
+	});
+});
+
+describe('splitByRelevance', () => {
+	const mk = (sims: number[]) => sims.map((s, i) => ({ id: String(i), dist: 1 - s }));
+	it('folds results far below the best match, keeping at least six', () => {
+		const r = splitByRelevance(mk([0.3, 0.28, 0.2, 0.17, 0.1, 0.08, 0.05, 0.04]));
+		expect(r.strong.map((x) => x.id)).toEqual(['0', '1', '2', '3', '4', '5']); // 6 보장 (0.165 기준이면 4개)
+		expect(r.weak.length).toBe(2);
+		const r2 = splitByRelevance(mk([0.3, 0.29, 0.28, 0.27, 0.26, 0.25, 0.24, 0.23, 0.05]));
+		expect(r2.strong.length).toBe(8);
+		expect(r2.weak.length).toBe(1);
+	});
+	it('handles empty and tiny lists', () => {
+		expect(splitByRelevance([]).strong).toEqual([]);
+		expect(splitByRelevance(mk([0.1, 0.01])).strong.length).toBe(2);
 	});
 });
 

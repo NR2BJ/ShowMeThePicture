@@ -35,3 +35,20 @@ export const SEARCH_MODELS: { id: string; label: string; note: string }[] = [
 	}
 ];
 export const needsLanguage = (model: string) => model.startsWith('nllb');
+
+/** 검색 결과 나누기: 가장 가까운 사진 대비 유사도가 RELEVANCE_RATIO 미만이면 '관련도 낮음'으로 접는다 (최소 MIN_STRONG 장은 보여줌).
+ *  유사도 = 1 − 코사인 거리. 모델마다 절대값이 달라 상대 기준을 쓴다. */
+export const RELEVANCE_RATIO = 0.55;
+export const MIN_STRONG = 6;
+export function splitByRelevance<T extends { dist: number }>(
+	items: T[]
+): { strong: T[]; weak: T[]; top: number; cut: number } {
+	if (items.length === 0) return { strong: [], weak: [], top: 0, cut: 0 };
+	const sims = items.map((i) => 1 - i.dist);
+	const top = sims[0];
+	const cut = top > 0 ? top * RELEVANCE_RATIO : -Infinity;
+	let n = 0;
+	for (const s of sims) if (s >= cut) n++;
+	n = Math.max(Math.min(MIN_STRONG, items.length), n);
+	return { strong: items.slice(0, n), weak: items.slice(n), top, cut };
+}

@@ -1,7 +1,15 @@
 <script lang="ts">
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
+	import { splitByRelevance } from '#lib/search.ts';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
+	// 가장 가까운 사진에 한참 못 미치는 결과는 접어 둔다 — 60장을 무조건 다 깔면 뒤쪽은 엉뚱해 보인다
+	const split = $derived(splitByRelevance(data.items));
+	let showWeak = $state(false);
+	$effect(() => {
+		data.q;
+		showWeak = false;
+	});
 	const EXAMPLES = [
 		'비 오는 밤 골목',
 		'역광 인물',
@@ -41,7 +49,24 @@
 				아직 임베딩된 사진이 없습니다 — 관리자 설정에서 ML 서버 연결과 임베딩 상태를 확인하세요.{/if}
 		</p>
 	{:else}
-		<PhotoGrid items={data.items} ctx="archive" />
+		<PhotoGrid items={split.strong} ctx="archive" />
+		{#if split.weak.length > 0}
+			<p class="mono dim more">
+				{#if showWeak}
+					관련도 낮은 {split.weak.length}장도 보는 중 ·
+					<button type="button" onclick={() => (showWeak = false)}>접기</button>
+				{:else}
+					관련도 낮은 {split.weak.length}장은 접어 두었습니다 ·
+					<button type="button" onclick={() => (showWeak = true)}>펼치기</button>
+				{/if}
+				{#if data.admin}
+					<span class="dim">
+						· 유사도 최고 {split.top.toFixed(3)} / 기준 {split.cut.toFixed(3)}</span
+					>
+				{/if}
+			</p>
+			{#if showWeak}<PhotoGrid items={split.weak} ctx="archive" />{/if}
+		{/if}
 	{/if}
 </section>
 
@@ -84,6 +109,19 @@
 	.q input:focus {
 		outline: 1px solid var(--color-amber);
 		border-color: var(--color-amber);
+	}
+	.more {
+		margin: 24px 0 14px;
+		font-size: 15px;
+	}
+	.more button {
+		font: inherit;
+		color: var(--color-amber);
+		background: none;
+		border: 0;
+		cursor: pointer;
+		text-decoration: underline;
+		text-underline-offset: 3px;
 	}
 	.examples {
 		display: flex;
