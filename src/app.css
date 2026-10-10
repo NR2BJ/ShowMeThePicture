@@ -42,7 +42,8 @@
 /* 관리자 페이지 공용 (라우트 여러 곳에서 쓰므로 전역) */
 @layer components {
 	.admin-page {
-		max-width: 1080px;
+		max-width: 1480px;
+		overflow-x: auto; /* 좁은 화면에서는 표가 세로로 깨지는 대신 가로로 넘긴다 */
 		margin: 0 auto;
 		padding: 24px 40px 80px;
 	}
@@ -124,6 +125,7 @@
 		text-transform: uppercase;
 		border-radius: 2px;
 		cursor: pointer;
+		white-space: nowrap;
 	}
 	.btn:hover {
 		background: var(--color-ink);
@@ -175,6 +177,10 @@
 		padding: 10px;
 		border-bottom: 1px solid rgba(58, 55, 51, 0.5);
 		vertical-align: top;
+	}
+	/* 숫자·포맷 같은 짧은 값이 세로로 쪼개지지 않게 */
+	.table td.mono {
+		white-space: nowrap;
 	}
 	.mono {
 		font-family: var(--font-mono);

@@ -23,7 +23,6 @@
 		{#each links as l (l.href)}
 			<a href={l.href} aria-current={current(l.href, l.exact) ? 'page' : undefined}>{l.label}</a>
 		{/each}
-		<a href="/">사이트로 →</a>
 		<form method="POST" action="/admin/logout">
 			<button class="btn quiet" type="submit">로그아웃 · {data.admin.username}</button>
 		</form>

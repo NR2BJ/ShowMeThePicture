@@ -102,11 +102,7 @@
 			<div class="field">
 				<span>포맷</span>
 				{#key kind}
-					<FormatSelect
-						name="format"
-						kind={kind === 'film' ? 'film' : 'any'}
-						recent={data.recentFormats}
-					/>
+					<FormatSelect name="format" kind={kind === 'film' ? 'film' : 'any'} />
 				{/key}
 			</div>
 			<label class="field"><span>메모</span><input type="text" name="notes" /></label>

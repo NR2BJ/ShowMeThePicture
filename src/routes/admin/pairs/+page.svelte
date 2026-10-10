@@ -340,7 +340,7 @@
 					<button
 						class="btn quiet"
 						type="button"
-						onclick={() => act({ action: 'unconfirm', photoId: m.photoId }, m)}>확정 취소</button
+						onclick={() => act({ action: 'unconfirm', photoId: m.photoId }, m)}>미확정으로</button
 					>
 				{:else}
 					<button
@@ -352,10 +352,14 @@
 				<button
 					class="btn danger"
 					type="button"
-					onclick={() => act({ action: 'unpair', editId: m.edit.id }, m)}>풀기</button
+					onclick={() => act({ action: 'unpair', editId: m.edit.id }, m)}>연결 풀기</button
 				>
 				<button class="btn quiet" type="button" onclick={() => (modal = null)}>닫기</button>
 			</div>
+			<span class="hint dim"
+				>미확정으로 = 연결은 두고 '자동 묶임' 탭으로 되돌려 다시 검토 · 연결 풀기 = 보정본을 떼어
+				단독 사진으로</span
+			>
 		</div>
 	{/if}
 </dialog>
@@ -501,6 +505,7 @@
 		margin-bottom: 6px;
 	}
 	dialog.modal {
+		margin: auto; /* 전역 reset 이 margin:0 으로 만들어 좌상단에 붙던 것을 가운데로 */
 		width: min(96vw, 1400px);
 		max-width: 96vw;
 		padding: 0;
@@ -521,10 +526,11 @@
 		margin: 0;
 		min-width: 0;
 	}
+	/* 비율이 달라도 두 상자 높이를 같게 — 캡션이 같은 줄에 온다 */
 	.cmp img {
 		display: block;
 		width: 100%;
-		max-height: 70vh;
+		height: min(70vh, 820px);
 		object-fit: contain;
 		background: #000;
 	}
@@ -546,9 +552,16 @@
 	.mbar .acts {
 		padding: 0;
 	}
+	.hint {
+		flex-basis: 100%;
+		font-size: 11px;
+	}
 	@media (max-width: 720px) {
 		.cmp {
 			grid-template-columns: 1fr;
+		}
+		.cmp img {
+			height: 38vh;
 		}
 	}
 </style>

@@ -14,18 +14,9 @@ export const load: PageServerLoad = async ({ url }) => {
 	const gear = await listGear(db());
 	const folders = await listFolderMeta(db());
 	const tab = url.searchParams.get('tab') === 'confirmed' ? 'confirmed' : 'pending';
-	// 포맷 '전에 쓴 값': 폴더와 장비에 이미 들어 있는 포맷들
-	const recentFormats = [
-		...new Set(
-			[...folders.map((f) => f.filmFormat), ...gear.map((g) => g.format)].filter(
-				(x): x is string => !!x
-			)
-		)
-	].sort();
 	return {
 		folders,
 		tab,
-		recentFormats,
 		gear: {
 			camera: gear.filter((g) => g.kind === 'camera').map((g) => g.name),
 			lens: gear.filter((g) => g.kind === 'lens').map((g) => g.name),

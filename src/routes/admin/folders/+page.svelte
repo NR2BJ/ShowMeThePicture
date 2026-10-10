@@ -69,12 +69,7 @@
 			>
 			<div class="field">
 				<span>포맷</span>
-				<FormatSelect
-					name="filmFormat"
-					value={f.filmFormat}
-					kind="film"
-					recent={data.recentFormats}
-				/>
+				<FormatSelect name="filmFormat" value={f.filmFormat} kind="film" />
 			</div>
 			<label class="field"
 				><span>스캐너</span><input type="text" name="scanner" value={f.scanner ?? ''} /></label
