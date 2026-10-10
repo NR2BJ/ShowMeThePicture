@@ -8,7 +8,8 @@
 		type PairItem,
 		type PairListItem,
 		type PairPage,
-		type PairTab
+		type PairTab,
+		type Thumb
 	} from '#lib/pairs.ts';
 	import type { PageProps } from './$types';
 
@@ -28,6 +29,9 @@
 	let modal = $state<PairItem | null>(null);
 	let peek = $state<{ item: PairItem; style: string } | null>(null);
 	let dlg: HTMLDialogElement | undefined = $state();
+	// 원본 없는 보정본 카드: 입력한 파일명 일부에 맞는 원본 후보 (편집 파일 id → 후보들)
+	let suggest = $state<Record<string, Thumb[]>>({});
+	let suggestTimer = 0;
 	let bottomEl: HTMLElement | undefined = $state();
 
 	// 탭을 바꾸거나 일괄 작업 뒤 load 가 다시 돌면 목록을 새로
@@ -125,13 +129,33 @@
 		peek = null;
 	}
 
+	/** 파일명 일부를 치면 잠시 뒤 원본 후보를 불러온다 (같은 이름이 여러 폴더에 있어도 경로·썸네일로 고른다) */
+	function suggestInput(e: Event, item: PairListItem) {
+		const q = (e.currentTarget as HTMLInputElement).value.trim();
+		clearTimeout(suggestTimer);
+		if (q.length < 2) {
+			suggest[item.edit.id] = [];
+			return;
+		}
+		suggestTimer = window.setTimeout(async () => {
+			try {
+				const r = await fetch(`/api/admin/pairs?find=${encodeURIComponent(q)}`);
+				if (!r.ok) throw new Error(`HTTP ${r.status}`);
+				suggest[item.edit.id] = ((await r.json()) as { files: Thumb[] }).files;
+			} catch (err) {
+				error = err instanceof Error ? err.message : String(err);
+			}
+		}, 250);
+	}
 	function manualSubmit(e: SubmitEvent, item: PairListItem) {
 		e.preventDefault();
-		const input = (e.currentTarget as HTMLFormElement).elements.namedItem(
-			'query'
-		) as HTMLInputElement;
-		const q = input.value.trim();
-		if (q) void act({ action: 'manual', editId: item.edit.id, query: q }, item);
+		// 엔터: 후보가 하나뿐이면 그걸로 연결
+		const list = suggest[item.edit.id] ?? [];
+		if (list.length === 1)
+			void act({ action: 'manual', editId: item.edit.id, originalId: list[0].id }, item);
+	}
+	function pickOriginal(item: PairListItem, o: Thumb) {
+		void act({ action: 'manual', editId: item.edit.id, originalId: o.id }, item);
 	}
 
 	onMount(() => {
@@ -281,9 +305,29 @@
 						<span class="dim name">{item.edit.source} · {item.edit.relPath}</span>
 					</div>
 					<form class="manual" onsubmit={(e) => manualSubmit(e, item)}>
-						<input name="query" placeholder="원본 파일명 (예: SAM_0012)" aria-label="원본 파일명" />
-						<button class="btn" type="submit">연결</button>
+						<input
+							name="query"
+							placeholder="원본 파일명 일부 (예: 0456)"
+							aria-label="원본 파일명"
+							autocomplete="off"
+							oninput={(e) => suggestInput(e, item)}
+						/>
 					</form>
+					{#if (suggest[item.edit.id] ?? []).length > 0}
+						<ul class="suggest" aria-label="원본 후보">
+							{#each suggest[item.edit.id] as o (o.id)}
+								<li>
+									<button type="button" onclick={() => pickOriginal(item, o)}>
+										<img src={o.thumb} alt="" loading="lazy" />
+										<span class="mono">
+											<span class="name">{o.filename}</span>
+											<span class="dim name">{o.source} · {o.relPath}</span>
+										</span>
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
 				</div>
 			{/if}
 		{/each}
@@ -473,6 +517,46 @@
 		background: #0b0b0a;
 		border: 1px solid var(--color-ink-faint);
 		color: var(--color-ink);
+	}
+	.suggest {
+		list-style: none;
+		margin: 0;
+		padding: 0 10px 10px;
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		max-height: 320px;
+		overflow-y: auto;
+	}
+	.suggest button {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+		width: 100%;
+		padding: 4px;
+		margin: 0;
+		background: #0b0b0a;
+		border: 1px solid var(--color-ink-faint);
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+	}
+	.suggest button:hover {
+		border-color: var(--color-amber);
+	}
+	.suggest img {
+		width: 64px;
+		aspect-ratio: 3 / 2;
+		object-fit: cover;
+		flex: none;
+	}
+	.suggest .mono {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+		font-size: 11px;
 	}
 	.sentinel {
 		height: 1px;

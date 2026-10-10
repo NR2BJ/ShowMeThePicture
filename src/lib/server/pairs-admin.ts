@@ -219,13 +219,38 @@ export async function listPairTab(
 	};
 }
 
+/** 수동 연결 자동완성: 파일명 일부로 원본 파일을 찾는다 (처리 끝난 것만 — 썸네일이 있어야 고를 수 있다). */
+export async function searchOriginals(db: Db, q: string, limit = 12): Promise<Thumb[]> {
+	const needle = q.trim();
+	if (!needle) return [];
+	const rows = await db
+		.select({ id: files.id })
+		.from(files)
+		.innerJoin(sources, eq(sources.id, files.sourceId))
+		.where(
+			and(
+				eq(sources.role, 'original'),
+				eq(files.status, 'active'),
+				eq(files.derivativesReady, true),
+				sql`${files.filename} ilike ${'%' + needle.replace(/[%_]/g, (c) => '\\' + c) + '%'}`
+			)
+		)
+		.orderBy(files.filename, files.relPath)
+		.limit(Math.min(50, Math.max(1, limit)));
+	const th = await thumbsFor(
+		db,
+		rows.map((r) => r.id)
+	);
+	return rows.map((r) => th.get(r.id)).filter((t): t is Thumb => !!t);
+}
+
 export type PairAction =
 	| { action: 'confirmCandidate'; editId: string; originalId: string }
 	| { action: 'rejectCandidate'; editId: string; originalId: string }
 	| { action: 'accept'; photoId: string }
 	| { action: 'unconfirm'; photoId: string }
 	| { action: 'unpair'; editId: string }
-	| { action: 'manual'; editId: string; query: string };
+	| { action: 'manual'; editId: string; originalId?: string; query?: string };
 
 export type PairActionResult =
 	{ ok: true; message: string } | { ok: false; status: number; error: string };
@@ -271,8 +296,22 @@ export async function runPairAction(db: Db, a: PairAction): Promise<PairActionRe
 			return ok('연결을 풀었습니다');
 		}
 		case 'manual': {
+			if (!a.editId) return bad('id');
+			// 자동완성에서 고른 원본
+			if (a.originalId) {
+				const [o] = await db
+					.select({ id: files.id, filename: files.filename })
+					.from(files)
+					.innerJoin(sources, eq(sources.id, files.sourceId))
+					.where(and(eq(files.id, a.originalId), eq(sources.role, 'original')))
+					.limit(1);
+				if (!o) return bad('원본 파일을 찾을 수 없습니다', 404);
+				const photoId = await attachEdit(db, a.editId, o.id, 'manual', 1, true);
+				if (!photoId) return bad('연결할 수 없습니다', 409);
+				return ok(`${o.filename} 에 연결했습니다`);
+			}
 			const query = (a.query ?? '').trim();
-			if (!a.editId || !query) return bad('파일명을 입력하세요');
+			if (!query) return bad('파일명을 입력하세요');
 			const found = await db
 				.select({ id: files.id, filename: files.filename })
 				.from(files)

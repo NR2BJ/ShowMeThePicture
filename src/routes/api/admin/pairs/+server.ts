@@ -2,12 +2,21 @@
 import { json } from '@sveltejs/kit';
 import { parseTab } from '#lib/pairs.ts';
 import { db } from '#lib/server/db/app.ts';
-import { PAIR_PAGE, listPairTab, runPairAction, type PairAction } from '#lib/server/pairs-admin.ts';
+import {
+	PAIR_PAGE,
+	listPairTab,
+	runPairAction,
+	searchOriginals,
+	type PairAction
+} from '#lib/server/pairs-admin.ts';
 import type { RequestHandler } from './$types';
 
 const headers = { 'cache-control': 'private, no-store' };
 
 export const GET: RequestHandler = async ({ url }) => {
+	// ?find=<파일명 일부> → 수동 연결 자동완성용 원본 목록
+	const find = url.searchParams.get('find');
+	if (find !== null) return json({ files: await searchOriginals(db(), find) }, { headers });
 	const tab = parseTab(url.searchParams.get('tab'));
 	const cursor = url.searchParams.get('cursor');
 	const limitRaw = Number(url.searchParams.get('limit') ?? PAIR_PAGE);
