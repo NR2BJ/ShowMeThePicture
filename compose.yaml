@@ -24,7 +24,8 @@ x-app: &app
     DATABASE_URL: postgres://${POSTGRES_USER:-smtp}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-smtp}
     PHOTOS_ROOT: /photos
     CACHE_DIR: /cache
-    ML_URL: http://ml:3003
+    # 기본은 이 스택의 ml 서비스. 이미 돌고 있는 Immich 의 machine-learning 을 같이 쓰려면 그 주소로 (README '검색' 참고)
+    ML_URL: ${ML_URL:-http://ml:3003}
     # ml-cache 볼륨을 app 에도 붙여 설정 화면에서 받아 둔 모델을 보고 지울 수 있게 (선택)
     ML_CACHE_DIR: /mlcache
     # 컨테이너가 이 uid/gid 로 돈다. 사진 파일을 읽을 수 있고 캐시에 쓸 수 있어야 한다.
@@ -71,8 +72,6 @@ services:
     depends_on:
       db:
         condition: service_healthy
-      ml:
-        condition: service_started
 
   ml:
     # Immich 의 ML 서비스를 임베딩 엔진으로 재사용. OpenVINO 빌드가 /dev/dri 로 Intel Arc A380 을 쓴다.
