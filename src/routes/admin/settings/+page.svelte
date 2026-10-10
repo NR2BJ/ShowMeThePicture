@@ -149,7 +149,13 @@
 						<td class="mono">{m.size}</td>
 						<td class="mono dim">{m.textual ? '글' : '-'} / {m.visual ? '사진' : '-'}</td>
 						<td class="actions">
-							{#if m.name !== data.searchModel}
+							{#if m.name === data.searchModel}
+								<span class="mono dim">사용 중</span>
+							{:else if !m.deletable}
+								<span class="mono dim" title="ml 이 root 로 받은 파일 — app 재시작 뒤 지울 수 있음"
+									>권한 없음 · app 재시작 후</span
+								>
+							{:else}
 								<form
 									method="POST"
 									action="?/deleteModelCache"

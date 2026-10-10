@@ -86,10 +86,13 @@ export const actions: Actions = {
 		const name = String(form.get('name') ?? '');
 		const current = await getSetting<string>(db(), 'search_model', DEFAULT_SEARCH_MODEL);
 		if (name === current) return fail(400, { error: '지금 쓰는 모델의 캐시는 지우지 않습니다.' });
-		const ok = await deleteModelCache(config.ML_CACHE_DIR, name);
-		return ok
-			? { ok: `${name} 캐시를 지웠습니다.` }
-			: fail(404, { error: '그 모델 캐시가 없습니다.' });
+		const r = await deleteModelCache(config.ML_CACHE_DIR, name);
+		if (r === 'ok') return { ok: `${name} 캐시를 지웠습니다.` };
+		if (r === 'denied')
+			return fail(409, {
+				error: `${name} 은 ml 컨테이너가 root 로 받은 파일이라 지금은 못 지웁니다. Portainer 에서 app 컨테이너를 한 번 재시작하면(기동 때 소유권을 맞춤) 지울 수 있습니다.`
+			});
+		return fail(404, { error: '그 모델 캐시가 없습니다.' });
 	},
 	clearEmbeddings: async ({ locals }) => {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });
