@@ -1,23 +1,23 @@
 // 검색 모델 목록 (설정 드롭다운). Immich ML 모델 zoo 의 이름 그대로. 서버 전용 코드 금지.
 // 한국어 숫자는 Immich 문서의 벤치(한국어 질의 recall %). 목록에 없는 값이 저장돼 있으면 '(예전 값)'으로 남는다.
-// A380 + Immich ML OpenVINO(2026-10): 사진 쪽이 SO400M 인 모델은 추론 때 "Unable to cast reference from base to derived type" 로
-// 전부 실패한다(Immich 스마트 검색도 같은 에러 4970회 — 사용자 서버). CPU 이미지(-openvino 없는 태그)로는 돈다.
-export const DEFAULT_SEARCH_MODEL = 'ViT-L-16-SigLIP2-256__webli';
+// Intel Arc(A380) + OpenVINO: 사진 쪽이 SO400M 인 모델은 기본 모델 파일(main)로는 추론이 "Unable to cast reference" 로 실패한다.
+// Immich ML v3.3 이상 + MACHINE_LEARNING_MODEL_REVISION=v2 (새 변환본)면 돈다 — immich-app/immich#32035, 사용자 서버에서 확인(2026-10).
+export const DEFAULT_SEARCH_MODEL = 'ViT-SO400M-16-SigLIP2-384__webli';
 export const SEARCH_MODELS: { id: string; label: string; note: string }[] = [
-	{
-		id: 'ViT-L-16-SigLIP2-256__webli',
-		label: 'SigLIP2 L/16',
-		note: '한국어 75 · 기본 · A380 GPU 에서 돈다'
-	},
 	{
 		id: 'ViT-SO400M-16-SigLIP2-384__webli',
 		label: 'SigLIP2 SO400M 384',
-		note: '한국어 77 · A380 OpenVINO 실패 · CPU ML 전용(사진 한 장 약 2초)'
+		note: '한국어 77 · 기본 · Intel Arc 는 ML 에 MODEL_REVISION=v2 필요'
 	},
 	{
 		id: 'nllb-clip-large-siglip__v1',
 		label: 'NLLB-CLIP large',
-		note: '한국어 81 · A380 OpenVINO 실패 · CPU ML 전용 · 질의 언어 코드 사용'
+		note: '한국어 81 · 질의 언어 코드 사용 · Intel Arc 는 v2 필요 · A380 미확인'
+	},
+	{
+		id: 'ViT-L-16-SigLIP2-256__webli',
+		label: 'SigLIP2 L/16',
+		note: '한국어 75 · 가벼운 대안 · 어느 설정에서나 돈다'
 	}
 ];
 export const needsLanguage = (model: string) => model.startsWith('nllb');

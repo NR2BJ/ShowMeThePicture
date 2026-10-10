@@ -41,7 +41,7 @@ export function settingsDefaults(env: {
 		landing_rows: 3,
 		show_gps: false,
 		scan_poll_minutes: env.SCAN_POLL_MINUTES,
-		search_model: 'ViT-L-16-SigLIP2-256__webli',
+		search_model: 'ViT-SO400M-16-SigLIP2-384__webli',
 		search_language: 'ko',
 		search_floor: {},
 		search_dup: 0.85
