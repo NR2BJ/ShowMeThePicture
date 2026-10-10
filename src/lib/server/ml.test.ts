@@ -13,7 +13,7 @@ describe('ml client', () => {
 		expect(detectNllbLang('비 오는 밤 골목')).toBe('kor_Hang');
 		expect(detectNllbLang('rainy night alley')).toBe('eng_Latn');
 		expect(detectNllbLang('雨の夜')).toBe('jpn_Jpan');
-		expect(detectNllbLang('夜雨')).toBe('zho_Hans');
+		expect(detectNllbLang('夜雨')).toBeNull(); // 한자만: 한·일·중 구분 불가 → 설정값
 		expect(detectNllbLang('123')).toBeNull();
 		expect(detectNllbLang('café')).toBeNull();
 	});

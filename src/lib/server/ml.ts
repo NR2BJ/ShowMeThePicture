@@ -75,11 +75,11 @@ export async function embedText(
 	return predict(cfg, { clip: { textual: { modelName: cfg.model, options } } }, fd, timeoutMs);
 }
 
-/** NLLB 텍스트 인코더용 언어 코드 추정: 한글 → kor_Hang, 가나 → jpn_Jpan, 한자만 → zho_Hans, 라틴 글자만 → eng_Latn. 못 정하면 null(설정값). */
+/** NLLB 텍스트 인코더용 언어 코드 추정: 한글 → kor_Hang, 가나 → jpn_Jpan, 라틴 글자만 → eng_Latn.
+ *  한자만 있으면 한국 한자·일본 한자·중국어를 가를 수 없어 null(설정값, 기본 한국어). */
 export function detectNllbLang(text: string): string | null {
 	if (/[\u3131-\u318e\uac00-\ud7a3]/.test(text)) return 'kor_Hang';
 	if (/[\u3040-\u30ff]/.test(text)) return 'jpn_Jpan';
-	if (/[\u4e00-\u9fff]/.test(text)) return 'zho_Hans';
 	if (/[A-Za-z]/.test(text) && !/[^\x00-\x7f]/.test(text)) return 'eng_Latn';
 	return null;
 }

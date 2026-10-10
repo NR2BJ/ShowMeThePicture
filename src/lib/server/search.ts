@@ -75,7 +75,7 @@ export async function similarPhotos(
 /** 현재 모델로 임베딩된 사진 수 / 임베딩 대상(처리된 primary 파일) 수 */
 export async function embeddingStats(
 	db: Db
-): Promise<{ model: string; done: number; total: number }> {
+): Promise<{ model: string; done: number; total: number; other: number }> {
 	const model = await getSetting<string>(db, 'search_model', DEFAULT_SEARCH_MODEL);
 	const [t] = await db
 		.select({
@@ -86,7 +86,22 @@ export async function embeddingStats(
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
 		.leftJoin(embeddings, eq(embeddings.fileId, files.id))
 		.where(and(eq(files.status, 'active'), eq(files.derivativesReady, true)));
-	return { model, done: Number(t?.done ?? 0), total: Number(t?.total ?? 0) };
+	const [o] = await db
+		.select({ n: sql<number>`count(*)::int` })
+		.from(embeddings)
+		.where(ne(embeddings.model, model));
+	return {
+		model,
+		done: Number(t?.done ?? 0),
+		total: Number(t?.total ?? 0),
+		other: Number(o?.n ?? 0)
+	};
+}
+
+/** 임베딩 전부 삭제 — 같은 모델로 처음부터 다시 하고 싶을 때. 이후 '빠진 임베딩 채우기'. */
+export async function clearEmbeddings(db: Db): Promise<number> {
+	const r = await db.delete(embeddings).returning({ id: embeddings.fileId });
+	return r.length;
 }
 
 /** 현재 모델 임베딩이 없는 primary 파일 id (전체 다시 임베딩 / 모델 변경 때) */

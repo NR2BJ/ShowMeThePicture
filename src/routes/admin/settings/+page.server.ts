@@ -8,7 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { and, eq } from 'drizzle-orm';
 import { files, photos } from '#lib/server/db/schema.ts';
 import { enqueueEmbedMany } from '#lib/server/queue.ts';
-import { embeddingStats, filesNeedingEmbedding } from '#lib/server/search.ts';
+import { clearEmbeddings, embeddingStats, filesNeedingEmbedding } from '#lib/server/search.ts';
 import { DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
 import { getSetting, setSetting } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
@@ -22,7 +22,7 @@ export const load: PageServerLoad = async () => {
 			showGps: false,
 			searchModel: DEFAULT_SEARCH_MODEL,
 			searchLanguage: 'kor_Hang',
-			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0 },
+			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0, other: 0 },
 			ml: { url: config.ML_URL, up: false },
 			noDb: true
 		};
@@ -70,6 +70,11 @@ export const actions: Actions = {
 				ok: `저장했습니다. 모델이 바뀌었습니다 — '모델 시험'으로 올라오는지 확인한 뒤 '빠진 임베딩 채우기'를 누르세요. 그 전에도 새로 처리되는 사진은 새 모델로 임베딩됩니다.`
 			};
 		return { ok: '저장했습니다.' };
+	},
+	clearEmbeddings: async ({ locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const n = await clearEmbeddings(db());
+		return { ok: `임베딩 ${n}개를 지웠습니다. '빠진 임베딩 채우기'로 다시 만듭니다.` };
 	},
 	/** 저장된 모델로 글 한 줄 + 사진 한 장만 인코딩해 본다. 첫 호출은 모델 내려받기·GPU 로딩이라 오래 걸릴 수 있다. */
 	testModel: async ({ locals }) => {
