@@ -1,5 +1,5 @@
 <script lang="ts">
-	import FormatSelect from '#lib/components/FormatSelect.svelte';
+	import FormatInput from '#lib/components/FormatInput.svelte';
 	import GearSelect from '#lib/components/GearSelect.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
@@ -67,10 +67,9 @@
 					options={data.gear.film}
 				/></label
 			>
-			<div class="field">
-				<span>포맷</span>
-				<FormatSelect name="filmFormat" value={f.filmFormat} kind="film" />
-			</div>
+			<label class="field"
+				><span>포맷</span><FormatInput name="filmFormat" value={f.filmFormat} kind="film" /></label
+			>
 			<label class="field"
 				><span>스캐너</span><input type="text" name="scanner" value={f.scanner ?? ''} /></label
 			>

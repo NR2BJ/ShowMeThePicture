@@ -113,6 +113,25 @@ export async function addGear(
 	return row;
 }
 
+export async function updateGear(
+	db: Db,
+	id: string,
+	patch: {
+		name: string;
+		aliases: string[];
+		fixedLens: string | null;
+		format: string | null;
+		notes: string | null;
+	}
+): Promise<GearRow | null> {
+	const [row] = await db
+		.update(gear)
+		.set({ ...patch, updatedAt: new Date() })
+		.where(eq(gear.id, id))
+		.returning();
+	return row ?? null;
+}
+
 export async function deleteGear(db: Db, id: string): Promise<void> {
 	await db.delete(gear).where(eq(gear.id, id));
 }

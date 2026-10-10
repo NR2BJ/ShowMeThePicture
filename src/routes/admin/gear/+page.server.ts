@@ -1,7 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '#lib/server/db/app.ts';
 import { reparseFolderMeta } from '#lib/server/folders.ts';
-import { addGear, deleteGear, listGear, type GearKind } from '#lib/server/gear.ts';
+import { addGear, deleteGear, listGear, updateGear, type GearKind } from '#lib/server/gear.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => ({ gear: await listGear(db()) });
@@ -32,6 +32,26 @@ export const actions: Actions = {
 		});
 		const n = await reparseFolderMeta(db());
 		return { ok: n ? `등록했습니다. 폴더 ${n}개의 빈 칸을 채웠습니다.` : '등록했습니다.' };
+	},
+	update: async ({ request }) => {
+		const form = await request.formData();
+		const id = String(form.get('id') ?? '');
+		const name = str(form.get('name'));
+		if (!id || !name) return fail(400, { error: '이름을 입력하세요' });
+		const aliases = String(form.get('aliases') ?? '')
+			.split(/[,\n]/)
+			.map((s) => s.trim())
+			.filter(Boolean);
+		const row = await updateGear(db(), id, {
+			name,
+			aliases,
+			fixedLens: form.has('fixedLens') ? str(form.get('fixedLens')) : null,
+			format: str(form.get('format')),
+			notes: str(form.get('notes'))
+		});
+		if (!row) return fail(404, { error: 'not found' });
+		const n = await reparseFolderMeta(db());
+		return { ok: n ? `고쳤습니다. 폴더 ${n}개의 빈 칸을 채웠습니다.` : '고쳤습니다.' };
 	},
 	delete: async ({ request }) => {
 		const form = await request.formData();
