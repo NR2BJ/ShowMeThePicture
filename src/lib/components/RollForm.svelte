@@ -121,7 +121,7 @@
 		display: flex;
 		justify-content: space-between;
 		margin: 0 0 12px;
-		font-size: 13px;
+		font-size: 16px;
 	}
 	.grid {
 		display: grid;

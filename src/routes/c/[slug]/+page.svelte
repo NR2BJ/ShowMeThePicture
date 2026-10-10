@@ -31,7 +31,7 @@
 		max-width: 820px;
 	}
 	.kicker {
-		font-size: 12px;
+		font-size: 15px;
 		letter-spacing: 0.12em;
 		text-transform: uppercase;
 		margin: 0 0 10px;
@@ -47,7 +47,7 @@
 		margin: 0 0 22px;
 	}
 	.statement {
-		font-size: 18px;
+		font-size: 22px;
 		line-height: 1.6;
 		color: var(--color-ink-soft);
 		margin: 0;

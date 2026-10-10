@@ -391,7 +391,7 @@
 	}
 	.line {
 		margin: 0;
-		font-size: 14px;
+		font-size: 17px;
 		letter-spacing: 0.06em;
 	}
 	.controls {
@@ -408,14 +408,14 @@
 		border: 1px solid var(--color-ink-faint);
 		color: var(--color-ink-dim);
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 15px;
 		padding: 7px 10px;
 		border-radius: 999px;
 	}
 	.pill,
 	.chip {
 		font-family: var(--font-mono);
-		font-size: 13px;
+		font-size: 16px;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
 		padding: 8px 16px;
@@ -446,7 +446,7 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		font-size: 11px;
+		font-size: 14px;
 		padding: 6px 10px;
 		text-transform: none;
 		letter-spacing: 0.04em;
@@ -467,12 +467,12 @@
 		display: grid;
 		gap: 8px;
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 15px;
 	}
 	.meta-edit h3 {
 		margin: 0 0 4px;
 		font-weight: 500;
-		font-size: 10px;
+		font-size: 13px;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: var(--color-amber);

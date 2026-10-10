@@ -199,31 +199,31 @@
 		border-color: var(--color-amber);
 	}
 	.card .k {
-		font-size: 11px;
+		font-size: 14px;
 		letter-spacing: 0.1em;
 		text-transform: uppercase;
 		color: var(--color-ink-dim);
 	}
 	.card .v {
 		font-family: var(--font-serif);
-		font-size: 34px;
+		font-size: 40px;
 		line-height: 1;
 	}
 	.card .v small {
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 15px;
 		margin-left: 8px;
 		color: var(--color-ink-dim);
 	}
 	.card .s {
-		font-size: 12px;
+		font-size: 15px;
 		line-height: 1.5;
 	}
 	.bad {
 		color: #d98a7a;
 	}
 	.live {
-		font-size: 11px;
+		font-size: 14px;
 		letter-spacing: 0.08em;
 		margin-left: 12px;
 		vertical-align: middle;

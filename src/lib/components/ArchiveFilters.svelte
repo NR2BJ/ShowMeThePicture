@@ -93,7 +93,7 @@
 		align-items: center;
 		gap: 10px 18px;
 		margin: -8px 0 32px;
-		font-size: 12px;
+		font-size: 15px;
 		letter-spacing: 0.06em;
 	}
 	.group {

@@ -118,7 +118,7 @@
 		top: 8px;
 		left: 8px;
 		font-family: var(--font-mono);
-		font-size: 11px;
+		font-size: 14px;
 		letter-spacing: 0.1em;
 		padding: 3px 7px;
 		background: rgba(11, 11, 10, 0.75);

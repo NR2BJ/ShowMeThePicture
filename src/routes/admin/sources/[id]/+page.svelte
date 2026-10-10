@@ -140,7 +140,7 @@
 		gap: 0 16px;
 	}
 	.hint {
-		font-size: 12px;
+		font-size: 15px;
 		margin: -6px 0 12px;
 		max-width: 760px;
 	}
@@ -148,7 +148,7 @@
 		display: flex;
 		gap: 8px;
 		align-items: center;
-		font-size: 12px;
+		font-size: 15px;
 		margin: 2px 0 12px;
 		color: var(--color-ink-dim);
 	}

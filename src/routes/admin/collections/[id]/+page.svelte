@@ -148,7 +148,7 @@
 		display: flex;
 		gap: 4px;
 		margin-top: 6px;
-		font-size: 12px;
+		font-size: 15px;
 	}
 	.acts button {
 		background: none;

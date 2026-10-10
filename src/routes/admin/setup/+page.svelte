@@ -50,6 +50,6 @@
 	}
 	code {
 		font-family: var(--font-mono);
-		font-size: 12px;
+		font-size: 15px;
 	}
 </style>

@@ -152,7 +152,7 @@
 <style>
 	.sheet {
 		font-family: var(--font-mono);
-		font-size: 13.5px;
+		font-size: 17px;
 		letter-spacing: 0.02em;
 		font-variant-numeric: tabular-nums;
 	}
@@ -162,7 +162,7 @@
 	h3 {
 		margin: 0 0 8px;
 		font-weight: 500;
-		font-size: 11px;
+		font-size: 14px;
 		letter-spacing: 0.16em;
 		text-transform: uppercase;
 		color: var(--color-amber);

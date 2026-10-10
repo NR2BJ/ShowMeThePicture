@@ -318,7 +318,7 @@
 		margin-top: 0;
 	}
 	.head p {
-		font-size: 14px;
+		font-size: 17px;
 		letter-spacing: 0.06em;
 	}
 	.head a:hover {
@@ -330,7 +330,7 @@
 	.status {
 		min-height: 24px;
 		padding: 28px 0 0;
-		font-size: 13px;
+		font-size: 16px;
 		letter-spacing: 0.08em;
 		text-align: center;
 	}

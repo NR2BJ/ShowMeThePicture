@@ -173,10 +173,6 @@
 
 <section class="admin-page">
 	<h1>페어링</h1>
-	<p class="mono dim">
-		보정본과 원본을 한 장으로 묶습니다. 점수 0.8 이상은 자동, 0.5~0.8 은 '검토 필요'에서 고릅니다.
-		묶인 카드에 올리면 원본이 뜨고, 누르면 나란히 비교하며 풀 수 있습니다.
-	</p>
 	{#if data.originals.total === 0}
 		<p class="notice error">
 			원본(역할: 원본) 라이브러리에 파일이 없습니다. 원본 폴더를 먼저 등록하세요.
@@ -420,7 +416,7 @@
 		display: flex;
 		gap: 4px;
 		flex-wrap: wrap;
-		font-size: 13px;
+		font-size: 16px;
 		letter-spacing: 0.06em;
 	}
 	.tabs a {
@@ -487,7 +483,7 @@
 		flex-direction: column;
 		gap: 2px;
 		padding: 8px 10px;
-		font-size: 11px;
+		font-size: 14px;
 		letter-spacing: 0.04em;
 		line-height: 1.4;
 	}
@@ -511,7 +507,7 @@
 		flex: 1;
 		min-width: 0;
 		font: inherit;
-		font-size: 12px;
+		font-size: 15px;
 		padding: 8px 10px;
 		background: #0b0b0a;
 		border: 1px solid var(--color-ink-faint);
@@ -555,7 +551,7 @@
 		flex-direction: column;
 		gap: 2px;
 		min-width: 0;
-		font-size: 11px;
+		font-size: 14px;
 	}
 	.sentinel {
 		height: 1px;
@@ -563,7 +559,7 @@
 	.status {
 		min-height: 20px;
 		padding: 20px 0 0;
-		font-size: 12px;
+		font-size: 15px;
 		letter-spacing: 0.08em;
 		text-align: center;
 	}
@@ -576,7 +572,7 @@
 		border: 1px solid var(--color-ink-faint);
 		box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
 		pointer-events: none;
-		font-size: 11px;
+		font-size: 14px;
 		line-height: 1.4;
 	}
 	.peek img {
@@ -619,7 +615,7 @@
 	}
 	.cmp figcaption {
 		padding: 8px 12px;
-		font-size: 12px;
+		font-size: 15px;
 		line-height: 1.4;
 		background: #0b0b0a;
 	}
@@ -630,14 +626,14 @@
 		gap: 12px;
 		flex-wrap: wrap;
 		padding: 12px 16px;
-		font-size: 12px;
+		font-size: 15px;
 	}
 	.mbar .acts {
 		padding: 0;
 	}
 	.hint {
 		flex-basis: 100%;
-		font-size: 11px;
+		font-size: 14px;
 	}
 	@media (max-width: 720px) {
 		.cmp {

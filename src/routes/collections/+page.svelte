@@ -92,7 +92,7 @@
 		line-height: 1.05;
 	}
 	.meta {
-		font-size: 13px;
+		font-size: 16px;
 		letter-spacing: 0.06em;
 		color: var(--color-ink-dim);
 		white-space: nowrap;

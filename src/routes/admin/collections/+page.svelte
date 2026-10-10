@@ -6,10 +6,6 @@
 
 <section class="admin-page">
 	<h1>컬렉션</h1>
-	<p class="mono dim">
-		게스트에게 보이는 큐레이션 단위. 수동은 사진 페이지에서 '컬렉션에 추가'로 넣고 순서를 정한다.
-		스마트는 규칙(매체·컷·라이브러리·연도)으로 자동이며, 필름은 롤마다 시리즈로 나눌 수 있다.
-	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
 
@@ -124,7 +120,7 @@
 
 <style>
 	.path {
-		font-size: 12px;
+		font-size: 15px;
 		margin-top: 2px;
 	}
 	.acts {
@@ -148,7 +144,7 @@
 		display: flex;
 		gap: 8px;
 		align-items: center;
-		font-size: 12px;
+		font-size: 15px;
 		margin: 4px 0 20px;
 		color: var(--color-ink-dim);
 	}

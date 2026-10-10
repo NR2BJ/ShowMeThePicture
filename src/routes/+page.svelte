@@ -64,7 +64,7 @@
 		inset: auto 0 0 0;
 		z-index: 10;
 		padding: 22px 40px;
-		font-size: 13px;
+		font-size: 16px;
 		letter-spacing: 0.04em;
 		color: var(--color-ink-dim);
 	}

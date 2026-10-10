@@ -95,17 +95,9 @@
 
 <section class="admin-page">
 	<h1>장비</h1>
-	<p class="mono dim">
-		카메라·렌즈·필름을 등록하면 롤 폴더명에서 자동으로 찾고(띄어쓰기·대소문자 무시, 브랜드 없이도),
-		필름·사진별 수정에서 드롭다운으로 고릅니다. 고정렌즈 바디는 렌즈를 적어 두면 자동으로 붙습니다.
-		≡ 를 끌어 순서를 바꿉니다.
-	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
 	{#if reorderError}<p class="notice error">{reorderError}</p>{/if}
-	<form method="POST" action="?/reparse">
-		<button class="btn quiet" type="submit">폴더명 다시 읽기 (빈 칸만 채움)</button>
-	</form>
 
 	<h2>등록된 장비</h2>
 	{#if rows.length === 0}
@@ -113,8 +105,8 @@
 	{:else}
 		<table class="table gear">
 			<colgroup>
-				<col style="width: 36px" />
 				<col style="width: 7%" />
+				<col style="width: 36px" />
 				<col style="width: 25%" />
 				<col style="width: 18%" />
 				<col style="width: 12%" />
@@ -123,8 +115,8 @@
 			</colgroup>
 			<thead>
 				<tr>
-					<th></th>
 					<th>종류</th>
+					<th></th>
 					<th>이름</th>
 					<th>고정 렌즈</th>
 					<th>포맷</th>
@@ -142,8 +134,8 @@
 						ondragover={(e) => dragOver(e, g)}
 						ondragend={dragEnd}
 					>
-						<td class="handle" title="끌어서 순서 바꾸기"><span aria-hidden="true">≡</span></td>
 						<td class="mono dim">{isFirst(i) ? label(g.kind) : ''}</td>
+						<td class="handle" title="끌어서 순서 바꾸기"><span aria-hidden="true">≡</span></td>
 						<td class="wrap">{g.name}</td>
 						<td class="mono wrap">{g.kind === 'camera' ? (g.fixedLens ?? '-') : ''}</td>
 						<td class="mono">{g.format ?? '-'}</td>
@@ -262,7 +254,7 @@
 	.handle {
 		cursor: grab;
 		color: var(--color-ink-dim);
-		font-size: 18px;
+		font-size: 22px;
 		line-height: 1;
 		user-select: none;
 		text-align: center;

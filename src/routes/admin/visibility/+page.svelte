@@ -6,10 +6,6 @@
 
 <section class="admin-page">
 	<h1>직접 바꾼 공개 설정</h1>
-	<p class="mono dim">
-		사진 페이지에서 '공개하기/숨기기'로 직접 바꾼 사진들입니다. 폴더 기본값 일괄 적용에서는
-		제외됩니다. 버튼을 누르면 폴더 기본값으로 돌아가고 이 목록에서 빠집니다.
-	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
 	{#if data.overrides.length === 0}

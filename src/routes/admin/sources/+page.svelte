@@ -21,10 +21,6 @@
 
 <section class="admin-page" use:autoRefresh={busy ? 4000 : 20000}>
 	<h1>라이브러리</h1>
-	<p class="mono dim">
-		컨테이너의 <code>{data.photosRoot}</code> 아래에서 폴더를 고릅니다. 하위 폴더는 전부 재귀로 스캔되고,
-		원본은 절대 쓰지 않습니다.
-	</p>
 
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.created}<p class="notice">
@@ -141,9 +137,6 @@
 </section>
 
 <style>
-	code {
-		font-family: var(--font-mono);
-	}
 	.actions {
 		display: flex;
 		gap: 6px;

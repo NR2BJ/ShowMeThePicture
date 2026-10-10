@@ -74,7 +74,7 @@
 		align-items: baseline;
 		padding: 10px 12px;
 		border-bottom: 1px solid var(--color-ink-faint);
-		font-size: 14px;
+		font-size: 17px;
 	}
 	.crumbs button,
 	li button {
@@ -102,13 +102,13 @@
 	}
 	li {
 		break-inside: avoid;
-		font-size: 16px;
+		font-size: 20px;
 	}
 	.picker > p {
 		margin: 0;
 		padding: 8px 12px 10px;
 		border-top: 1px solid var(--color-ink-faint);
-		font-size: 12px;
+		font-size: 15px;
 	}
 	.err {
 		color: #d98a7a;

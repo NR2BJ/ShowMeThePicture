@@ -64,7 +64,7 @@
 	}
 	.brand {
 		font-family: var(--font-serif);
-		font-size: 32px;
+		font-size: 40px;
 		line-height: 1;
 		letter-spacing: 0.005em;
 	}
@@ -74,7 +74,7 @@
 		align-items: baseline;
 	}
 	nav a {
-		font-size: 16px;
+		font-size: 20px;
 		letter-spacing: 0.01em;
 		color: var(--color-ink-soft);
 		transition: color 0.2s;
@@ -103,13 +103,13 @@
 			padding: 18px 20px;
 		}
 		.brand {
-			font-size: 24px;
+			font-size: 30px;
 		}
 		nav {
 			gap: 16px;
 		}
 		nav a {
-			font-size: 15px;
+			font-size: 19px;
 		}
 	}
 </style>

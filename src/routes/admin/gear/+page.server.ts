@@ -49,9 +49,5 @@ export const actions: Actions = {
 		if (!id) return fail(400, { error: 'id' });
 		await deleteGear(db(), id);
 		return { ok: '지웠습니다. 이미 채워진 폴더/사진 값은 그대로 남습니다.' };
-	},
-	reparse: async () => {
-		const n = await reparseFolderMeta(db());
-		return { ok: `폴더명을 다시 읽어 ${n}개 폴더의 빈 칸을 채웠습니다.` };
 	}
 };

@@ -129,7 +129,7 @@
 		position: absolute;
 		right: 18px;
 		top: 2px;
-		font-size: 11px;
+		font-size: 14px;
 		line-height: 1;
 		letter-spacing: 0.06em;
 		color: var(--color-ink-dim);
@@ -140,7 +140,7 @@
 		right: 16px;
 		transform: translateY(-50%);
 		white-space: nowrap;
-		font-size: 12px;
+		font-size: 15px;
 		letter-spacing: 0.04em;
 		padding: 5px 9px;
 		color: var(--color-ink);

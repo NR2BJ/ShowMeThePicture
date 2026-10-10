@@ -22,11 +22,6 @@
 
 <section class="admin-page">
 	<h1>필름</h1>
-	<p class="mono dim">
-		롤 폴더에 현상월·카메라·렌즈·필름을 줍니다. 폴더명이 <code>2509_01 Rollei35s colorplus200</code> 처럼
-		시작하면 스캔 때 자동으로 읽어 '미확정'에 두고, 저장하면 '확정'으로 옮겨가며 그 폴더 사진의 날짜가
-		현상월(파일명 순)로 맞춰집니다.
-	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.saved}<p class="notice">
 			'{form.title}' 저장 → 확정 목록. {#if form.hasDate}파일 {form.applied}개의 날짜를 현상월로
@@ -118,9 +113,6 @@
 </section>
 
 <style>
-	code {
-		font-family: var(--font-mono);
-	}
 	.bar {
 		display: flex;
 		justify-content: space-between;
@@ -132,7 +124,7 @@
 	.tabs {
 		display: flex;
 		gap: 4px;
-		font-size: 13px;
+		font-size: 16px;
 		letter-spacing: 0.06em;
 	}
 	.tabs a {
