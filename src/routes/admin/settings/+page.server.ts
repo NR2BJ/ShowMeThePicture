@@ -16,7 +16,7 @@ import {
 	filesNeedingEmbedding,
 	searchFloor
 } from '#lib/server/search.ts';
-import { DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
+import { DEFAULT_DUP_THRESHOLD, DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
 import { getSetting, setSetting } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -30,6 +30,7 @@ export const load: PageServerLoad = async () => {
 			searchModel: DEFAULT_SEARCH_MODEL,
 			searchLanguage: 'ko',
 			searchFloor: null as number | null,
+			searchDup: DEFAULT_DUP_THRESHOLD,
 			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0, other: 0 },
 			ml: { url: config.ML_URL, up: false },
 			modelCaches: null,
@@ -44,6 +45,7 @@ export const load: PageServerLoad = async () => {
 		searchModel,
 		searchLanguage: normalizeNllbLang(await getSetting<string>(db(), 'search_language', 'ko')),
 		searchFloor: await searchFloor(db(), searchModel),
+		searchDup: await getSetting<number>(db(), 'search_dup', DEFAULT_DUP_THRESHOLD),
 		embed: await embeddingStats(db()),
 		ml: { url: config.ML_URL, up: await mlPing(config.ML_URL) },
 		// 받아 둔 모델 캐시 (ml-cache 볼륨이 app 에 마운트돼 있을 때만)
@@ -91,6 +93,13 @@ export const actions: Actions = {
 			else floors[model] = Math.min(1, v);
 			await setSetting(db(), 'search_floor', floors);
 		}
+		const dupRaw = String(form.get('searchDup') ?? '').trim();
+		const dup = Number(dupRaw);
+		await setSetting(
+			db(),
+			'search_dup',
+			dupRaw !== '' && Number.isFinite(dup) ? Math.min(1, Math.max(0, dup)) : DEFAULT_DUP_THRESHOLD
+		);
 		if (model !== prevModel)
 			return {
 				ok: `저장했습니다. 모델이 바뀌었습니다 — '모델 시험'으로 올라오는지 확인한 뒤 '빠진 임베딩 채우기'를 누르세요. 그 전에도 새로 처리되는 사진은 새 모델로 임베딩됩니다.`

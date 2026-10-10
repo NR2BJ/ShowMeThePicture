@@ -77,6 +77,15 @@ services:
   ml:
     # Immich 의 ML 서비스를 임베딩 엔진으로 재사용. OpenVINO 빌드가 /dev/dri 로 Intel Arc A380 을 쓴다.
     image: ghcr.io/immich-app/immich-machine-learning:${IMMICH_ML_VERSION:-release}-openvino
+    # app 과 같은 PUID 로 돈다 — 받은 모델이 그 소유가 되어 설정에서 바로 지울 수 있고, nvtop 에도 그 사용자로 보인다.
+    # GPU 장치 /dev/dri/renderD128 은 호스트의 render 그룹 소유라 그 gid 가 필요하다: stat -c %g /dev/dri/renderD128
+    user: '${PUID:-1000}:${PGID:-1000}'
+    group_add:
+      - '${RENDER_GID:?set RENDER_GID (stat -c %g /dev/dri/renderD128)}'
+      - '${VIDEO_GID:-44}'
+    environment:
+      # 마지막 요청 뒤 모델을 메모리·VRAM 에서 내리기까지 초 (Immich 기본 300). 0 이면 안 내린다 — 검색 첫 응답이 빠른 대신 VRAM 을 계속 쓴다.
+      MACHINE_LEARNING_MODEL_TTL: ${ML_MODEL_TTL:-300}
     devices:
       - /dev/dri:/dev/dri
     volumes:

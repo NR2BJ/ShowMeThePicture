@@ -9,7 +9,7 @@ import {
 	monthLabel,
 	parseFilter
 } from './archive';
-import { cosine, hubAdjust, splitByRelevance } from './search';
+import { collapseNearDuplicates, cosine, hubAdjust, splitByRelevance } from './search';
 import type { GalleryItem } from './server/gallery';
 
 const sp = (q: string) => new URLSearchParams(q);
@@ -55,6 +55,42 @@ describe('splitByRelevance', () => {
 	it('handles empty and tiny lists', () => {
 		expect(splitByRelevance([]).strong).toEqual([]);
 		expect(splitByRelevance(mk([0.1, 0.01])).strong.length).toBe(2);
+	});
+	it('기준은 라이브러리 평균에서 잰다 — 값이 좁은 띠에 몰린 모델(SigLIP2)도 접힌다', () => {
+		const sims = [0.14, 0.13, 0.12, 0.11, 0.1, 0.09, 0.085, 0.08, 0.08];
+		expect(splitByRelevance(mk(sims)).weak.length).toBe(0); // 0 기준 55% = 0.077 → 아무것도 안 접힘
+		const r = splitByRelevance(mk(sims), 0.07); // 평균 0.07: 0.07 + 0.07·0.55 = 0.1085
+		expect(r.cut).toBeCloseTo(0.1085);
+		expect(r.strong.length).toBe(6); // 기준 위는 4장이지만 최소 6
+		expect(r.weak.length).toBe(3);
+		expect(splitByRelevance(mk([0.05, 0.04]), 0.07).strong.length).toBe(2); // 1등이 평균 아래 → 최소 장수만
+	});
+});
+
+describe('collapseNearDuplicates', () => {
+	const v = (x: number, y: number) => [x, y];
+	it('순위가 높은 컷이 대표, 사슬로 이어진 컷도 한 묶음', () => {
+		// a≈b, b≈c (a 와 c 는 기준 미만이지만 b 를 통해 이어짐), d 는 다름
+		const items = [
+			{ id: 'a', vec: v(1, 0) },
+			{ id: 'b', vec: v(0.98, 0.2) },
+			{ id: 'c', vec: v(0.9, 0.44) },
+			{ id: 'd', vec: v(0, 1) }
+		];
+		const r = collapseNearDuplicates(items, 0.95);
+		expect(r.kept.map((k) => `${k.id}+${k.dup}`)).toEqual(['a+2', 'd+0']);
+		expect(r.collapsed).toBe(2);
+	});
+	it('기준 0 이면 묶지 않는다', () => {
+		const r = collapseNearDuplicates(
+			[
+				{ id: 'a', vec: v(1, 0) },
+				{ id: 'b', vec: v(1, 0) }
+			],
+			0
+		);
+		expect(r.kept.map((k) => k.dup)).toEqual([0, 0]);
+		expect(r.collapsed).toBe(0);
 	});
 });
 

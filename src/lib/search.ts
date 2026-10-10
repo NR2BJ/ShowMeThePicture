@@ -36,17 +36,20 @@ export const SEARCH_MODELS: { id: string; label: string; note: string }[] = [
 ];
 export const needsLanguage = (model: string) => model.startsWith('nllb');
 
-/** 검색 결과 나누기: 가장 가까운 사진 대비 유사도가 RELEVANCE_RATIO 미만이면 '관련도 낮음'으로 접는다 (최소 MIN_STRONG 장은 보여줌).
- *  유사도 = 1 − 코사인 거리. 모델마다 절대값이 달라 상대 기준을 쓴다. */
+/** 검색 결과 나누기: 라이브러리 평균(baseline) 위로 1등이 올라간 폭의 RELEVANCE_RATIO 에 못 미치면 '관련도 낮음'으로 접는다
+ *  (최소 MIN_STRONG 장은 보여줌). 유사도 = 1 − 코사인 거리. 0 이 아니라 평균에서 재는 이유: SigLIP2 처럼 값이 좁은 띠
+ *  (예: 0.06~0.14)에 몰리는 모델은 0 기준 55% 로는 아무것도 접히지 않는다. */
 export const RELEVANCE_RATIO = 0.55;
 export const MIN_STRONG = 6;
 export function splitByRelevance<T extends { dist: number }>(
-	items: T[]
+	items: T[],
+	baseline = 0
 ): { strong: T[]; weak: T[]; top: number; cut: number } {
 	if (items.length === 0) return { strong: [], weak: [], top: 0, cut: 0 };
 	const sims = items.map((i) => 1 - i.dist);
 	const top = sims[0];
-	const cut = top > 0 ? top * RELEVANCE_RATIO : -Infinity;
+	// 1등이 평균 아래면 전부 '관련도 낮음' (최소 장수만 보여줌)
+	const cut = top > baseline ? baseline + (top - baseline) * RELEVANCE_RATIO : Infinity;
 	let n = 0;
 	for (const s of sims) if (s >= cut) n++;
 	n = Math.max(Math.min(MIN_STRONG, items.length), n);
@@ -72,3 +75,24 @@ export function cosine(a: number[], b: number[]): number {
  *  작은 사진은 조금 오른다. server/search.ts 의 SQL 과 같은 식 — 테스트용 기준 구현. */
 export const hubAdjust = (sim: number, cq: number, ai: number, abar: number) =>
 	sim - cq * (ai - abar);
+
+/** 비슷한 컷 묶기: 순위순으로 보며 앞서 남긴 사진(또는 그 묶음의 어느 컷)과 코사인이 threshold 이상이면 그 묶음에 넣는다
+ *  (single-linkage — 연사처럼 조금씩 다른 컷이 사슬로 이어져도 한 묶음). 같은 무대·같은 배경 연사 수십 장이 결과를 메우는 걸 막는다.
+ *  threshold ≤ 0 이면 묶지 않는다. 대표는 묶음에서 순위가 가장 높은 컷, dup 은 묶인 나머지 장수. */
+export const DEFAULT_DUP_THRESHOLD = 0.85;
+export function collapseNearDuplicates<T extends { vec: number[] }>(
+	items: T[],
+	threshold: number
+): { kept: (T & { dup: number })[]; collapsed: number } {
+	if (!(threshold > 0)) return { kept: items.map((it) => ({ ...it, dup: 0 })), collapsed: 0 };
+	const groups: { rep: T; members: T[] }[] = [];
+	for (const it of items) {
+		const g = groups.find((g) => g.members.some((m) => cosine(m.vec, it.vec) >= threshold));
+		if (g) g.members.push(it);
+		else groups.push({ rep: it, members: [it] });
+	}
+	return {
+		kept: groups.map((g) => ({ ...g.rep, dup: g.members.length - 1 })),
+		collapsed: items.length - groups.length
+	};
+}

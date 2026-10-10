@@ -22,6 +22,8 @@ export type AppSettings = {
 	search_language: string;
 	/** 모델별 '맞는 사진 없음' 기준 유사도 { 모델: 값 } — 1등이 이보다 낮으면 결과를 접고 안내. 없으면 끔 */
 	search_floor: Record<string, number>;
+	/** 검색 결과에서 비슷한 컷을 묶는 사진끼리 코사인 기준 (0 이면 끔) */
+	search_dup: number;
 };
 
 export function settingsDefaults(env: {
@@ -41,7 +43,8 @@ export function settingsDefaults(env: {
 		scan_poll_minutes: env.SCAN_POLL_MINUTES,
 		search_model: 'ViT-B-16-SigLIP2__webli',
 		search_language: 'ko',
-		search_floor: {}
+		search_floor: {},
+		search_dup: 0.85
 	};
 }
 

@@ -135,6 +135,17 @@
 			/></label
 		>
 		<input type="hidden" name="floorModel" value={data.searchModel} />
+		<label class="field"
+			><span>비슷한 컷 묶기 기준 — 사진끼리 코사인 유사도 · 낮출수록 더 묶임 · 0이면 끔</span><input
+				type="number"
+				name="searchDup"
+				step="0.01"
+				min="0"
+				max="1"
+				value={data.searchDup}
+				onchange={submit}
+			/></label
+		>
 
 		<h2>사진 페이지</h2>
 		<label class="check mono"

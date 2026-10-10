@@ -4,12 +4,14 @@
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import type { GalleryItem } from '#lib/server/gallery.ts';
 
+	// dup: 검색에서 비슷한 컷을 묶었을 때 대표 뒤에 숨은 장수 (+N 표시)
+	type Item = GalleryItem & { dup?: number };
 	let {
 		items,
 		ctx = 'archive',
 		targetHeight = 260,
 		gap = 12
-	}: { items: GalleryItem[]; ctx?: string; targetHeight?: number; gap?: number } = $props();
+	}: { items: Item[]; ctx?: string; targetHeight?: number; gap?: number } = $props();
 
 	let width = $state(0);
 	let root: HTMLDivElement | undefined = $state();
@@ -18,7 +20,7 @@
 		if (root) width = root.clientWidth;
 	});
 
-	type Cell = { it: GalleryItem; ar: number };
+	type Cell = { it: Item; ar: number };
 	const rows = $derived.by(() => {
 		const W = width || 1200;
 		const th = W < 720 ? 150 : targetHeight;
@@ -74,6 +76,7 @@
 					/>
 					{#if it.visibility === 'hidden'}<span class="badge">숨김</span>{/if}
 					{#if it.tier === 'B'}<span class="badge b">B</span>{/if}
+					{#if it.dup}<span class="badge dup">+{it.dup}</span>{/if}
 				</a>
 			{/each}
 		</div>
@@ -128,5 +131,12 @@
 		left: auto;
 		right: 8px;
 		color: var(--color-amber);
+	}
+	.badge.dup {
+		top: auto;
+		bottom: 8px;
+		left: auto;
+		right: 8px;
+		color: var(--color-ink);
 	}
 </style>

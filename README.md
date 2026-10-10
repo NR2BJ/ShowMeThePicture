@@ -17,7 +17,7 @@ SvelteKit 3(Svelte 5) · TypeScript · Tailwind v4 · PostgreSQL 17 + pgvector �
 ## 배포 (Debian + Docker, Portainer)
 
 1. `main` 에 push 하면 GitHub Actions 가 `ghcr.io/nr2bj/showmethepicture:latest` 를 만든다 (`sha-…`, `v*` 태그도). 레포가 public 이라 pull 에 인증이 필요 없다.
-2. Portainer → Stacks → Add stack → **Web editor** 에 [compose.yaml](compose.yaml) 을 붙여넣는다. `${...}` 자리는 아래 Environment variables 에 넣어도 되고 그냥 값으로 바꿔 써도 된다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `ORIGIN`, 필요하면 `APP_PORT`). 이후 수정도 Portainer 에서 바로 한다. 레포의 compose 는 템플릿일 뿐 고정이 아니다.
+2. Portainer → Stacks → Add stack → **Web editor** 에 [compose.yaml](compose.yaml) 을 붙여넣는다. `${...}` 자리는 아래 Environment variables 에 넣어도 되고 그냥 값으로 바꿔 써도 된다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `ORIGIN`, `RENDER_GID` = `stat -c %g /dev/dri/renderD128` 의 값, 필요하면 `APP_PORT`, `ML_MODEL_TTL`). 이후 수정도 Portainer 에서 바로 한다. 레포의 compose 는 템플릿일 뿐 고정이 아니다.
 3. 외부 reverse proxy(예: Proxmox LXC 의 Caddy)에서 도메인을 app 으로 넘긴다. `ORIGIN` 은 이 공개 URL 과 같아야 한다.
    ```
    photos.example.com {
@@ -92,10 +92,10 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 
 ## 검색 (3단계)
 
-- `/search` 는 말로 찾는다("비 오는 밤 골목"). 질의를 `ml` 컨테이너(Immich machine-learning, OpenVINO)로 벡터로 바꾸고 pgvector 코사인 거리로 가까운 사진 60장을 보여준다. 게스트는 공개 사진만. 1등의 55% 에 못 미치는 결과는 '관련도 낮음'으로 접고, 1등 유사도가 설정의 모델별 기준보다 낮으면 "맞는 사진이 없습니다"로 접는다(관리자에게만 보이는 결과 밑 '유사도 최고' 숫자를 보고 정한다 — 모델마다 값의 범위가 다르다). 라이브러리 평균 방향 성분을 빼서(주성분 하나 제거) 회색 벽·흐린 컷처럼 내용 없는 사진이 약한 질의마다 끼는 허브 효과를 줄인다. 모델이 모르는 낱말(예: 윤슬)은 장면으로 풀어 쓰는 편이 낫다.
+- `/search` 는 말로 찾는다("비 오는 밤 골목"). 질의를 `ml` 컨테이너(Immich machine-learning, OpenVINO)로 벡터로 바꾸고 pgvector 코사인 거리로 가까운 사진 60장을 보여준다. 게스트는 공개 사진만. 1등이 라이브러리 평균 위로 올라간 폭의 55% 에 못 미치는 결과는 '관련도 낮음'으로 접고(모델마다 값의 범위가 달라 0 이 아니라 평균에서 잰다), 사진끼리 코사인이 설정 기준(기본 0.85) 이상인 비슷한 컷은 대표 한 장에 +숫자로 묶어(같은 무대·같은 배경 연사가 결과를 메우지 않게; 묶인 컷은 사진 페이지 '비슷한 사진'에서 보인다), 1등 유사도가 설정의 모델별 기준보다 낮으면 "맞는 사진이 없습니다"로 접는다(관리자에게만 보이는 결과 밑 '유사도 최고' 숫자를 보고 정한다 — 모델마다 값의 범위가 다르다). 라이브러리 평균 방향 성분을 빼서(주성분 하나 제거) 회색 벽·흐린 컷처럼 내용 없는 사진이 약한 질의마다 끼는 허브 효과를 줄인다. 모델이 모르는 낱말(예: 윤슬)은 장면으로 풀어 쓰는 편이 낫다.
 - 사진마다 primary 파일(보정본 우선)의 preview 파생본을 워커가 임베딩해 `embeddings` 에 둔다(모델 이름·차원 포함, 인덱스 없이 정확 탐색 — 수천 장이면 충분). 파일이 처리되면 자동으로 큐에 들어가고, 사진 페이지 정보 드로어에 '비슷한 사진' 12장이 나온다. 워커는 임베딩 잡을 20개씩 묶어 가져오고 밀려 있으면 쉬지 않고 이어 간다(ML 호출 하나가 0.1초라 2초마다 하나씩 가져오면 GPU 가 논다). 실패는 잡 단위로 기록·재시도한다.
 - 모델은 `/admin/settings` 에서 고른다(기본 `ViT-B-16-SigLIP2__webli`, 다국어라 한글 질의가 바로 된다). 바꾸면 전체를 다시 임베딩하고, '빠진 임베딩 채우기'로 누락분만 채운다. nllb 계열은 질의 언어 코드(`kor_Hang`)를 같이 보낸다.
-- `ml` 컨테이너는 첫 요청 때 모델을 내려받는다(인터넷 필요, `ml-cache` 볼륨에 보관). 같은 볼륨을 app 에 `/mlcache` 로 마운트하고 `ML_CACHE_DIR=/mlcache` 를 주면(기본 compose 가 그렇게 한다) 설정 화면에서 받아 둔 모델의 용량을 보고 안 쓰는 것을 지울 수 있다. ml 은 root 로 내려받으므로 app 은 기동 때 그 볼륨의 소유권을 PUID 로 맞춘다 — app 이 떠 있는 동안 새로 받은 모델은 app 을 한 번 재시작해야 지워진다. 모델 하나가 1~4GB 라 시험한 것들을 그냥 두면 디스크가 찬다. 첫 임베딩은 모델 로딩 때문에 몇 분 걸릴 수 있다. ML 이 꺼져 있으면 검색 페이지에 안내만 뜨고, 임베딩 잡은 몇 번 더 시도한다.
+- `ml` 컨테이너는 첫 요청 때 모델을 내려받는다(인터넷 필요, `ml-cache` 볼륨에 보관). 같은 볼륨을 app 에 `/mlcache` 로 마운트하고 `ML_CACHE_DIR=/mlcache` 를 주면(기본 compose 가 그렇게 한다) 설정 화면에서 받아 둔 모델의 용량을 보고 안 쓰는 것을 지울 수 있다. ml 도 app 과 같은 `PUID`/`PGID` 로 돈다(compose 의 `user:` + `group_add` — GPU 장치가 호스트 render 그룹 소유라 `RENDER_GID` 가 필요하다). 받은 모델이 PUID 소유라 설정에서 바로 지울 수 있고, 예전에 root 로 받아 둔 파일은 app 이 기동 때 소유권을 맞춘다. 모델은 마지막 요청 뒤 `ML_MODEL_TTL` 초(Immich 기본 300) 지나면 메모리·VRAM 에서 내려가고 다음 요청 때 다시 올라온다(몇 초). 0 이면 계속 올려 둔다. 모델 하나가 1~4GB 라 시험한 것들을 그냥 두면 디스크가 찬다. 첫 임베딩은 모델 로딩 때문에 몇 분 걸릴 수 있다. ML 이 꺼져 있으면 검색 페이지에 안내만 뜨고, 임베딩 잡은 몇 번 더 시도한다.
 - 로컬 개발에는 `node --import tsx scripts/fake-ml.ts` 가 /ping, /predict 를 흉내 낸다(결과는 무의미, 파이프라인 검증용). `.env` 의 `ML_URL=http://127.0.0.1:3003`.
 
 ## 보안과 권한

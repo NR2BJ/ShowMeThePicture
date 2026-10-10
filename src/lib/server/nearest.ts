@@ -1,6 +1,6 @@
 // 벡터로 가까운 사진 찾기 (검색·비슷한 사진의 공통 경로) + 허브 억제. SvelteKit 설정(./config)에 묶이지 않아
 // 워커·점검 스크립트(scripts/hub-check.ts)에서도 바로 쓴다.
-import { and, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, desc, eq, ne, sql, type SQL } from 'drizzle-orm';
 import { cosine } from '#lib/search.ts';
 import type { Db } from './db';
 import { embeddings, files, photos } from './db/schema';
@@ -48,7 +48,19 @@ export function resetLibraryCenter(): void {
 	centerCache.clear();
 }
 
-/** 벡터로 가까운 사진 (검색·비슷한 사진의 공통 경로). minCenter 는 검증 스크립트용 — 작은 라이브러리에서도 허브 보정 경로를 타게. */
+/** 보정 유사도 SQL: 1 − 코사인 거리에서 허브 성분을 뺀 값 (libraryCenter 참고). 중심이 없으면 원시 유사도. */
+function scoreSql(vec: number[], c: Center): SQL<number> {
+	const q = sql`${vectorLiteral(vec)}::vector`;
+	const raw = sql`(1 - (${embeddings.embedding} <=> ${q}))`;
+	if (!c.mu) return sql<number>`${raw}`;
+	const mu = sql`${vectorLiteral(c.mu)}::vector`;
+	return sql<number>`(${raw} - ${cosine(vec, c.mu)}::float8 * ((1 - (${embeddings.embedding} <=> ${mu})) - ${c.abar}::float8))`;
+}
+
+export type HitVec = Hit & { vec: number[] };
+
+/** 벡터로 가까운 사진 (검색·비슷한 사진의 공통 경로). 사진 벡터(vec)도 같이 준다 — 비슷한 컷 묶기용이니 페이지로 보내기 전에 뗀다.
+ *  minCenter 는 검증 스크립트용 — 작은 라이브러리에서도 허브 보정 경로를 타게. */
 export async function nearest(
 	db: Db,
 	o: {
@@ -59,14 +71,10 @@ export async function nearest(
 		excludePhotoId?: string;
 		minCenter?: number;
 	}
-): Promise<Hit[]> {
-	const q = sql`${vectorLiteral(o.vec)}::vector`;
+): Promise<HitVec[]> {
 	const c = await libraryCenter(db, o.model, o.minCenter);
-	// 유사도 = 1 − 코사인 거리, 허브 보정은 libraryCenter 참고. dist 는 1 − (보정) 유사도 — 클라이언트가 1 − dist 로 되돌린다.
-	const raw = sql`(1 - (${embeddings.embedding} <=> ${q}))`;
-	const sim = c.mu
-		? sql<number>`(${raw} - ${cosine(o.vec, c.mu)}::float8 * ((1 - (${embeddings.embedding} <=> ${sql`${vectorLiteral(c.mu)}::vector`})) - ${c.abar}::float8))`
-		: sql<number>`${raw}`;
+	const sim = scoreSql(o.vec, c);
+	// dist 는 1 − (보정) 유사도 — 클라이언트가 1 − dist 로 되돌린다.
 	const dist = sql<number>`1 - ${sim}`;
 	const conds = [
 		eq(embeddings.model, o.model),
@@ -74,12 +82,29 @@ export async function nearest(
 	];
 	if (o.excludePhotoId) conds.push(ne(photos.id, o.excludePhotoId));
 	const rows = await db
-		.select({ ...itemSelect, dist })
+		.select({ ...itemSelect, dist, vec: embeddings.embedding })
 		.from(embeddings)
 		.innerJoin(photos, eq(photos.primaryFileId, embeddings.fileId))
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
 		.where(and(...conds))
 		.orderBy(desc(sim))
 		.limit(o.limit);
-	return rows.map((r) => ({ ...toItem(r), dist: Number(r.dist) }));
+	return rows.map((r) => ({ ...toItem(r), dist: Number(r.dist), vec: r.vec }));
+}
+
+/** 이 질의의 보정 유사도가 라이브러리 전체에서 어떻게 분포하는지 (평균·표준편차). 결과 접기 기준과 관리자용 z 에 쓴다. */
+export async function queryStats(
+	db: Db,
+	o: { model: string; vec: number[]; minCenter?: number }
+): Promise<{ mean: number; std: number }> {
+	const c = await libraryCenter(db, o.model, o.minCenter);
+	const sim = scoreSql(o.vec, c);
+	const [r] = await db
+		.select({
+			mean: sql<number>`coalesce(avg(${sim}), 0)::float8`,
+			std: sql<number>`coalesce(stddev_pop(${sim}), 0)::float8`
+		})
+		.from(embeddings)
+		.where(eq(embeddings.model, o.model));
+	return { mean: Number(r?.mean ?? 0), std: Number(r?.std ?? 0) };
 }
