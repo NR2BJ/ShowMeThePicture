@@ -274,6 +274,8 @@ export const folderMeta = pgTable(
 		filmFormat: text('film_format'),
 		scanner: text('scanner'),
 		notes: text('notes'),
+		/** 관리자가 폴더 정보에서 저장한 시각. null 이면 폴더명에서 자동으로 읽은 미확정 상태 */
+		confirmedAt: ts('confirmed_at'),
 		...timestamps
 	},
 	(t) => [uniqueIndex('folder_meta_source_dir_uq').on(t.sourceId, t.relDir)]

@@ -203,6 +203,7 @@ export async function updateFolderMeta(
 			filmFormat: patch.filmFormat ?? null,
 			scanner: patch.scanner ?? null,
 			notes: patch.notes ?? null,
+			confirmedAt: new Date(),
 			updatedAt: new Date()
 		})
 		.where(eq(folderMeta.id, id))
@@ -236,6 +237,7 @@ export async function listFolderMeta(db: Db): Promise<
 		filmFormat: (r.film_format as string | null) ?? null,
 		scanner: (r.scanner as string | null) ?? null,
 		notes: (r.notes as string | null) ?? null,
+		confirmedAt: r.confirmed_at ? new Date(r.confirmed_at as string) : null,
 		createdAt: r.created_at as Date,
 		updatedAt: r.updated_at as Date,
 		sourceName: r.source_name as string,

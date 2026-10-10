@@ -23,7 +23,7 @@
 					<tr>
 						<td
 							><a href={`/admin/collections/${c.id}`}>{c.title}</a>
-							<span class="mono dim">/c/{c.slug}</span></td
+							<div class="mono dim path">/c/{c.slug}</div></td
 						>
 						<td class="mono">{c.kind === 'smart' ? '스마트' : '수동'}</td>
 						<td class="mono">{c.count}</td>
@@ -123,6 +123,10 @@
 </section>
 
 <style>
+	.path {
+		font-size: 12px;
+		margin-top: 2px;
+	}
 	.acts {
 		display: flex;
 		gap: 6px;

@@ -4,7 +4,14 @@ import { reparseFolderMeta } from '#lib/server/folders.ts';
 import { addGear, deleteGear, listGear, type GearKind } from '#lib/server/gear.ts';
 import type { Actions, PageServerLoad } from './$types';
 
-export const load: PageServerLoad = async () => ({ gear: await listGear(db()) });
+export const load: PageServerLoad = async () => {
+	const gear = await listGear(db());
+	// 포맷 '전에 쓴 값': 프리셋 밖의 값이 또 쓰이도록
+	const recentFormats = [
+		...new Set(gear.map((g) => g.format).filter((x): x is string => !!x))
+	].sort();
+	return { gear, recentFormats };
+};
 
 const str = (v: FormDataEntryValue | null) => {
 	const s = String(v ?? '').trim();

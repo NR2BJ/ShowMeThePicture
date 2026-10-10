@@ -7,8 +7,8 @@
 <section class="admin-page">
 	<h1>직접 바꾼 공개 설정</h1>
 	<p class="mono dim">
-		사진 페이지에서 '공개하기/숨기기'로 바꾼 사진들입니다. 폴더 기본값 일괄 적용에서는 제외되며,
-		여기서 되돌릴 수 있습니다.
+		사진 페이지에서 '공개하기/숨기기'로 직접 바꾼 사진들입니다. 폴더 기본값 일괄 적용에서는
+		제외됩니다. 버튼을 누르면 폴더 기본값으로 돌아가고 이 목록에서 빠집니다.
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
@@ -43,19 +43,15 @@
 						>
 						<td class="mono dim">{d(o.updatedAt)}</td>
 						<td class="acts">
-							<form method="POST" action="?/toggle">
-								<input type="hidden" name="photoId" value={o.id} /><input
-									type="hidden"
-									name="visibility"
-									value={o.visibility === 'public' ? 'hidden' : 'public'}
-								/><button class="btn quiet" type="submit"
-									>{o.visibility === 'public' ? '숨기기' : '공개하기'}</button
-								>
-							</form>
 							<form method="POST" action="?/reset">
 								<input type="hidden" name="photoId" value={o.id} /><button
 									class="btn quiet"
-									type="submit">기본값으로</button
+									type="submit"
+									>{o.defaultVisibility === o.visibility
+										? '수동 표시 해제'
+										: o.defaultVisibility === 'public'
+											? '공개하기'
+											: '숨기기'}</button
 								>
 							</form>
 						</td>

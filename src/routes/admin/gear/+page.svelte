@@ -1,4 +1,5 @@
 <script lang="ts">
+	import FormatSelect from '#lib/components/FormatSelect.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	let kind = $state<'camera' | 'lens' | 'film'>('camera');
@@ -15,7 +16,9 @@
 	<p class="mono dim">
 		가진 카메라·렌즈·필름을 등록해 두면 롤 폴더명에서 자동으로 찾아내고(띄어쓰기·대소문자 무시, 별칭
 		가능), 폴더 정보와 사진별 수정에서 드롭다운으로 고릅니다. 고정렌즈 바디는 렌즈를 적어 두면
-		자동으로 채워집니다. 조리개·셔터 같은 노출 값은 필름에서는 다루지 않습니다.
+		자동으로 채워집니다. 포맷은 프리셋(1" · M4/3 · APS-C · FF / 135 하프·풀 /
+		645·6x6·6x7·6x8·6x9·6x17 / 4x5·8x10)에서 고르고, 없는 건 '기타'로 직접 씁니다. 조리개·셔터 같은
+		노출 값은 필름에서는 다루지 않습니다.
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
@@ -96,9 +99,16 @@
 					/></label
 				>
 			{/if}
-			<label class="field"
-				><span>포맷</span><input type="text" name="format" placeholder="35mm / 120" /></label
-			>
+			<div class="field">
+				<span>포맷</span>
+				{#key kind}
+					<FormatSelect
+						name="format"
+						kind={kind === 'film' ? 'film' : 'any'}
+						recent={data.recentFormats}
+					/>
+				{/key}
+			</div>
 			<label class="field"><span>메모</span><input type="text" name="notes" /></label>
 		</div>
 		<button class="btn primary" type="submit">{label(kind)} 추가</button>

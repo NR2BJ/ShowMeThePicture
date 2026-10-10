@@ -1,0 +1,1 @@
+ALTER TABLE "folder_meta" ADD COLUMN "confirmed_at" timestamp with time zone;

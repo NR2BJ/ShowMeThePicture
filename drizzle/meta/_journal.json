@@ -50,6 +50,13 @@
       "when": 1791619544988,
       "tag": "0006_exposure_filters",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791629726776,
+      "tag": "0007_folder_confirmed",
+      "breakpoints": true
     }
   ]
 }
