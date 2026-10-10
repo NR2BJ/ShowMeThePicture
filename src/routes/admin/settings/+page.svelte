@@ -136,13 +136,26 @@
 		>
 		<input type="hidden" name="floorModel" value={data.searchModel} />
 		<label class="field"
-			><span>비슷한 컷 묶기 기준 — 사진끼리 코사인 유사도 · 낮출수록 더 묶임 · 0이면 끔</span><input
+			><span>거의 같은 컷 묶기 기준 — 사진끼리 코사인 유사도 · 낮출수록 더 묶임 · 0이면 끔</span
+			><input
 				type="number"
 				name="searchDup"
 				step="0.01"
 				min="0"
 				max="1"
 				value={data.searchDup}
+				onchange={submit}
+			/></label
+		>
+		<label class="field"
+			><span>검색 결과 다양하게 — 같은 장면이 이어지면 뒤로 미는 정도 · 0~2 · 0이면 점수순</span
+			><input
+				type="number"
+				name="searchDiversity"
+				step="0.1"
+				min="0"
+				max="2"
+				value={data.searchDiversity}
 				onchange={submit}
 			/></label
 		>

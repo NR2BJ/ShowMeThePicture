@@ -13,11 +13,12 @@ import { enqueueEmbedMany } from '#lib/server/queue.ts';
 import {
 	clearEmbeddings,
 	embeddingStats,
+	diversityStrength,
 	dupThreshold,
 	filesNeedingEmbedding,
 	searchFloor
 } from '#lib/server/search.ts';
-import { DEFAULT_DUP_THRESHOLD, DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
+import { DEFAULT_DIVERSITY, DEFAULT_DUP_THRESHOLD, DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
 import { getSetting, setSetting } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -32,6 +33,7 @@ export const load: PageServerLoad = async () => {
 			searchLanguage: 'ko',
 			searchFloor: null as number | null,
 			searchDup: DEFAULT_DUP_THRESHOLD,
+			searchDiversity: DEFAULT_DIVERSITY,
 			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0, other: 0 },
 			ml: { url: config.ML_URL, up: false },
 			modelCaches: null,
@@ -47,6 +49,7 @@ export const load: PageServerLoad = async () => {
 		searchLanguage: normalizeNllbLang(await getSetting<string>(db(), 'search_language', 'ko')),
 		searchFloor: await searchFloor(db(), searchModel),
 		searchDup: await dupThreshold(db()),
+		searchDiversity: await diversityStrength(db()),
 		embed: await embeddingStats(db()),
 		ml: { url: config.ML_URL, up: await mlPing(config.ML_URL) },
 		// 받아 둔 모델 캐시 (ml-cache 볼륨이 app 에 마운트돼 있을 때만)
@@ -100,6 +103,13 @@ export const actions: Actions = {
 			db(),
 			'search_dup',
 			dupRaw !== '' && Number.isFinite(dup) ? Math.min(1, Math.max(0, dup)) : DEFAULT_DUP_THRESHOLD
+		);
+		const divRaw = String(form.get('searchDiversity') ?? '').trim();
+		const div = Number(divRaw);
+		await setSetting(
+			db(),
+			'search_diversity',
+			divRaw !== '' && Number.isFinite(div) ? Math.min(2, Math.max(0, div)) : DEFAULT_DIVERSITY
 		);
 		if (model !== prevModel)
 			return {

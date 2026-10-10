@@ -3,8 +3,10 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import {
 	collapseNearDuplicates,
 	DEFAULT_DUP_THRESHOLD,
+	DEFAULT_DIVERSITY,
 	DEFAULT_SEARCH_MODEL,
-	LEGACY_DUP_DEFAULT
+	diversify,
+	LEGACY_DUP_DEFAULTS
 } from '#lib/search.ts';
 import { config } from './config';
 import type { Db } from './db';
@@ -39,35 +41,43 @@ function stripVec(h: HitVec): Hit {
 	return rest;
 }
 
-/** 글로 찾기. ML 서버가 없으면 MlError 가 난다 — 호출 측에서 안내로 바꾼다.
- *  limit 의 두 배를 가져와 비슷한 컷(설정 search_dup)을 묶은 뒤 limit 장까지. mean/std 는 접기 기준·관리자 숫자용. */
 /** 설정의 비슷한 컷 묶기 기준 (예전 기본값이 저장돼 있으면 새 기본값) */
 export async function dupThreshold(db: Db): Promise<number> {
 	const v = await getSetting<number>(db, 'search_dup', DEFAULT_DUP_THRESHOLD);
-	return v === LEGACY_DUP_DEFAULT ? DEFAULT_DUP_THRESHOLD : v;
+	return LEGACY_DUP_DEFAULTS.includes(v) ? DEFAULT_DUP_THRESHOLD : v;
 }
 
+/** 설정의 다양성 재정렬 강도 (0 이면 끔) */
+export async function diversityStrength(db: Db): Promise<number> {
+	return getSetting<number>(db, 'search_diversity', DEFAULT_DIVERSITY);
+}
+
+/** 글로 찾기. ML 서버가 없으면 MlError 가 난다 — 호출 측에서 안내로 바꾼다.
+ *  limit 의 두 배를 가져와 거의 같은 컷을 묶고(search_dup), 다양성 재정렬(search_diversity) 뒤 limit 장까지.
+ *  order 'score': 재정렬 없이 점수순(누구나). raw: 관리자 비교용 — 허브 보정·묶기·재정렬 모두 끄고 모델 순서 그대로.
+ *  mean/std 는 접기 기준·관리자 숫자용. */
 export async function searchByText(
 	db: Db,
-	o: { admin: boolean; text: string; limit?: number; raw?: boolean }
+	o: { admin: boolean; text: string; limit?: number; raw?: boolean; order?: 'mix' | 'score' }
 ): Promise<SearchResult> {
 	const cfg = await mlConfig(db);
 	const vec = await embedText(cfg, o.text);
 	const limit = o.limit ?? 60;
-	// raw: 관리자 비교용 — 허브 보정(중심 없음)과 묶기를 끄고 모델이 준 순서 그대로
 	const dup = o.raw ? 0 : await dupThreshold(db);
+	const strength = o.raw || o.order === 'score' ? 0 : await diversityStrength(db);
 	const minCenter = o.raw ? Number.POSITIVE_INFINITY : undefined;
 	const [hits, stats] = await Promise.all([
 		nearest(db, {
 			admin: o.admin,
 			model: cfg.model,
 			vec,
-			limit: dup > 0 ? limit * 2 : limit,
+			limit: dup > 0 || strength > 0 ? limit * 2 : limit,
 			minCenter
 		}),
 		queryStats(db, { model: cfg.model, vec, minCenter })
 	]);
-	const shown = collapseNearDuplicates(hits, dup).kept.slice(0, limit);
+	const kept = collapseNearDuplicates(hits, dup).kept;
+	const shown = diversify(kept, strength, stats.mean, stats.std).slice(0, limit);
 	return {
 		items: shown.map((h) => ({ ...stripVec(h), dup: h.dup })),
 		mean: stats.mean,

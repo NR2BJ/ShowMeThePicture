@@ -24,6 +24,8 @@ export type AppSettings = {
 	search_floor: Record<string, number>;
 	/** 검색 결과에서 비슷한 컷을 묶는 사진끼리 코사인 기준 (0 이면 끔) */
 	search_dup: number;
+	/** 검색 결과 다양성 재정렬 강도 (0 이면 끔) */
+	search_diversity: number;
 };
 
 export function settingsDefaults(env: {
@@ -44,7 +46,8 @@ export function settingsDefaults(env: {
 		search_model: 'ViT-SO400M-16-SigLIP2-384__webli',
 		search_language: 'ko',
 		search_floor: {},
-		search_dup: 0.85
+		search_dup: 0.97,
+		search_diversity: 0.5
 	};
 }
 

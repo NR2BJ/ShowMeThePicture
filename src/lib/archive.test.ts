@@ -9,7 +9,7 @@ import {
 	monthLabel,
 	parseFilter
 } from './archive';
-import { collapseNearDuplicates, cosine, hubAdjust, splitByRelevance } from './search';
+import { collapseNearDuplicates, cosine, diversify, hubAdjust, splitByRelevance } from './search';
 import type { GalleryItem } from './server/gallery';
 
 const sp = (q: string) => new URLSearchParams(q);
@@ -64,6 +64,40 @@ describe('splitByRelevance', () => {
 		expect(r.strong.length).toBe(6); // 기준 위는 4장이지만 최소 6
 		expect(r.weak.length).toBe(3);
 		expect(splitByRelevance(mk([0.05, 0.04]), 0.07).strong.length).toBe(2); // 1등이 평균 아래 → 최소 장수만
+	});
+});
+
+describe('splitByRelevance after reordering', () => {
+	it('순서는 그대로 두고 유사도로만 가른다', () => {
+		const items = [0.3, 0.05, 0.29, 0.28, 0.27, 0.26, 0.25, 0.24].map((s, i) => ({
+			id: String(i),
+			dist: 1 - s
+		}));
+		const r = splitByRelevance(items);
+		expect(r.top).toBeCloseTo(0.3);
+		expect(r.weak.map((x) => x.id)).toEqual(['1']);
+		expect(r.strong.map((x) => x.id)).toEqual(['0', '2', '3', '4', '5', '6', '7']);
+	});
+});
+
+describe('diversify', () => {
+	// 장면 A 5장(서로 거의 같은 방향), 장면 B 3장 — A 가 조금 더 관련도 높다
+	const near = (base: number[], k: number) => base.map((x, i) => x + (i === 2 ? k * 0.01 : 0));
+	const A = [1, 0, 0, 0];
+	const B = [0, 1, 0, 0];
+	const items = [
+		...[0, 1, 2, 3, 4].map((k) => ({ id: `a${k}`, vec: near(A, k), dist: 1 - (0.3 - k * 0.001) })),
+		...[0, 1, 2].map((k) => ({ id: `b${k}`, vec: near(B, k), dist: 1 - (0.28 - k * 0.001) }))
+	];
+	it('같은 장면이 이어지면 다른 장면을 끼워 넣는다 (아무것도 빼지 않음)', () => {
+		const out = diversify(items, 0.5, 0.1, 0.05);
+		expect(out.length).toBe(items.length);
+		expect(out[0].id).toBe('a0');
+		const firstB = out.findIndex((x) => x.id.startsWith('b'));
+		expect(firstB).toBeLessThan(5); // 점수순이면 5번째(a 5장 뒤)
+	});
+	it('강도 0 이면 원래 순서', () => {
+		expect(diversify(items, 0, 0.1, 0.05).map((x) => x.id)).toEqual(items.map((x) => x.id));
 	});
 });
 

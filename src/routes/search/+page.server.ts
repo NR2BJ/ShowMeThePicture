@@ -11,11 +11,14 @@ const EMPTY = { items: [] as SearchHit[], mean: 0, std: 0, collapsed: 0 };
 export const load: PageServerLoad = async ({ url, locals }) => {
 	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200);
 	const admin = !!locals.admin;
+	// 보기: 기본은 다양하게(같은 장면이 이어지면 뒤로 미룸), 'score' 는 점수순
+	const order: 'mix' | 'score' = url.searchParams.get('order') === 'score' ? 'score' : 'mix';
 	if (!config.DATABASE_URL)
 		return {
 			q,
 			...EMPTY,
 			raw: false,
+			order,
 			error: null,
 			stats: null,
 			admin,
@@ -23,14 +26,14 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		};
 	const stats = await embeddingStats(db());
 	const floor = await searchFloor(db(), stats.model);
-	if (!q) return { q, ...EMPTY, raw: false, error: null, stats, admin, floor };
+	if (!q) return { q, ...EMPTY, raw: false, order, error: null, stats, admin, floor };
 	try {
 		const raw = admin && url.searchParams.get('raw') === '1';
-		const r = await searchByText(db(), { admin, text: q, limit: 60, raw });
-		return { q, ...r, raw, error: null, stats, admin, floor };
+		const r = await searchByText(db(), { admin, text: q, limit: 60, raw, order });
+		return { q, ...r, raw, order, error: null, stats, admin, floor };
 	} catch (e) {
 		const msg = e instanceof MlError ? e.message : '검색 중 문제가 생겼습니다';
 		console.error('[search]', e);
-		return { q, ...EMPTY, raw: false, error: msg, stats, admin, floor };
+		return { q, ...EMPTY, raw: false, order, error: msg, stats, admin, floor };
 	}
 };

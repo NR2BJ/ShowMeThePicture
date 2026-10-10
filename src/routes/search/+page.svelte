@@ -68,6 +68,15 @@
 			{/if}
 		</p>
 	{:else}
+		<p class="mono dim order">
+			{#each [['mix', '다양하게'], ['score', '점수순']] as [v, label] (v)}
+				<a
+					class:on={data.order === v}
+					href={`/search?q=${encodeURIComponent(data.q)}${v === 'score' ? '&order=score' : ''}`}
+					>{label}</a
+				>
+			{/each}
+		</p>
 		<PhotoGrid items={split.strong} ctx="archive" />
 		{#if split.weak.length > 0 || data.collapsed > 0 || data.admin}
 			<p class="mono dim more">
@@ -93,7 +102,8 @@
 						)} / 평균 {data.mean.toFixed(3)} / 기준 {Number.isFinite(split.cut)
 							? split.cut.toFixed(3)
 							: '—'} · z {z.toFixed(1)} ·
-						<a href={`/search?q=${encodeURIComponent(data.q)}${data.raw ? '' : '&raw=1'}`}
+						<a
+							href={`/search?q=${encodeURIComponent(data.q)}${data.order === 'score' ? '&order=score' : ''}${data.raw ? '' : '&raw=1'}`}
 							>{data.raw ? '보정·묶기 켜기' : '모델 순서 그대로 보기'}</a
 						></span
 					>
@@ -147,6 +157,18 @@
 	.more {
 		margin: 24px 0 14px;
 		font-size: 15px;
+	}
+	.order {
+		display: flex;
+		gap: 18px;
+		margin: -12px 0 16px;
+		font-size: 15px;
+	}
+	.order a.on {
+		color: var(--color-amber);
+	}
+	.order a:hover {
+		color: var(--color-ink);
 	}
 	.nomatch {
 		margin: 4px 0 14px;
