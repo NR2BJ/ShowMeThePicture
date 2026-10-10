@@ -158,6 +158,10 @@
 				· preview {data.cache.bySize.preview}</span
 			>{/if}
 		{#if data.cache.bySize.full}<span class="dim"> · full {data.cache.bySize.full}</span>{/if}
+		{#if data.cache.free}<span class:bad={data.cache.lowDisk}>
+				· 디스크 여유 {data.cache.free}{#if data.cache.lowDisk}
+					(부족 — ML 모델 캐시·DB 도 같은 디스크){/if}</span
+			>{/if}
 	</p>
 	<p class="mono dim">
 		{data.cache.dir} · thumb/preview 는 스캔 때 생성, full 은 사진을 열 때 생성됩니다. 10분마다 다시 잽니다.

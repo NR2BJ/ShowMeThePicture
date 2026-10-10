@@ -35,6 +35,17 @@ async function walk(dir: string, acc: CacheUsage): Promise<void> {
 	}
 }
 
+/** 캐시 디렉터리가 있는 디스크의 남은 공간 (바이트). ML 모델 캐시·DB 볼륨도 보통 같은 디스크라 이걸로 본다. */
+export async function diskFree(dir: string): Promise<number | null> {
+	try {
+		const { statfs } = await import('node:fs/promises');
+		const st = await statfs(dir);
+		return Number(st.bavail) * Number(st.bsize);
+	} catch {
+		return null;
+	}
+}
+
 export async function getCacheUsage(cacheDir: string, force = false): Promise<CacheUsage> {
 	if (!force && memo && Date.now() - memo.measuredAt < TTL) return memo;
 	if (!pending) {

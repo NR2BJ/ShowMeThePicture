@@ -1,5 +1,5 @@
 import { eq, isNotNull, isNull, sql } from 'drizzle-orm';
-import { fmtBytes, getCacheUsage } from '#lib/server/cacheusage.ts';
+import { diskFree, fmtBytes, getCacheUsage } from '#lib/server/cacheusage.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import { collections, folderMeta, gear, photos } from '#lib/server/db/schema.ts';
@@ -14,7 +14,7 @@ const n = (c: unknown) => Number(c ?? 0);
 /** 대시보드: 라이브러리 표 + 다른 탭들의 요약(사진·폴더 정보·페어링·장비·컬렉션) + 캐시·큐 */
 export const load: PageServerLoad = async () => {
 	const d = db();
-	const [sources, queues, cache, failures, pairs, [folders], gearRows, [cols], [ph], embed] =
+	const [sources, queues, cache, failures, pairs, [folders], gearRows, [cols], [ph], embed, free] =
 		await Promise.all([
 			listSourcesWithCounts(d),
 			queueCounts(d),
@@ -48,7 +48,8 @@ export const load: PageServerLoad = async () => {
 					original: sql<number>`count(*) filter (where ${photos.tier} is null)::int`
 				})
 				.from(photos),
-			embeddingStats(d)
+			embeddingStats(d),
+			diskFree(config.CACHE_DIR)
 		]);
 	const gearBy = Object.fromEntries(gearRows.map((g) => [g.kind, n(g.n)]));
 	return {
@@ -75,7 +76,9 @@ export const load: PageServerLoad = async () => {
 			total: fmtBytes(cache.bytes),
 			files: cache.files,
 			bySize: Object.fromEntries(Object.entries(cache.bySize).map(([k, v]) => [k, fmtBytes(v)])),
-			dir: config.CACHE_DIR
+			dir: config.CACHE_DIR,
+			free: free == null ? null : fmtBytes(free),
+			lowDisk: free != null && free < 5 * 1024 ** 3
 		}
 	};
 };

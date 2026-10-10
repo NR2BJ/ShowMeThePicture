@@ -11,17 +11,17 @@ export const SEARCH_MODELS: { id: string; label: string; note: string }[] = [
 	{
 		id: 'ViT-SO400M-16-SigLIP2-384__webli',
 		label: 'SigLIP2 SO400M 384',
-		note: '한국어 77 · 3.9GB · 무거움 · 언어 설정 없이 가장 정확'
+		note: '한국어 77 · 3.9GB · A380 OpenVINO 에서 사진 모델 실행 실패(2026-10 확인)'
 	},
 	{
 		id: 'nllb-clip-base-siglip__v1',
 		label: 'NLLB-CLIP base',
-		note: '한국어 77 · 4.7GB · 번역 모델 텍스트 인코더 · 언어 코드 필요'
+		note: '한국어 77 · 4.7GB · 번역 모델 텍스트 인코더 · 언어 코드 필요 · A380 에서 올라옴'
 	},
 	{
 		id: 'nllb-clip-large-siglip__v1',
 		label: 'NLLB-CLIP large',
-		note: '한국어 81 · 4.2GB+ · 가장 정확하지만 가장 무거움 · 언어 코드 필요'
+		note: '한국어 81 · 4.2GB+ · A380 OpenVINO 에서 사진 모델 실행 실패(2026-10 확인) · 언어 코드 필요'
 	},
 	{
 		id: 'XLM-Roberta-Large-ViT-H-14__frozen_laion5b_s13b_b90k',
