@@ -64,6 +64,13 @@
       "when": 1791636064448,
       "tag": "0008_gear_no_aliases",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791642496387,
+      "tag": "0009_embeddings_untyped",
+      "breakpoints": true
     }
   ]
 }

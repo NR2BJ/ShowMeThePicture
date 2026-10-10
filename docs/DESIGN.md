@@ -151,7 +151,7 @@ Photo
 3. `ViT-B-16-SigLIP-i18n-256__webli` — 가벼운 다국어.
    거기서 제일 마음에 드는 모델명을 우리 설정값으로 그대로 가져온다.
 
-- 임베딩 저장: Postgres pgvector, HNSW cosine. 모델을 바꾸면 재임베딩 잡.
+- 임베딩 저장: Postgres pgvector. 차원이 모델마다 달라 typmod 없는 `vector` 컬럼에 모델 이름·차원을 같이 두고 정확 탐색(HNSW 없음 — 수천 장 규모면 몇 ms). 모델을 바꾸면 재임베딩 잡.
 - 유사 사진: 이미지→이미지 같은 벡터.
 - 메타 필터는 SQL. 캡션/키워드/파일명 한글 부분검색은 `pg_trgm`.
 - **"문맥 검색"이 여전히 약하면 v2**: 우리 자체 Python ML 서비스(onnxruntime-openvino)를 추가해서 (a) Immich 목록 밖 모델(Jina CLIP v2 등), (b) 소형 VLM(2~3B, int8)으로 사진마다 **한글 캡션·태그를 생성**해 저장 → 벡터 + 텍스트 하이브리드 검색. A380 6GB에서 배치로 돌릴 수 있는 크기다. (c) 사진 속 글자 검색이 필요하면 PaddleOCR(한국어). 전부 선택 사항.
@@ -240,7 +240,7 @@ files              id, source_id, rel_path, rel_path_nfc, filename, stem, stem_n
                    metadata jsonb, phash bytea, thumbhash bytea,
                    photo_id → photos, variant_role(original|edit), variant_label(RAW|JPG|기본|cyberpunk…),
                    derivatives_ready, indexed_at
-embeddings         file_id PK, model text, embedding vector(D)
+embeddings         file_id PK, model text, dim int, embedding vector (typmod 없음)
 photos             id(ULID), primary_file_id, original_file_id, taken_at, title, caption,
                    visibility(public|hidden), tier(A|B|none), medium,
                    pair_method, pair_confidence, pair_confirmed, created_at
@@ -348,7 +348,7 @@ GET   /media/{file_id}/original                  관리자만
 | 0    | SvelteKit 스캐폴드, compose(5 컨테이너), Drizzle 마이그레이션, 디자인 토큰·서체·레이아웃 셸                                                                           | 빈 사이트가 이미 작가 사이트처럼 생김                |
 | 1    | 관리자 로그인(최소) + Source 등록(폴더 선택기) → 주기 스캔 → ExifTool → 파생본(SSD) → `/library/{slug}` → `/archive` → 사진 페이지 + 스펙 시트 → **필름 스트립 랜딩** | 내 사진이 전부 보이고 랜딩이 흐른다 (ML·페어링 없이) |
 | 2    | 페어링 + 원본⇄보정 토글(다중 보정 칩) + tier + 컬렉션 + 롤 메타                                                                                                       | 포트폴리오로서 완성                                  |
-| 3    | Immich에서 모델 벤치 → `ml` 컨테이너 + 임베딩 + 한글 검색 + 유사 사진 + 필터                                                                                          | 검색이 된다                                          |
+| 3    | `ml` 컨테이너 + 임베딩 + 한글 검색 + 유사 사진 (2026-10-11 구현: /search, 사진 드로어 '비슷한 사진', 설정에서 모델 선택·재임베딩, 대시보드 임베딩 카드; 검색 결과 필터는 다음) | 검색이 된다                                          |
 | 4    | 관리자 UI 마감(페어링 검토, 컬렉션 에디터, 설정 페이지 = `settings` 테이블), OG 미리보기, 반응형, 접근성                                                              | 남에게 링크를 줄 수 있다                             |
 | 5    | 분할 비교, 지도, 컨택트시트 모드, 공유 링크, 라이트 테마, VLM 캡션·OCR, TOTP                                                                                          | 취향                                                 |
 

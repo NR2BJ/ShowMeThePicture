@@ -9,9 +9,7 @@ export const EnvSchema = z.object({
 	SITE_TITLE: z.string().default('Show Me The Picture'),
 	SESSION_SECRET: z.string().default('dev-secret-change-me'),
 	GUEST_MAX_EDGE: z.coerce.number().int().positive().default(2560),
-	SCAN_POLL_MINUTES: z.coerce.number().int().positive().default(30),
-	EMBEDDING_MODEL: z.string().default('nllb-clip-base-siglip__v1'),
-	EMBEDDING_DIM: z.coerce.number().int().positive().default(768)
+	SCAN_POLL_MINUTES: z.coerce.number().int().positive().default(30)
 });
 
 export type Config = z.infer<typeof EnvSchema>;

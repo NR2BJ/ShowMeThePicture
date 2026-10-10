@@ -12,6 +12,7 @@ import {
 } from '#lib/server/gallery.ts';
 import { listGear } from '#lib/server/gear.ts';
 import { setFileRotation } from '#lib/server/rotation.ts';
+import { similarPhotos } from '#lib/server/search.ts';
 import { resetPhotoVisibility } from '#lib/server/visibility.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
@@ -37,10 +38,15 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		lens: gearRows.filter((g) => g.kind === 'lens').map((g) => g.name),
 		film: gearRows.filter((g) => g.kind === 'film').map((g) => g.name)
 	};
+	const similar = await similarPhotos(db(), { admin, photoId: photo.id, limit: 12 }).catch((e) => {
+		console.error('[similar]', e);
+		return [];
+	});
 	return {
 		photo,
 		nav,
 		ctx,
+		similar,
 		showGps,
 		admin,
 		manualCollections: admin ? await manualCollections(db()) : [],

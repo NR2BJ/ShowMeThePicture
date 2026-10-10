@@ -5,6 +5,7 @@ import { db } from '#lib/server/db/app.ts';
 import { collections, folderMeta, gear, photos } from '#lib/server/db/schema.ts';
 import { pairCounts } from '#lib/server/pairs-admin.ts';
 import { queueCounts } from '#lib/server/queue.ts';
+import { embeddingStats } from '#lib/server/search.ts';
 import { listSourcesWithCounts, recentFailures } from '#lib/server/sources.ts';
 import type { PageServerLoad } from './$types';
 
@@ -13,7 +14,7 @@ const n = (c: unknown) => Number(c ?? 0);
 /** 대시보드: 라이브러리 표 + 다른 탭들의 요약(사진·폴더 정보·페어링·장비·컬렉션) + 캐시·큐 */
 export const load: PageServerLoad = async () => {
 	const d = db();
-	const [sources, queues, cache, failures, pairs, [folders], gearRows, [cols], [ph]] =
+	const [sources, queues, cache, failures, pairs, [folders], gearRows, [cols], [ph], embed] =
 		await Promise.all([
 			listSourcesWithCounts(d),
 			queueCounts(d),
@@ -46,7 +47,8 @@ export const load: PageServerLoad = async () => {
 					b: sql<number>`count(*) filter (where ${photos.tier} = 'B')::int`,
 					original: sql<number>`count(*) filter (where ${photos.tier} is null)::int`
 				})
-				.from(photos)
+				.from(photos),
+			embeddingStats(d)
 		]);
 	const gearBy = Object.fromEntries(gearRows.map((g) => [g.kind, n(g.n)]));
 	return {
@@ -66,7 +68,8 @@ export const load: PageServerLoad = async () => {
 			folders: { pending: n(folders?.pending), confirmed: n(folders?.confirmed) },
 			pairs,
 			gear: { camera: gearBy.camera ?? 0, lens: gearBy.lens ?? 0, film: gearBy.film ?? 0 },
-			collections: { total: n(cols?.total), pub: n(cols?.pub) }
+			collections: { total: n(cols?.total), pub: n(cols?.pub) },
+			embed
 		},
 		cache: {
 			total: fmtBytes(cache.bytes),

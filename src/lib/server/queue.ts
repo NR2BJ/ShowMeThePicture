@@ -3,7 +3,14 @@ import { sql } from 'drizzle-orm';
 import { PgBoss } from 'pg-boss';
 import { config } from './config';
 import type { Db } from './db';
-import { Q, type PairJob, type ProcessFileJob, type RelinkJob, type ScanSourceJob } from './jobs';
+import {
+	Q,
+	type EmbedJob,
+	type PairJob,
+	type ProcessFileJob,
+	type RelinkJob,
+	type ScanSourceJob
+} from './jobs';
 
 let boss: PgBoss | null = null;
 let starting: Promise<PgBoss> | null = null;
@@ -54,6 +61,21 @@ export async function enqueueRelink(sourceId: string): Promise<string | null> {
 	// singletonKey 를 쓰지 않는다: 역할을 연달아 바꾸면 잡이 하나씩 쌓여야 마지막 상태가 반영된다.
 	// 처리 중 역할이 또 바뀐 잡은 worker 가 스스로 접는다 (relink-source 핸들러 참고).
 	return b.send(Q.RELINK_SOURCE, data);
+}
+
+/** 임베딩 잡을 한꺼번에 (전체 다시 임베딩). 같은 파일이 이미 대기 중이면 중복 생성 안 함. ML 이 잠깐 죽어도 몇 번 더 시도. */
+export async function enqueueEmbedMany(fileIds: string[]): Promise<number> {
+	if (fileIds.length === 0) return 0;
+	const b = await getBoss();
+	const jobs = fileIds.map((fileId) => ({
+		data: { fileId } satisfies EmbedJob,
+		singletonKey: `embed:${fileId}`,
+		retryLimit: 5,
+		retryDelay: 60,
+		retryBackoff: true
+	}));
+	for (let i = 0; i < jobs.length; i += 500) await b.insert(Q.EMBED, jobs.slice(i, i + 500));
+	return jobs.length;
 }
 
 export type QueueCount = { name: string; state: string; count: number };

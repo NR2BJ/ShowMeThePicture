@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import GearSelect from '#lib/components/GearSelect.svelte';
+	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
 	import SpecSheet from '#lib/components/SpecSheet.svelte';
 	import type { PageProps } from './$types';
 
@@ -322,11 +323,28 @@
 					</div>
 				</form>
 			{/if}
+			{#if data.similar.length}
+				<section class="similar">
+					<h3>비슷한 사진</h3>
+					<PhotoGrid items={data.similar} ctx="archive" targetHeight={96} gap={6} />
+				</section>
+			{/if}
 		</aside>
 	{/if}
 </main>
 
 <style>
+	.similar {
+		margin-top: 28px;
+	}
+	.similar h3 {
+		font-family: var(--font-mono);
+		font-size: 12px;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--color-amber);
+		margin: 0 0 10px;
+	}
 	.photo {
 		min-height: calc(100dvh - 92px);
 		display: grid;

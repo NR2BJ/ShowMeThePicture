@@ -37,13 +37,5 @@ export const variables = defineEnvVars({
 	SCAN_POLL_MINUTES: {
 		schema: (v) => S.SCAN_POLL_MINUTES.parse(v),
 		description: 'Source 주기 스캔 기본 간격(분).'
-	},
-	EMBEDDING_MODEL: {
-		schema: (v) => S.EMBEDDING_MODEL.parse(v),
-		description: '검색 임베딩 모델 이름(Immich ML 모델 zoo).'
-	},
-	EMBEDDING_DIM: {
-		schema: (v) => S.EMBEDDING_DIM.parse(v),
-		description: '임베딩 차원. 모델과 맞아야 한다.'
 	}
 });

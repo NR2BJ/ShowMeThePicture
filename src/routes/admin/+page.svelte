@@ -64,6 +64,11 @@
 				>카메라 {sm.gear.camera} · 렌즈 {sm.gear.lens} · 필름 {sm.gear.film}</span
 			>
 		</a>
+		<a class="card" href="/admin/settings" class:attn={sm.embed.done < sm.embed.total}>
+			<span class="k mono">검색</span>
+			<span class="v">{sm.embed.done}<small>/ {sm.embed.total} 임베딩</small></span>
+			<span class="s mono dim">{sm.embed.model}</span>
+		</a>
 		<a class="card" href="/admin/collections">
 			<span class="k mono">컬렉션</span>
 			<span class="v">{sm.collections.total}<small>개</small></span>

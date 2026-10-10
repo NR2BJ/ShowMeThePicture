@@ -16,13 +16,11 @@ import {
 	index,
 	uniqueIndex,
 	primaryKey,
-	vector,
 	type AnyPgColumn
 } from 'drizzle-orm/pg-core';
 import { ulid } from 'ulid';
 
 /** 임베딩 차원은 모델에 따른다. 모델을 바꾸면 ALTER + 재임베딩 (3단계). */
-export const EMBEDDING_DIM = Number(process.env.EMBEDDING_DIM ?? 768);
 
 // ---- enums ----
 export const sourceRole = pgEnum('source_role', ['original', 'edit']);
@@ -202,6 +200,20 @@ export const files = pgTable(
 );
 
 // ---- embeddings ----
+/** pgvector 벡터. 차원이 모델마다 달라 typmod 없이 둔다 — 인덱스는 없고 정확 탐색(수천 장이면 몇 ms). */
+const vec = customType<{ data: number[]; driverData: string }>({
+	dataType() {
+		return 'vector';
+	},
+	toDriver(v: number[]) {
+		return `[${v.join(',')}]`;
+	},
+	fromDriver(v: string) {
+		return JSON.parse(v) as number[];
+	}
+});
+
+/** 파일(보통 사진의 primary 파생본) 하나당 임베딩 하나. 모델을 바꾸면 덮어쓴다. */
 export const embeddings = pgTable(
 	'embeddings',
 	{
@@ -209,10 +221,11 @@ export const embeddings = pgTable(
 			.primaryKey()
 			.references(() => files.id, { onDelete: 'cascade' }),
 		model: text('model').notNull(),
-		embedding: vector('embedding', { dimensions: EMBEDDING_DIM }).notNull(),
+		dim: integer('dim').notNull().default(0),
+		embedding: vec('embedding').notNull(),
 		...timestamps
 	},
-	(t) => [index('embeddings_hnsw_idx').using('hnsw', t.embedding.op('vector_cosine_ops'))]
+	(t) => [index('embeddings_model_idx').on(t.model)]
 );
 
 // ---- pair_candidates: 자동 페어링이 확신하지 못한 보정본 → 관리자 검토 큐 ----

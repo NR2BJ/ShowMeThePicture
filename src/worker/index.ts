@@ -7,6 +7,7 @@ import { files, sources } from '#lib/server/db/schema.ts';
 import { loadConfig } from '#lib/server/env.ts';
 import {
 	Q,
+	type EmbedJob,
 	type PairJob,
 	type ProcessFileJob,
 	type RelinkJob,
@@ -14,6 +15,7 @@ import {
 } from '#lib/server/jobs.ts';
 import { rebuildAllSmart } from '#lib/server/collections.ts';
 import { pairAfterProcess, pairEditFile, unpairedEditIds } from '#lib/server/pairing.ts';
+import { embedFile } from './embed.ts';
 import { attachPhoto, processFile, type ProcessCtx } from './process.ts';
 import { scanSource } from './scan.ts';
 
@@ -71,6 +73,25 @@ for (let i = 0; i < PROCESS_CONCURRENCY; i++) {
 				singletonKey: `pair:${job.data.fileId}`,
 				singletonSeconds: 5
 			});
+			// 검색 임베딩 (ML 서버가 없으면 잡이 실패로 남고 몇 번 더 시도)
+			await boss.send(Q.EMBED, { fileId: job.data.fileId } satisfies EmbedJob, {
+				singletonKey: `embed:${job.data.fileId}`,
+				singletonSeconds: 5,
+				retryLimit: 5,
+				retryDelay: 60,
+				retryBackoff: true
+			});
+		}
+	});
+}
+
+// 임베딩: ML 이 병목이라 둘이면 충분
+for (let i = 0; i < 2; i++) {
+	await boss.work<EmbedJob>(Q.EMBED, { batchSize: 1 }, async (jobs) => {
+		for (const job of jobs) {
+			const t0 = Date.now();
+			const r = await embedFile({ ...ctx, mlUrl: config.ML_URL }, job.data.fileId);
+			if (r === 'done') log(`embed ${job.data.fileId} (${Date.now() - t0}ms)`);
 		}
 	});
 }
