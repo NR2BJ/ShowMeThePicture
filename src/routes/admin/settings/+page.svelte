@@ -159,6 +159,10 @@
 				onchange={submit}
 			/></label
 		>
+		<label class="check mono"
+			><input type="checkbox" name="searchHub" checked={data.searchHub} onchange={submit} /> 허브 보정
+			— 내용 없는 사진(회색 벽·흐린 컷)이 검색마다 올라올 때만 · 작은 모델용</label
+		>
 
 		<h2>사진 페이지</h2>
 		<label class="check mono"

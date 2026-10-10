@@ -26,6 +26,8 @@ export type AppSettings = {
 	search_dup: number;
 	/** 검색 결과 다양성 재정렬 강도 (0 이면 끔) */
 	search_diversity: number;
+	/** 허브 보정(라이브러리 평균 방향 성분 빼기) — 약한 모델용, 기본 끔 */
+	search_hub: boolean;
 };
 
 export function settingsDefaults(env: {
@@ -47,7 +49,8 @@ export function settingsDefaults(env: {
 		search_language: 'ko',
 		search_floor: {},
 		search_dup: 0.97,
-		search_diversity: 0.5
+		search_diversity: 0.5,
+		search_hub: false
 	};
 }
 

@@ -34,6 +34,7 @@ export const load: PageServerLoad = async () => {
 			searchFloor: null as number | null,
 			searchDup: DEFAULT_DUP_THRESHOLD,
 			searchDiversity: DEFAULT_DIVERSITY,
+			searchHub: false,
 			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0, other: 0 },
 			ml: { url: config.ML_URL, up: false },
 			modelCaches: null,
@@ -50,6 +51,7 @@ export const load: PageServerLoad = async () => {
 		searchFloor: await searchFloor(db(), searchModel),
 		searchDup: await dupThreshold(db()),
 		searchDiversity: await diversityStrength(db()),
+		searchHub: await getSetting<boolean>(db(), 'search_hub', false),
 		embed: await embeddingStats(db()),
 		ml: { url: config.ML_URL, up: await mlPing(config.ML_URL) },
 		// 받아 둔 모델 캐시 (ml-cache 볼륨이 app 에 마운트돼 있을 때만)
@@ -80,6 +82,7 @@ export const actions: Actions = {
 			Number.isFinite(rows) ? Math.min(10, Math.max(1, rows)) : 3
 		);
 		await setSetting(db(), 'show_gps', form.get('showGps') === 'on');
+		await setSetting(db(), 'search_hub', form.get('searchHub') === 'on');
 		const prevModel = await getSetting<string>(db(), 'search_model', DEFAULT_SEARCH_MODEL);
 		const model = String(form.get('searchModel') ?? '').trim() || DEFAULT_SEARCH_MODEL;
 		await setSetting(db(), 'search_model', model);

@@ -47,6 +47,14 @@ export async function dupThreshold(db: Db): Promise<number> {
 	return LEGACY_DUP_DEFAULTS.includes(v) ? DEFAULT_DUP_THRESHOLD : v;
 }
 
+/** 허브 보정을 쓸지 (설정 search_hub, 기본 끔). B/16 처럼 약한 모델에서 내용 없는 사진이 매번 올라올 때만 켠다 —
+ *  SO400M 에서는 모델 순서가 더 낫다(사용자 비교). 끄면 nearest 에 중심을 주지 않는다. */
+export async function hubCenterGate(db: Db): Promise<number | undefined> {
+	return (await getSetting<boolean>(db, 'search_hub', false))
+		? undefined
+		: Number.POSITIVE_INFINITY;
+}
+
 /** 설정의 다양성 재정렬 강도 (0 이면 끔) */
 export async function diversityStrength(db: Db): Promise<number> {
 	return getSetting<number>(db, 'search_diversity', DEFAULT_DIVERSITY);
@@ -65,7 +73,7 @@ export async function searchByText(
 	const limit = o.limit ?? 60;
 	const dup = o.raw ? 0 : await dupThreshold(db);
 	const strength = o.raw || o.order === 'score' ? 0 : await diversityStrength(db);
-	const minCenter = o.raw ? Number.POSITIVE_INFINITY : undefined;
+	const minCenter = o.raw ? Number.POSITIVE_INFINITY : await hubCenterGate(db);
 	const [hits, stats] = await Promise.all([
 		nearest(db, {
 			admin: o.admin,
@@ -104,7 +112,8 @@ export async function similarPhotos(
 		model,
 		vec: row.vec,
 		limit: o.limit ?? 12,
-		excludePhotoId: o.photoId
+		excludePhotoId: o.photoId,
+		minCenter: await hubCenterGate(db)
 	});
 	return hits.map(stripVec);
 }
