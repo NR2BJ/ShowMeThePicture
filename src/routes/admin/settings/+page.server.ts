@@ -10,7 +10,12 @@ import { readFile } from 'node:fs/promises';
 import { and, eq } from 'drizzle-orm';
 import { files, photos } from '#lib/server/db/schema.ts';
 import { enqueueEmbedMany } from '#lib/server/queue.ts';
-import { clearEmbeddings, embeddingStats, filesNeedingEmbedding } from '#lib/server/search.ts';
+import {
+	clearEmbeddings,
+	embeddingStats,
+	filesNeedingEmbedding,
+	searchFloor
+} from '#lib/server/search.ts';
 import { DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
 import { getSetting, setSetting } from '#lib/server/settings.ts';
 import type { Actions, PageServerLoad } from './$types';
@@ -24,18 +29,21 @@ export const load: PageServerLoad = async () => {
 			showGps: false,
 			searchModel: DEFAULT_SEARCH_MODEL,
 			searchLanguage: 'ko',
+			searchFloor: null as number | null,
 			embed: { model: DEFAULT_SEARCH_MODEL, done: 0, total: 0, other: 0 },
 			ml: { url: config.ML_URL, up: false },
 			modelCaches: null,
 			noDb: true
 		};
+	const searchModel = await getSetting<string>(db(), 'search_model', DEFAULT_SEARCH_MODEL);
 	return {
 		landingTiers: await getSetting<'A' | 'AB'>(db(), 'landing_tiers', 'A'),
 		stripVh: await getSetting<number>(db(), 'landing_strip_vh', 21),
 		stripRows: await getSetting<number>(db(), 'landing_rows', 3),
 		showGps: await getSetting<boolean>(db(), 'show_gps', false),
-		searchModel: await getSetting<string>(db(), 'search_model', DEFAULT_SEARCH_MODEL),
+		searchModel,
 		searchLanguage: normalizeNllbLang(await getSetting<string>(db(), 'search_language', 'ko')),
+		searchFloor: await searchFloor(db(), searchModel),
 		embed: await embeddingStats(db()),
 		ml: { url: config.ML_URL, up: await mlPing(config.ML_URL) },
 		// 받아 둔 모델 캐시 (ml-cache 볼륨이 app 에 마운트돼 있을 때만)
@@ -74,6 +82,15 @@ export const actions: Actions = {
 			'search_language',
 			normalizeNllbLang(String(form.get('searchLanguage') ?? ''))
 		);
+		// 기준 유사도는 입력이 가리키는 모델(floorModel)에만 적용 — 모델을 바꾸는 제출에 이전 모델 값이 딸려 와도 섞이지 않게
+		if (String(form.get('floorModel') ?? '') === model) {
+			const floors = { ...(await getSetting<Record<string, number>>(db(), 'search_floor', {})) };
+			const raw = String(form.get('searchFloor') ?? '').trim();
+			const v = Number(raw);
+			if (raw === '' || !Number.isFinite(v) || v <= 0) delete floors[model];
+			else floors[model] = Math.min(1, v);
+			await setSetting(db(), 'search_floor', floors);
+		}
 		if (model !== prevModel)
 			return {
 				ok: `저장했습니다. 모델이 바뀌었습니다 — '모델 시험'으로 올라오는지 확인한 뒤 '빠진 임베딩 채우기'를 누르세요. 그 전에도 새로 처리되는 사진은 새 모델로 임베딩됩니다.`

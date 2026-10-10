@@ -120,6 +120,21 @@
 		{:else}
 			<input type="hidden" name="searchLanguage" value={data.searchLanguage} />
 		{/if}
+		<label class="field"
+			><span
+				>맞는 사진 없음 기준 유사도 — 이 모델 · 검색 결과 밑 관리자용 '유사도 최고'를 보고 정함 ·
+				비우면 끔</span
+			><input
+				type="number"
+				name="searchFloor"
+				step="0.005"
+				min="0"
+				max="1"
+				value={data.searchFloor ?? ''}
+				onchange={submit}
+			/></label
+		>
+		<input type="hidden" name="floorModel" value={data.searchModel} />
 
 		<h2>사진 페이지</h2>
 		<label class="check mono"

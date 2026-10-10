@@ -5,10 +5,14 @@
 	let { data }: PageProps = $props();
 	// 가장 가까운 사진에 한참 못 미치는 결과는 접어 둔다 — 60장을 무조건 다 깔면 뒤쪽은 엉뚱해 보인다
 	const split = $derived(splitByRelevance(data.items));
+	// 관리자가 설정한 기준보다 1등 유사도가 낮으면 '맞는 사진 없음' — 모델이 모르는 말(윤슬 등)에 엉뚱한 사진을 깔지 않게
+	const noMatch = $derived(data.floor != null && data.items.length > 0 && split.top < data.floor);
 	let showWeak = $state(false);
+	let showAnyway = $state(false);
 	$effect(() => {
 		data.q;
 		showWeak = false;
+		showAnyway = false;
 	});
 	const EXAMPLES = [
 		'비 오는 밤 골목',
@@ -47,6 +51,17 @@
 		<p class="mono dim">
 			맞는 사진이 없습니다.{#if data.stats && data.stats.done === 0}
 				아직 임베딩된 사진이 없습니다 — 관리자 설정에서 ML 서버 연결과 임베딩 상태를 확인하세요.{/if}
+		</p>
+	{:else if noMatch && !showAnyway}
+		<p class="mono dim nomatch">
+			'{data.q}'에 맞는 사진이 없습니다. 낱말 하나보다 장면을 풀어 쓰면 잘 찾습니다 (예: 윤슬 → 물
+			위에 반짝이는 햇빛) ·
+			<button type="button" onclick={() => (showAnyway = true)}>그래도 가까운 순으로 보기</button>
+			{#if data.admin}
+				<span class="dim">
+					· 유사도 최고 {split.top.toFixed(3)} / 기준 {(data.floor ?? 0).toFixed(3)}</span
+				>
+			{/if}
 		</p>
 	{:else}
 		<PhotoGrid items={split.strong} ctx="archive" />
@@ -114,7 +129,13 @@
 		margin: 24px 0 14px;
 		font-size: 15px;
 	}
-	.more button {
+	.nomatch {
+		margin: 4px 0 14px;
+		font-size: 16px;
+		line-height: 1.6;
+	}
+	.more button,
+	.nomatch button {
 		font: inherit;
 		color: var(--color-amber);
 		background: none;

@@ -1,12 +1,14 @@
 // 시맨틱 검색: 질의/사진 벡터와 가까운 사진. 임베딩은 사진의 primary 파일 것(보정본 우선)을 쓴다.
-import { and, asc, eq, ne, sql } from 'drizzle-orm';
+import { and, eq, ne, sql } from 'drizzle-orm';
 import { DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
 import { config } from './config';
 import type { Db } from './db';
 import { embeddings, files, photos } from './db/schema';
-import { baseConds, itemSelect, toItem, type GalleryItem } from './gallery';
-import { embedText, normalizeNllbLang, vectorLiteral, type MlConfig } from './ml';
+import { embedText, normalizeNllbLang, type MlConfig } from './ml';
+import { nearest, resetLibraryCenter, type Hit } from './nearest';
 import { getSetting } from './settings';
+
+export { libraryCenter, nearest, resetLibraryCenter, type Hit } from './nearest';
 
 export async function mlConfig(db: Db): Promise<MlConfig> {
 	return {
@@ -16,28 +18,11 @@ export async function mlConfig(db: Db): Promise<MlConfig> {
 	};
 }
 
-export type Hit = GalleryItem & { dist: number };
-
-async function nearest(
-	db: Db,
-	o: { admin: boolean; model: string; vec: number[]; limit: number; excludePhotoId?: string }
-): Promise<Hit[]> {
-	const q = sql`${vectorLiteral(o.vec)}::vector`;
-	const dist = sql<number>`${embeddings.embedding} <=> ${q}`;
-	const conds = [
-		eq(embeddings.model, o.model),
-		...baseConds({ scope: { kind: 'archive' }, admin: o.admin })
-	];
-	if (o.excludePhotoId) conds.push(ne(photos.id, o.excludePhotoId));
-	const rows = await db
-		.select({ ...itemSelect, dist })
-		.from(embeddings)
-		.innerJoin(photos, eq(photos.primaryFileId, embeddings.fileId))
-		.innerJoin(files, eq(files.id, photos.primaryFileId))
-		.where(and(...conds))
-		.orderBy(asc(dist))
-		.limit(o.limit);
-	return rows.map((r) => ({ ...toItem(r), dist: Number(r.dist) }));
+/** 모델별 '맞는 사진 없음' 기준 유사도(설정 search_floor). 없거나 0 이면 null = 끔. */
+export async function searchFloor(db: Db, model: string): Promise<number | null> {
+	const m = await getSetting<Record<string, number>>(db, 'search_floor', {});
+	const v = m?.[model];
+	return typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : null;
 }
 
 /** 글로 찾기. ML 서버가 없으면 MlError 가 난다 — 호출 측에서 안내로 바꾼다. */
@@ -101,6 +86,7 @@ export async function embeddingStats(
 /** 임베딩 전부 삭제 — 같은 모델로 처음부터 다시 하고 싶을 때. 이후 '빠진 임베딩 채우기'. */
 export async function clearEmbeddings(db: Db): Promise<number> {
 	const r = await db.delete(embeddings).returning({ id: embeddings.fileId });
+	resetLibraryCenter();
 	return r.length;
 }
 

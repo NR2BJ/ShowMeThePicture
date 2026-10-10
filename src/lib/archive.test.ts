@@ -9,7 +9,7 @@ import {
 	monthLabel,
 	parseFilter
 } from './archive';
-import { splitByRelevance } from './search';
+import { cosine, hubAdjust, splitByRelevance } from './search';
 import type { GalleryItem } from './server/gallery';
 
 const sp = (q: string) => new URLSearchParams(q);
@@ -55,6 +55,20 @@ describe('splitByRelevance', () => {
 	it('handles empty and tiny lists', () => {
 		expect(splitByRelevance([]).strong).toEqual([]);
 		expect(splitByRelevance(mk([0.1, 0.01])).strong.length).toBe(2);
+	});
+});
+
+describe('hub adjustment', () => {
+	it('cosine handles unnormalized and zero vectors', () => {
+		expect(cosine([1, 0], [0, 1])).toBe(0);
+		expect(cosine([2, 0], [1, 0])).toBeCloseTo(1);
+		expect(cosine([1, 1], [-1, -1])).toBeCloseTo(-1);
+		expect(cosine([0, 0], [1, 0])).toBe(0);
+	});
+	it('같은 원시 유사도면 중심 성분이 큰(내용 없는) 사진이 뒤로 간다', () => {
+		expect(hubAdjust(0.05, 0.1, 0.9, 0.7)).toBeLessThan(hubAdjust(0.05, 0.1, 0.5, 0.7));
+		expect(hubAdjust(0.05, 0.1, 0.7, 0.7)).toBe(0.05); // 평균이면 그대로
+		expect(hubAdjust(0.05, 0, 0.9, 0.7)).toBe(0.05); // 질의가 중심과 무관하면 보정 없음
 	});
 });
 

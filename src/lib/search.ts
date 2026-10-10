@@ -52,3 +52,23 @@ export function splitByRelevance<T extends { dist: number }>(
 	n = Math.max(Math.min(MIN_STRONG, items.length), n);
 	return { strong: items.slice(0, n), weak: items.slice(n), top, cut };
 }
+
+/** 코사인 유사도 (정규화 안 된 벡터도 됨). 길이가 다르면 짧은 쪽까지만. */
+export function cosine(a: number[], b: number[]): number {
+	const n = Math.min(a.length, b.length);
+	let dot = 0,
+		na = 0,
+		nb = 0;
+	for (let i = 0; i < n; i++) {
+		dot += a[i] * b[i];
+		na += a[i] * a[i];
+		nb += b[i] * b[i];
+	}
+	return na > 0 && nb > 0 ? dot / Math.sqrt(na * nb) : 0;
+}
+
+/** 허브 보정 유사도: sim − cq·(ai − abar). cq = cos(질의, 라이브러리 중심), ai = cos(사진, 중심), abar = ai 의 평균.
+ *  중심 방향 성분이 평균보다 큰 사진(회색 벽·흐린 컷처럼 내용이 없어 모든 질의에 조금씩 끼는 허브)은 깎이고,
+ *  작은 사진은 조금 오른다. server/search.ts 의 SQL 과 같은 식 — 테스트용 기준 구현. */
+export const hubAdjust = (sim: number, cq: number, ai: number, abar: number) =>
+	sim - cq * (ai - abar);

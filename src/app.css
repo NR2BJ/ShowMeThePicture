@@ -98,6 +98,7 @@
 	.field input[type='text'],
 	.field input[type='password'],
 	.field input[type='month'],
+	.field input[type='number'],
 	.field select,
 	.field .locked {
 		box-sizing: border-box;

@@ -1,6 +1,6 @@
 // 잡 워커 진입점. `pnpm worker`.
 import { ExifTool } from 'exiftool-vendored';
-import { PgBoss } from 'pg-boss';
+import { PgBoss, type JobResult } from 'pg-boss';
 import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { getDb } from '#lib/server/db/index.ts';
 import { files, sources } from '#lib/server/db/schema.ts';
@@ -15,6 +15,7 @@ import {
 } from '#lib/server/jobs.ts';
 import { rebuildAllSmart } from '#lib/server/collections.ts';
 import { pairAfterProcess, pairEditFile, unpairedEditIds } from '#lib/server/pairing.ts';
+import { MlError } from '#lib/server/ml.ts';
 import { embedFile } from './embed.ts';
 import { attachPhoto, processFile, type ProcessCtx } from './process.ts';
 import { scanSource } from './scan.ts';
@@ -85,16 +86,41 @@ for (let i = 0; i < PROCESS_CONCURRENCY; i++) {
 	});
 }
 
-// 임베딩: ML 이 병목이라 둘이면 충분
-for (let i = 0; i < 2; i++) {
-	await boss.work<EmbedJob>(Q.EMBED, { batchSize: 1 }, async (jobs) => {
-		for (const job of jobs) {
+// 임베딩: ML 호출 하나가 60~90ms 인데 잡을 2초마다 하나씩 가져오면 GPU 가 거의 논다(A380 사용량 1% — 사용자 서버에서 확인).
+// 20개씩 묶어 가져오고 밀려 있으면 쉬지 않고 이어 간다. 실패는 잡 단위(perJobResults) — 사진 하나 문제로 묶음이 다 재시도되지 않게.
+// ML 자체에 못 닿으면(연결·타임아웃) 남은 잡도 바로 실패시켜 재시도 간격(60s 백오프)을 둔다.
+await boss.work<EmbedJob>(
+	Q.EMBED,
+	{
+		batchSize: 20,
+		pollingIntervalSeconds: 1,
+		burstWhenBatchFull: true,
+		localConcurrency: 2,
+		perJobResults: true
+	},
+	async (jobs) => {
+		const results: JobResult[] = [];
+		for (let i = 0; i < jobs.length; i++) {
+			const job = jobs[i];
 			const t0 = Date.now();
-			const r = await embedFile({ ...ctx, mlUrl: config.ML_URL }, job.data.fileId);
-			if (r === 'done') log(`embed ${job.data.fileId} (${Date.now() - t0}ms)`);
+			try {
+				const r = await embedFile({ ...ctx, mlUrl: config.ML_URL }, job.data.fileId);
+				if (r === 'done') log(`embed ${job.data.fileId} (${Date.now() - t0}ms)`);
+				results.push({ id: job.id, status: 'completed' });
+			} catch (e) {
+				const message = (e instanceof Error ? e.message : String(e)).slice(0, 300);
+				log(`embed ${job.data.fileId} FAILED: ${message}`);
+				results.push({ id: job.id, status: 'failed', output: { message } });
+				if (e instanceof MlError && e.status === undefined) {
+					for (const rest of jobs.slice(i + 1))
+						results.push({ id: rest.id, status: 'failed', output: { message } });
+					break;
+				}
+			}
 		}
-	});
-}
+		return results;
+	}
+);
 
 await boss.work<PairJob>(Q.PAIR, async (jobs) => {
 	for (const job of jobs) {
