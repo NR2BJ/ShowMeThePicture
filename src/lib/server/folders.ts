@@ -167,25 +167,6 @@ export async function reparseFolderMeta(db: Db): Promise<number> {
 	return n;
 }
 
-/** 현상월이 있는 모든 폴더에 날짜를 다시 적용 */
-export async function applyAllFolderDates(db: Db): Promise<{ folders: number; files: number }> {
-	const rows = await db
-		.select({
-			sourceId: folderMeta.sourceId,
-			relDir: folderMeta.relDir,
-			developedAt: folderMeta.developedAt
-		})
-		.from(folderMeta);
-	let folders = 0;
-	let files = 0;
-	for (const r of rows) {
-		if (!r.developedAt) continue;
-		files += await applyFolderDates(db, r.sourceId, r.relDir);
-		folders++;
-	}
-	return { folders, files };
-}
-
 export async function updateFolderMeta(
 	db: Db,
 	id: string,

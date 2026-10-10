@@ -1,11 +1,6 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '#lib/server/db/app.ts';
-import {
-	applyAllFolderDates,
-	applyFolderDates,
-	listFolderMeta,
-	updateFolderMeta
-} from '#lib/server/folders.ts';
+import { applyFolderDates, listFolderMeta, updateFolderMeta } from '#lib/server/folders.ts';
 import { listGear } from '#lib/server/gear.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -38,10 +33,6 @@ const str = (v: FormDataEntryValue | null) => {
 };
 
 export const actions: Actions = {
-	applyAll: async () => {
-		const r = await applyAllFolderDates(db());
-		return { all: r };
-	},
 	save: async ({ request }) => {
 		const form = await request.formData();
 		const id = String(form.get('id') ?? '');

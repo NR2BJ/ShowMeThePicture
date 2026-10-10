@@ -188,9 +188,9 @@
 					name="name"
 					required
 					placeholder={kind === 'film'
-						? '예: Kodak ColorPlus 200'
+						? '예: ColorPlus 200'
 						: kind === 'lens'
-							? '예: Nikkor 50mm f/1.4'
+							? '예: Nikkor 50mm'
 							: '예: Rollei 35S'}
 				/></label
 			>
@@ -199,7 +199,7 @@
 					><span>고정 렌즈 (있으면)</span><input
 						type="text"
 						name="fixedLens"
-						placeholder="예: Sonnar 40mm f/2.8"
+						placeholder="예: Sonnar 40mm"
 					/></label
 				>
 			{/if}

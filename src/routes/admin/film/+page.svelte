@@ -27,9 +27,6 @@
 			'{form.title}' 저장 → 확정 목록. {#if form.hasDate}파일 {form.applied}개의 날짜를 현상월로
 				맞췄습니다.{:else}현상월이 비어 있어 날짜는 그대로 두었습니다.{/if}
 		</p>{/if}
-	{#if form?.all}<p class="notice">
-			폴더 {form.all.folders}개, 파일 {form.all.files}개의 날짜를 현상월로 맞췄습니다.
-		</p>{/if}
 
 	<div class="bar">
 		<nav class="tabs mono" aria-label="폴더 상태">
@@ -40,9 +37,6 @@
 				>미확정 <span class="n">{pending.length}</span></a
 			>
 		</nav>
-		<form method="POST" action={`?/applyAll&tab=${data.tab}`}>
-			<button class="btn quiet" type="submit">모든 폴더 날짜 다시 맞추기</button>
-		</form>
 	</div>
 
 	{#if data.tab === 'pending'}
