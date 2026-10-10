@@ -1,6 +1,7 @@
 // docs/DESIGN.md §5 의 데이터 모델. 변경 후 `pnpm db:generate` 로 마이그레이션을 만든다.
 import {
 	pgTable,
+	pgView,
 	pgEnum,
 	text,
 	integer,
@@ -81,8 +82,6 @@ export const sources = pgTable('sources', {
 	medium: medium('medium'),
 	tier: tier('tier'),
 	defaultVisibility: visibility('default_visibility').notNull().default('hidden'),
-	/** 게스트가 /library/{slug} 를 볼 수 있는지 */
-	libraryPublic: boolean('library_public').notNull().default(false),
 	pollIntervalMin: integer('poll_interval_min').notNull().default(30),
 	lastScannedAt: ts('last_scanned_at'),
 	...timestamps
@@ -337,3 +336,13 @@ export const settings = pgTable('settings', {
 	value: jsonb('value').$type<unknown>().notNull(),
 	updatedAt: ts('updated_at').notNull().defaultNow()
 });
+
+// ---- 유효 장비 뷰 ----
+/** gallery.effectiveMeta 의 SQL 판(수동 > 필름: 롤 > EXIF / 디지털: EXIF > 롤). 아카이브 필터·facet 이 조인한다.
+ *  마이그레이션 0006 의 SQL 로 만든 뷰라 drizzle-kit 은 건드리지 않는다(.existing()). 정의를 바꾸면 새 마이그레이션에서 replace. */
+export const photoMeta = pgView('photo_meta', {
+	photoId: text('photo_id').notNull(),
+	camera: text('camera'),
+	lens: text('lens'),
+	filmStock: text('film_stock')
+}).existing();

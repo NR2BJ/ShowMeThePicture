@@ -1,9 +1,7 @@
 <script lang="ts">
-	import { toExposure } from '#lib/exposure.ts';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	const s = $derived(data.s);
-	const exposure = $derived(toExposure(s.defaultVisibility, s.libraryPublic));
 	let role = $state<'original' | 'edit'>('original');
 	$effect(() => {
 		role = s.role;
@@ -72,20 +70,19 @@
 
 		<h2>게스트에게 보이는 범위</h2>
 		<label class="field">
-			<span>공개 범위</span>
-			<select name="exposure">
-				<option value="private" selected={exposure === 'private'}>비공개 — 관리자만 본다</option>
-				<option value="photos" selected={exposure === 'photos'}
-					>사진만 공개 — 아카이브·랜딩·컬렉션에 보임, 폴더 페이지(/library/{s.slug})는 관리자만</option
+			<span>게스트 공개</span>
+			<select name="visibility">
+				<option value="hidden" selected={s.defaultVisibility !== 'public'}
+					>비공개 — 관리자만 본다</option
 				>
-				<option value="all" selected={exposure === 'all'}
-					>사진 + 폴더 페이지 공개 — /library/{s.slug} 도 게스트에게 열림</option
+				<option value="public" selected={s.defaultVisibility === 'public'}
+					>공개 — 아카이브·랜딩·컬렉션에 보임</option
 				>
 			</select>
 		</label>
 		<p class="mono dim hint">
 			저장하면 이 폴더의 기존 사진에도 바로 적용되고, 새로 찾는 사진도 같은 설정을 따릅니다. 폴더
-			페이지는 어차피 공개 사진만 보여주므로 '비공개'면 페이지도 닫힙니다.
+			페이지(/library/{s.slug})는 관리자 전용 작업 화면이라 게스트 설정과 무관합니다.
 		</p>
 		<label class="check mono"
 			><input type="checkbox" name="includeManual" /> 사진 페이지에서 직접 바꾼 사진({data.stats
@@ -128,8 +125,8 @@
 		</form>
 	</div>
 	<p class="mono dim">
-		컷(A/B)은 분류 라벨일 뿐입니다. B컷은 설정의 B컷 정책(기본: 아카이브·랜딩에서 제외)에 따라 따로
-		걸러집니다.
+		컷(A/B)은 분류 라벨입니다. 게스트에게 보이는지는 공개 여부로만 정해지고, 아카이브에서는 필터로
+		컷·매체·장비별로 골라 볼 수 있습니다. 랜딩에 B컷도 보일지는 '설정'에서 고릅니다.
 	</p>
 </section>
 

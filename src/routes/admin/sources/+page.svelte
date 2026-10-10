@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
 	import FolderPicker from '#lib/components/FolderPicker.svelte';
-	import { EXPOSURE_SHORT, toExposure } from '#lib/exposure.ts';
 	import type { PageProps } from './$types';
 
 	let { data, form }: PageProps = $props();
@@ -15,7 +14,7 @@
 		if (!nameTouched) name = relPath.split('/').filter(Boolean).pop() ?? '';
 	});
 	// 권장 기본값: 원본 → 숨김, 보정 A컷 → 공개, 보정 B컷 → 숨김
-	const recommended = $derived(role === 'edit' && tier === 'A' ? 'photos' : 'private');
+	const recommended = $derived(role === 'edit' && tier === 'A' ? 'public' : 'hidden');
 	const roleLabel = (r: string) => (r === 'edit' ? '보정' : '원본');
 	const busy = $derived(data.sources.some((s) => s.pendingCount > 0));
 </script>
@@ -46,7 +45,7 @@
 					<th>이름</th>
 					<th>역할 · 컷</th>
 					<th>파일 / 처리 / 없어짐</th>
-					<th>공개 범위</th>
+					<th>게스트 공개</th>
 					<th>사진 공개 현황</th>
 					<th></th>
 				</tr>
@@ -65,7 +64,7 @@
 								: ''}{s.tier ? ` · ${s.tier}컷` : ''}</td
 						>
 						<td class="mono">{s.fileCount} / {s.indexedCount} / {s.missingCount}</td>
-						<td class="mono">{EXPOSURE_SHORT[toExposure(s.defaultVisibility, s.libraryPublic)]}</td>
+						<td class="mono">{s.defaultVisibility === 'public' ? '공개' : '비공개'}</td>
 						<td class="mono">
 							공개 {st?.publicCount ?? 0} · 숨김 {st?.hiddenCount ?? 0}
 							{#if st?.manualCount}<span class="dim"> · 수동 {st.manualCount}</span>{/if}
@@ -83,8 +82,9 @@
 			</tbody>
 		</table>
 		<p class="mono dim hint">
-			'공개 범위' = 이 폴더 사진의 게스트 공개 여부(비공개 / 사진만 / 사진 + 폴더 페이지). '사진
-			공개 현황' = 지금 실제 상태(직접 바꾼 사진은 '수동'). 컷(A/B)은 분류 라벨일 뿐입니다.
+			'게스트 공개' = 이 폴더에서 새로 찾는 사진의 기본값. '사진 공개 현황' = 지금 실제 상태(직접
+			바꾼 사진은 '수동'). 컷(A/B)은 분류 라벨이고 아카이브 필터로 골라 볼 수 있습니다. 폴더
+			페이지(/library/…)는 관리자 전용 작업 화면입니다.
 		</p>
 	{/if}
 
@@ -130,22 +130,17 @@
 				</label>
 			{/if}
 			<label class="field">
-				<span>게스트 공개 범위</span>
+				<span>게스트 공개</span>
 				{#key recommended}
-					<select name="exposure">
-						<option value="private" selected={recommended === 'private'}>비공개 — 관리자만</option>
-						<option value="photos" selected={recommended === 'photos'}
-							>사진만 공개 — 아카이브·랜딩·컬렉션</option
+					<select name="visibility">
+						<option value="hidden" selected={recommended === 'hidden'}>비공개 — 관리자만</option>
+						<option value="public" selected={recommended === 'public'}
+							>공개 — 아카이브·랜딩·컬렉션</option
 						>
-						<option value="all">사진 + 폴더 페이지 공개 — /library/… 도 열림</option>
 					</select>
 				{/key}
 			</label>
 		</div>
-		<label class="check mono"
-			><input type="checkbox" name="libraryPublic" /> 폴더 페이지(/library/…)를 게스트에게도 열기 — 그
-			안에서도 공개 사진만 보입니다</label
-		>
 		<p class="mono dim hint">
 			권장값이 자동으로 들어갑니다: 원본은 숨김, 보정 A컷은 공개, B컷은 숨김. 등록 뒤에는 '수정'에서
 			바꾸고 기존 사진에 일괄 적용할 수 있습니다.
@@ -175,13 +170,5 @@
 		font-size: 12px;
 		margin: 10px 0 18px;
 		max-width: 760px;
-	}
-	.check {
-		display: flex;
-		gap: 8px;
-		align-items: center;
-		font-size: 12px;
-		margin: 4px 0 8px;
-		color: var(--color-ink-dim);
 	}
 </style>

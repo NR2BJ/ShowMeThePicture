@@ -7,7 +7,7 @@
 	const ctx = $derived(`library:${data.source.slug}`);
 </script>
 
-<section class="page" use:autoRefresh={data.source.rootPath ? 8000 : 60000}>
+<section class="page" use:autoRefresh={8000}>
 	<header class="head">
 		<div>
 			<p class="mono dim kicker">
@@ -18,11 +18,10 @@
 			<h1>{data.source.name}</h1>
 		</div>
 		<p class="mono dim">
-			{data.total}장{#if !data.source.libraryPublic}
-				· 관리자만{/if}
+			{data.total}장 · 관리자 전용
 		</p>
 	</header>
-	{#if data.source.rootPath}<p class="mono dim path">{data.source.rootPath}</p>{/if}
+	<p class="mono dim path">{data.source.rootPath}</p>
 	{#if data.items.length === 0}
 		<p class="mono dim">
 			아직 처리된 사진이 없습니다. 스캔과 파생본 생성이 끝나면 여기에 나타납니다.

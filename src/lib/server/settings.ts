@@ -8,8 +8,8 @@ export type AppSettings = {
 	about_md: string;
 	landing_mode: 'filmstrip';
 	guest_max_edge: number;
-	/** B컷을 게스트에게: 숨김 | 토글로 공개 | 항상 공개 */
-	b_cut_policy: 'hidden' | 'toggle' | 'public';
+	/** 랜딩 필름 스트립에 보일 컷: A만 | A+B (보정본 없는 원본만 있는 사진은 어차피 안 나온다) */
+	landing_tiers: 'A' | 'AB';
 	show_gps: boolean;
 	scan_poll_minutes: number;
 };
@@ -24,7 +24,7 @@ export function settingsDefaults(env: {
 		about_md: '',
 		landing_mode: 'filmstrip',
 		guest_max_edge: env.GUEST_MAX_EDGE,
-		b_cut_policy: 'hidden',
+		landing_tiers: 'A',
 		show_gps: false,
 		scan_poll_minutes: env.SCAN_POLL_MINUTES
 	};

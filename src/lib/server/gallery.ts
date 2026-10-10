@@ -1,15 +1,16 @@
 // 갤러리 쿼리: 아카이브 / 라이브러리 목록, 사진 상세, 이웃(prev/next).
-import { and, asc, desc, eq, isNull, ne, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
+import type { ArchiveFilter } from '#lib/archive.ts';
 import { mediaUrl, versionOf } from '#lib/media.ts';
 import type { Db } from './db';
-import { files, photos, sources } from './db/schema';
+import { files, photoMeta, photos, sources } from './db/schema';
 import { folderMetaForSource, pickFolderMeta, toRollInfo, type RollInfo } from './folders';
 
 export type Scope = { kind: 'archive' } | { kind: 'library'; sourceId: string };
 export type ListOptions = {
 	scope: Scope;
 	admin: boolean;
-	includeB: boolean;
+	filter?: ArchiveFilter;
 	page: number;
 	limit: number;
 };
@@ -32,15 +33,34 @@ function b64(x: Uint8Array | null | undefined): string | null {
 	return x ? Buffer.from(x).toString('base64') : null;
 }
 
-export function baseConds(o: { scope: Scope; admin: boolean; includeB: boolean }): SQL[] {
+/** 공통 where: 처리된 파일 + (게스트면 공개만) + 스코프 + 아카이브 필터. 컷(A/B)은 라벨이라 여기서 거르지 않는다 — 필터가 고른다. */
+export function baseConds(o: { scope: Scope; admin: boolean; filter?: ArchiveFilter }): SQL[] {
 	const conds: SQL[] = [eq(files.derivativesReady, true), eq(files.status, 'active')];
 	if (!o.admin) conds.push(eq(photos.visibility, 'public'));
-	if (!o.includeB) conds.push(or(isNull(photos.tier), ne(photos.tier, 'B'))!);
 	if (o.scope.kind === 'library') {
 		conds.push(
 			sql`exists (select 1 from ${files} f2 where f2.photo_id = ${photos.id} and f2.source_id = ${o.scope.sourceId})`
 		);
 	}
+	conds.push(...filterConds(o.filter));
+	return conds;
+}
+
+/** 아카이브 필터 → where 조건. camera/lens/film 은 photo_meta 뷰(유효 장비)를 left join 해 둬야 한다. */
+export function filterConds(f: ArchiveFilter | undefined): SQL[] {
+	const conds: SQL[] = [];
+	if (!f) return conds;
+	if (f.medium?.length) conds.push(inArray(photos.medium, f.medium));
+	if (f.kind?.length) {
+		const parts: SQL[] = [];
+		if (f.kind.includes('A')) parts.push(eq(photos.tier, 'A'));
+		if (f.kind.includes('B')) parts.push(eq(photos.tier, 'B'));
+		if (f.kind.includes('original')) parts.push(isNull(photos.tier));
+		conds.push(or(...parts)!);
+	}
+	if (f.camera) conds.push(eq(photoMeta.camera, f.camera));
+	if (f.lens) conds.push(eq(photoMeta.lens, f.lens));
+	if (f.film) conds.push(eq(photoMeta.filmStock, f.film));
 	return conds;
 }
 
@@ -63,7 +83,8 @@ export const itemSelect = {
 
 export function toItem(r: {
 	id: string;
-	takenAt: Date | null;
+	/** 쿼리 빌더는 Date, 생 SQL(db.execute)은 문자열로 온다 */
+	takenAt: Date | string | null;
 	tier: 'A' | 'B' | null;
 	medium: 'film' | 'digital' | null;
 	visibility: 'public' | 'hidden';
@@ -78,7 +99,7 @@ export function toItem(r: {
 	const v = versionOf(r.contentHash, r.rotation);
 	return {
 		id: r.id,
-		takenAt: r.takenAt ? r.takenAt.toISOString() : null,
+		takenAt: r.takenAt ? new Date(r.takenAt).toISOString() : null,
 		tier: r.tier,
 		medium: r.medium,
 		visibility: r.visibility,
@@ -97,13 +118,12 @@ async function listLibraryPhotos(
 	o: ListOptions & { scope: { kind: 'library'; sourceId: string } }
 ) {
 	const vis = o.admin ? sql`` : sql`and p.visibility = 'public'`;
-	const tierC = o.includeB ? sql`` : sql`and (p.tier is null or p.tier <> 'B')`;
 	const rows = (await db.execute(sql`
 		select * from (
 			select distinct on (p.id) p.id, p.taken_at, p.tier, p.medium, p.visibility,
 			       f.id as file_id, f.width, f.height, f.thumbhash, f.content_hash, f.rotation, f.camera_model
 			from ${files} f join ${photos} p on p.id = f.photo_id
-			where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis} ${tierC}
+			where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis}
 			order by p.id, (f.kind = 'raw') desc, f.id
 		) t
 		order by coalesce(t.taken_at, 'epoch'::timestamptz) desc, t.id desc
@@ -114,13 +134,13 @@ async function listLibraryPhotos(
 	const [{ total }] = (await db.execute(sql`
 		select count(distinct p.id)::int as total
 		from ${files} f join ${photos} p on p.id = f.photo_id
-		where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis} ${tierC}`)) as unknown as {
+		where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis}`)) as unknown as {
 		total: number;
 	}[];
 	const items = rows.slice(0, o.limit).map((r) =>
 		toItem({
 			id: r.id as string,
-			takenAt: (r.taken_at as Date | null) ?? null,
+			takenAt: (r.taken_at as Date | string | null) ?? null,
 			tier: (r.tier as 'A' | 'B' | null) ?? null,
 			medium: (r.medium as 'film' | 'digital' | null) ?? null,
 			visibility: r.visibility as 'public' | 'hidden',
@@ -150,6 +170,7 @@ export async function listPhotos(
 		.select(itemSelect)
 		.from(photos)
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
+		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
 		.where(and(...conds))
 		.orderBy(desc(orderKey), desc(photos.id))
 		.limit(o.limit + 1)
@@ -158,6 +179,7 @@ export async function listPhotos(
 		.select({ total: sql<number>`count(*)::int` })
 		.from(photos)
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
+		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
 		.where(and(...conds));
 	return {
 		items: rows.slice(0, o.limit).map(toItem),
@@ -367,7 +389,7 @@ export async function getPhotoDetail(
 export async function neighbors(
 	db: Db,
 	photo: { id: string; takenAt: string | null },
-	o: { scope: Scope; admin: boolean; includeB: boolean }
+	o: { scope: Scope; admin: boolean; filter?: ArchiveFilter }
 ): Promise<{ prev: string | null; next: string | null }> {
 	const conds = baseConds(o);
 	const ta = photo.takenAt ?? new Date(0).toISOString();
@@ -377,6 +399,7 @@ export async function neighbors(
 		.select({ id: photos.id })
 		.from(photos)
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
+		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
 		.where(and(...conds, sql`${key} < ${cur}`))
 		.orderBy(desc(orderKey), desc(photos.id))
 		.limit(1);
@@ -384,6 +407,7 @@ export async function neighbors(
 		.select({ id: photos.id })
 		.from(photos)
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
+		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
 		.where(and(...conds, sql`${key} > ${cur}`))
 		.orderBy(asc(orderKey), asc(photos.id))
 		.limit(1);

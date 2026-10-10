@@ -1,13 +1,15 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { mediaUrl, versionOf } from '#lib/media.ts';
 import type { Frame } from '#lib/types.ts';
 import { config } from './config';
 import { getDb } from './db';
 import { files, photos } from './db/schema';
+import { getSetting } from './settings';
 
-/** 랜딩 필름 스트립 재료: 공개 A컷 중 무작위 n장. 방문마다 다시 섞인다. */
+/** 랜딩 필름 스트립 재료: 공개 보정본(설정에 따라 A컷만 / A+B) 중 무작위 n장. 방문마다 다시 섞인다. */
 export async function getLandingFrames(n = 42): Promise<Frame[]> {
 	const db = getDb(config.DATABASE_URL);
+	const tiers = await getSetting<'A' | 'AB'>(db, 'landing_tiers', 'A');
 	const rows = await db
 		.select({
 			id: photos.id,
@@ -22,7 +24,7 @@ export async function getLandingFrames(n = 42): Promise<Frame[]> {
 		.where(
 			and(
 				eq(photos.visibility, 'public'),
-				eq(photos.tier, 'A'),
+				tiers === 'AB' ? inArray(photos.tier, ['A', 'B']) : eq(photos.tier, 'A'),
 				eq(files.derivativesReady, true),
 				eq(files.status, 'active')
 			)

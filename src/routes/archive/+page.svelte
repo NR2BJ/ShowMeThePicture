@@ -3,21 +3,29 @@
 	// 서버가 준 첫 페이지에서 시작해 아래(과거)로 이어 붙이고, ?from= 으로 중간부터 시작했으면 위(최근)로도 이어 붙인다.
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
+	import ArchiveFilters from '#lib/components/ArchiveFilters.svelte';
 	import ArchiveTimeline from '#lib/components/ArchiveTimeline.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
-	import { groupByMonth } from '#lib/archive.ts';
+	import {
+		archiveCtx,
+		archiveHref,
+		filterParams,
+		groupByMonth,
+		type ArchiveFilter
+	} from '#lib/archive.ts';
 	import type { GalleryItem } from '#lib/server/gallery.ts';
 	import type { PageProps, Snapshot } from './$types';
 
 	let { data }: PageProps = $props();
-	const ctx = $derived(data.includeB ? 'archive:b' : 'archive');
-	const bq = $derived(data.includeB ? '&b=1' : '');
-	const homeHref = $derived(data.includeB ? '/archive?b=1' : '/archive');
+	// 필터는 주소(/archive?medium=…)와 ctx(사진 페이지 prev/next)와 API 호출에 똑같이 실린다
+	const ctx = $derived(archiveCtx(data.filter));
+	const qs = $derived(filterParams(data.filter).toString());
+	const homeHref = $derived(archiveHref(data.filter));
 
 	type Page = { items: GalleryItem[]; hasMore: boolean };
 	const HEADER_TOP = 110; // 사이트 헤더 아래, 월 제목을 맞추는 기준선
-	const loadKey = (d: { includeB: boolean; from: string | null }) =>
-		`${d.includeB ? 'b' : ''}|${d.from ?? ''}`;
+	const loadKey = (d: { filter: ArchiveFilter; from: string | null }) =>
+		`${filterParams(d.filter)}|${d.from ?? ''}`;
 	// svelte-ignore state_referenced_locally
 	let loadedFor = loadKey(data);
 	// svelte-ignore state_referenced_locally
@@ -87,7 +95,7 @@
 	};
 
 	async function fetchPage(dir: 'older' | 'newer', edge: GalleryItem): Promise<Page> {
-		const u = `/api/archive?dir=${dir}&id=${encodeURIComponent(edge.id)}&ta=${encodeURIComponent(edge.takenAt ?? '')}${bq}`;
+		const u = `/api/archive?dir=${dir}&id=${encodeURIComponent(edge.id)}&ta=${encodeURIComponent(edge.takenAt ?? '')}${qs ? `&${qs}` : ''}`;
 		const r = await fetch(u);
 		if (!r.ok) throw new Error(`HTTP ${r.status}`);
 		return (await r.json()) as Page;
@@ -194,7 +202,7 @@
 			});
 			return;
 		}
-		void goto(`/archive?from=${encodeURIComponent(key)}${bq}`);
+		void goto(archiveHref(data.filter, { from: key }));
 	}
 
 	onMount(() => {
@@ -235,21 +243,20 @@
 		<h1>아카이브</h1>
 		<p class="mono dim">
 			{data.total}장
-			{#if data.canToggleB}
-				· {#if data.includeB}<a href="/archive">B컷 빼기</a>{:else}<a href="/archive?b=1"
-						>B컷 포함</a
-					>{/if}
-			{/if}
 			{#if data.from}
 				· <a href={homeHref}>최신부터</a>
 			{/if}
 		</p>
 	</header>
+	{#if !data.noDb}
+		<ArchiveFilters filter={data.filter} facets={data.facets} />
+	{/if}
 	{#if data.noDb}
 		<p class="mono dim">DATABASE_URL 이 없습니다.</p>
 	{:else if groups.length === 0}
 		<p class="mono dim">
-			{#if data.from}이 달 이전에는 사진이 없습니다. <a href={homeHref}>최신부터 보기</a>{:else}아직
+			{#if data.from}이 달 이전에는 사진이 없습니다. <a href={homeHref}>최신부터 보기</a
+				>{:else if qs}조건에 맞는 사진이 없습니다. <a href="/archive">필터 지우기</a>{:else}아직
 				공개된 사진이 없습니다.{/if}
 		</p>
 	{/if}

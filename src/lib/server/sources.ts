@@ -16,7 +16,6 @@ export type NewSource = {
 	medium: Medium | null;
 	tier: Tier | null;
 	defaultVisibility: 'public' | 'hidden';
-	libraryPublic: boolean;
 };
 
 export type SourceRow = typeof sources.$inferSelect;
@@ -60,8 +59,7 @@ export async function createSource(
 			role: input.role,
 			medium: input.medium,
 			tier: input.role === 'edit' ? input.tier : null,
-			defaultVisibility: input.defaultVisibility,
-			libraryPublic: input.libraryPublic
+			defaultVisibility: input.defaultVisibility
 		})
 		.returning();
 	return row;
@@ -92,7 +90,6 @@ export async function listSourcesWithCounts(db: Db): Promise<SourceWithCounts[]>
 		medium: (r.medium as Medium | null) ?? null,
 		tier: (r.tier as Tier | null) ?? null,
 		defaultVisibility: r.default_visibility as 'public' | 'hidden',
-		libraryPublic: r.library_public as boolean,
 		pollIntervalMin: r.poll_interval_min as number,
 		lastScannedAt: (r.last_scanned_at as Date | null) ?? null,
 		createdAt: r.created_at as Date,
@@ -141,7 +138,6 @@ export type SourcePatch = {
 	medium?: Medium | null;
 	tier?: Tier | null;
 	defaultVisibility?: 'public' | 'hidden';
-	libraryPublic?: boolean;
 	pollIntervalMin?: number;
 };
 

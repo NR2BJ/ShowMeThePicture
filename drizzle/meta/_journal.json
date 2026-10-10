@@ -43,6 +43,13 @@
       "when": 1791557353082,
       "tag": "0005_smiling_wolverine",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791619544988,
+      "tag": "0006_exposure_filters",
+      "breakpoints": true
     }
   ]
 }

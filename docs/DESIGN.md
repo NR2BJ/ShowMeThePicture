@@ -87,8 +87,8 @@ Photo
 
 - Source마다 `/library/{slug}` 페이지가 있다. 그 폴더 아래 **모든 사진을 하위 폴더 구분 없이 평탄하게**, 날짜순으로 보여준다. 트리 없음.
 - 표시 variant: RAW 우선(ExifTool 내장 프리뷰 → 없으면 libraw 렌더), RAW가 없으면 JPG. RAW+JPG는 한 장으로 묶인다.
-- 권한: 관리자는 모든 라이브러리의 모든 사진을 본다. 게스트는 Source의 `library_public`이 켜진 라이브러리만, 그 안에서도 `visibility=public`인 사진만 본다.
-- 즉 "보정 없는 원본은 기본 비공개"는 **공개 사이트(아카이브·컬렉션·검색·랜딩)** 기준이고, 관리자인 나는 라이브러리에서 언제든 전부 볼 수 있다. 특정 원본 폴더를 남에게도 열고 싶으면 그 Source의 `default_visibility=public` + `library_public=true`로 바꾸고 일괄 적용하면 된다.
+- 권한: 관리자는 모든 라이브러리(폴더 페이지 `/library/{slug}`)의 모든 사진을 본다. 폴더 페이지는 관리자 전용 작업 화면이고, 게스트는 아카이브·컬렉션·랜딩에서 `visibility=public`인 사진만 본다.
+- 즉 "보정 없는 원본은 기본 비공개"는 **공개 사이트(아카이브·컬렉션·검색·랜딩)** 기준이고, 관리자인 나는 라이브러리에서 언제든 전부 볼 수 있다. 특정 원본 폴더를 남에게도 열고 싶으면 그 Source의 게스트 공개를 '공개'로 바꾸면 기존 사진에도 적용된다(아카이브의 '원본만' 필터로 모아 볼 수 있다).
 
 ---
 
@@ -136,9 +136,9 @@ Photo
 
 ### 3.5 컬렉션 · 아카이브 · 정렬
 
-- `/archive`: 공개 사진 전체, `taken_at`(촬영일·필름은 현상월) 내림차순, 연/월 헤더. 페이지 넘김 대신 무한 스크롤(키셋 커서 `/api/archive`, 120장씩) + 우측 고정 월 타임라인(월별 장수에 비례한 눈금, 클릭하면 `?from=YYYY-MM` 그 달부터 시작하고 위로도 이어 붙임). 필터(디지털/필름, 연도, 카메라, tier)는 예정. 랜딩이 아니라 메뉴에서 들어간다.
+- `/archive`: 공개 사진 전체, `taken_at`(촬영일·필름은 현상월) 내림차순, 연/월 헤더. 페이지 넘김 대신 무한 스크롤(키셋 커서 `/api/archive`, 120장씩) + 우측 고정 월 타임라인(월별 장수에 비례한 눈금, 클릭하면 `?from=YYYY-MM` 그 달부터 시작하고 위로도 이어 붙임). 필터 바(매체 · 컷 A/B/원본만 · 카메라 · 렌즈 · 필름, 선택지마다 장수 표시)는 주소에 실리고 사진 페이지 prev/next(ctx)도 같은 필터를 따른다. 장비는 `photo_meta` 뷰(수동 > 롤/EXIF)로 계산한다. 랜딩이 아니라 메뉴에서 들어간다.
 - 컬렉션 정렬은 컬렉션마다(촬영순/수동). 보정본의 `taken_at`은 원본 것을 따른다.
-- 게스트 기본은 A컷만. "B컷 포함" 토글(또는 B는 관리자만 — 설정).
+- 컷(A/B)은 라벨이라 걸러내지 않는다. 공개된 사진은 전부 아카이브에 나오고 필터 바로 고른다. B컷을 보이기 싫으면 B 폴더를 비공개로 두면 된다(등록 기본값). 랜딩만 설정(`landing_tiers`)에 따라 A컷만 / A+B.
 
 ### 3.6 검색
 
@@ -160,7 +160,7 @@ Photo
 
 - 게스트: 읽기 전용, `visibility=public`만, **원본 파일은 절대 못 받는다**("전체 보기"도 `guest_max_edge` 2560px 파생본).
 - 관리자: 단일 계정, scrypt(Node 내장) + HMAC 서명 HttpOnly·SameSite=Lax 쿠키(서명 키는 첫 기동 때 DB 에 생성). 첫 계정 생성은 앱 로그에 찍히는 설정 토큰 필요. 로그인 실패는 IP 당 10분 10회. TOTP는 v2.
-- 관리자 기능: Source 등록/재스캔, 잡 현황, 페어링 검토·수동 페어, primary/라벨 지정, 공개·숨김·tier·제목·캡션·촬영일 수정(일괄 포함), 컬렉션 편집, 롤 정보 입력, 사이트 설정(제목·About·랜딩 모드·게스트 최대 해상도·GPS·B컷 정책), 원본 다운로드, 모델 교체·재임베딩.
+- 관리자 기능: Source 등록/재스캔, 잡 현황, 페어링 검토·수동 페어, primary/라벨 지정, 공개·숨김·tier·제목·캡션·촬영일 수정(일괄 포함), 컬렉션 편집, 롤 정보 입력, 사이트 설정(제목·About·랜딩 모드·게스트 최대 해상도·GPS·랜딩 컷 A/A+B), 원본 다운로드, 모델 교체·재임베딩.
 - Source별 `default_visibility`: 보정 A 폴더 public, B 폴더 설정값, 원본 폴더 hidden.
 
 ---
@@ -231,7 +231,7 @@ compose 핵심:
 
 ```
 sources            id, slug, name, root_path, role(original|edit), medium(film|digital|null), tier(A|B|null),
-                   default_visibility, library_public, poll_interval_min, last_scanned_at
+                   default_visibility, poll_interval_min, last_scanned_at
 files              id, source_id, rel_path, rel_path_nfc, filename, stem, stem_norm, edit_label,
                    ext, kind(raw|jpeg|tiff|png|webp), size, mtime, content_hash, status(active|missing),
                    width, height, orientation, color_profile,
@@ -251,7 +251,7 @@ collections        id, slug, title, statement_md, cover_photo_id, visibility,
 series             id, collection_id, title, rel_dir, position
 collection_photos  collection_id, photo_id, series_id?, position
 admin_users        id, username, password_hash
-settings           key, value jsonb        -- landing_mode, guest_max_edge, show_gps, b_cut_policy …
+settings           key, value jsonb        -- landing_mode, guest_max_edge, show_gps, landing_tiers …
 pgboss.*           pg-boss가 생성
 ```
 
@@ -326,7 +326,7 @@ GET   /media/{file_id}/original                  관리자만
 ### 8.1 설정의 경계와 배포 흐름
 
 - **compose + 환경변수 = 인프라만**: `PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_*`, `ORIGIN`, `APP_PORT`, `APP_TAG`, `IMMICH_ML_VERSION`. 이게 전부다.
-- **관리자 페이지 = 앱 설정 전부**: Source 등록(폴더 선택기), 사이트 제목·About, 랜딩 모드, 게스트 최대 해상도, GPS·B컷 정책, 검색 모델, 스캔 주기. `settings` 테이블과 `sources` 테이블에 저장되어 `db-data` 볼륨에 남는다. 재배포·이미지 업데이트에 영향받지 않는다. 세션 서명 키도 첫 기동 때 생성해 DB 에 둔다(환경변수 불필요).
+- **관리자 페이지 = 앱 설정 전부**: Source 등록(폴더 선택기), 사이트 제목·About, 랜딩 모드, 게스트 최대 해상도, GPS·랜딩 컷, 검색 모델, 스캔 주기. `settings` 테이블과 `sources` 테이블에 저장되어 `db-data` 볼륨에 남는다. 재배포·이미지 업데이트에 영향받지 않는다. 세션 서명 키도 첫 기동 때 생성해 DB 에 둔다(환경변수 불필요).
 - 배포: `main` push → GitHub Actions → `ghcr.io/nr2bj/showmethepicture:latest`(+ `sha-…`, `v*`). Portainer 에서는 **웹 에디터 스택**에 `compose.yaml` 을 붙여넣고 값만 바꾼다 — 레포의 compose 는 템플릿이지 고정이 아니며, 이후 수정은 Portainer 에서 한다. 새 이미지는 스택의 "Pull and redeploy" 로 받는다. 자동화를 원하면 Repository 스택(GitOps) + 레포 Secrets `PORTAINER_WEBHOOK` 조합이 선택지.
 - `compose.yaml` 에는 `build:` 를 두지 않는다(웹 에디터 스택은 빌드 컨텍스트가 없어 실패). 소스 빌드는 `compose.build.yaml` override: `docker compose -f compose.yaml -f compose.build.yaml up --build`.
 

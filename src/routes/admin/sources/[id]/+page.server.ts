@@ -1,5 +1,4 @@
 import { error, fail, redirect } from '@sveltejs/kit';
-import { fromExposure, parseExposure } from '#lib/exposure.ts';
 import { db } from '#lib/server/db/app.ts';
 import { enqueueRelink, enqueueScan } from '#lib/server/queue.ts';
 import {
@@ -33,12 +32,11 @@ export const actions: Actions = {
 		const medium = mediumRaw === 'film' || mediumRaw === 'digital' ? mediumRaw : null;
 		const tier =
 			tierRaw === 'A' || tierRaw === 'B' ? tierRaw : role === 'edit' ? (s.tier ?? 'A') : null;
-		const { defaultVisibility, libraryPublic } = fromExposure(parseExposure(form.get('exposure')));
+		const defaultVisibility = form.get('visibility') === 'public' ? ('public' as const) : ('hidden' as const);
 		const poll = Number(form.get('pollIntervalMin'));
 		await updateSource(db(), s.id, {
 			name: String(form.get('name') ?? '').trim() || s.name,
 			defaultVisibility,
-			libraryPublic,
 			pollIntervalMin: Number.isInteger(poll) && poll >= 1 ? poll : s.pollIntervalMin
 		});
 		// 역할·매체·컷: 역할이 바뀌면 파일 묶음/페어링을 워커가 다시 계산한다

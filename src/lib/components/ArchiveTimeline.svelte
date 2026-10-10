@@ -30,7 +30,21 @@
 	});
 
 	let hover = $state<string | null>(null);
-	const shown = $derived(segs.find((s) => s.key === (hover ?? active)) ?? null);
+	// 현재 달 라벨은 스크롤로 달이 바뀐 직후 잠깐만 보여준다 (늘 떠 있으면 필터 바·사진을 가린다). 호버 중엔 계속.
+	let flash = $state(false);
+	$effect(() => {
+		if (!active) return;
+		flash = true;
+		const t = setTimeout(() => (flash = false), 1400);
+		return () => clearTimeout(t);
+	});
+	const shown = $derived(
+		hover
+			? (segs.find((s) => s.key === hover) ?? null)
+			: flash
+				? (segs.find((s) => s.key === active) ?? null)
+				: null
+	);
 </script>
 
 <aside class="timeline" aria-label="날짜로 이동" onpointerleave={() => (hover = null)}>

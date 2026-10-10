@@ -91,9 +91,9 @@
 			else
 				goto(
 					data.ctx.startsWith('library:')
-						? `/library/${data.ctx.slice(8).replace(/:b$/, '')}`
-						: data.ctx.endsWith(':b')
-							? '/archive?b=1'
+						? `/library/${data.ctx.slice(8)}`
+						: data.ctx.startsWith('archive:')
+							? `/archive?${data.ctx.slice(8)}`
 							: '/archive'
 				);
 		}
