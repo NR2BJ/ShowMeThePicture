@@ -153,23 +153,18 @@ export async function updateGear(
 	return row ?? null;
 }
 
-/** 같은 종류 안에서 한 칸 위/아래로. 그 종류의 position 을 0..n-1 로 다시 매긴다. */
-export async function moveGear(db: Db, id: string, dir: 'up' | 'down'): Promise<boolean> {
-	const [me] = await db.select({ kind: gear.kind }).from(gear).where(eq(gear.id, id)).limit(1);
-	if (!me) return false;
-	const rows = await db
-		.select({ id: gear.id })
-		.from(gear)
-		.where(eq(gear.kind, me.kind))
-		.orderBy(asc(gear.position), asc(gear.name));
-	const ids = rows.map((r) => r.id);
-	const i = ids.indexOf(id);
-	const j = dir === 'up' ? i - 1 : i + 1;
-	if (i < 0 || j < 0 || j >= ids.length) return false;
-	[ids[i], ids[j]] = [ids[j], ids[i]];
-	for (let k = 0; k < ids.length; k++)
-		await db.update(gear).set({ position: k }).where(eq(gear.id, ids[k]));
-	return true;
+/** 끌어서 바꾼 순서 저장: 주어진 id 순서대로 position 0..n-1 (한 종류의 전체 목록이어야 한다). */
+export async function reorderGear(db: Db, ids: string[]): Promise<number> {
+	let n = 0;
+	for (let k = 0; k < ids.length; k++) {
+		const r = await db
+			.update(gear)
+			.set({ position: k })
+			.where(eq(gear.id, ids[k]))
+			.returning({ id: gear.id });
+		n += r.length;
+	}
+	return n;
 }
 
 export async function deleteGear(db: Db, id: string): Promise<void> {

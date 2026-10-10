@@ -1,14 +1,7 @@
 import { fail } from '@sveltejs/kit';
 import { db } from '#lib/server/db/app.ts';
 import { reparseFolderMeta } from '#lib/server/folders.ts';
-import {
-	addGear,
-	deleteGear,
-	listGear,
-	moveGear,
-	updateGear,
-	type GearKind
-} from '#lib/server/gear.ts';
+import { addGear, deleteGear, listGear, updateGear, type GearKind } from '#lib/server/gear.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => ({ gear: await listGear(db()) });
@@ -49,14 +42,6 @@ export const actions: Actions = {
 		if (!row) return fail(404, { error: 'not found' });
 		const n = await reparseFolderMeta(db());
 		return { ok: n ? `고쳤습니다. 폴더 ${n}개의 빈 칸을 채웠습니다.` : '고쳤습니다.' };
-	},
-	move: async ({ request }) => {
-		const form = await request.formData();
-		const id = String(form.get('id') ?? '');
-		const dir = form.get('dir') === 'up' ? 'up' : 'down';
-		if (!id) return fail(400, { error: 'id' });
-		await moveGear(db(), id, dir);
-		return {};
 	},
 	delete: async ({ request }) => {
 		const form = await request.formData();

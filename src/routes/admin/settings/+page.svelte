@@ -3,6 +3,8 @@
 	let { data, form }: PageProps = $props();
 	// svelte-ignore state_referenced_locally
 	let stripVh = $state(data.stripVh);
+	// svelte-ignore state_referenced_locally
+	let stripRows = $state(data.stripRows);
 </script>
 
 <section class="admin-page">
@@ -32,14 +34,26 @@
 				id="stripVh"
 				type="range"
 				name="stripVh"
-				min="12"
-				max="32"
+				min="5"
+				max="50"
 				step="1"
 				bind:value={stripVh}
 			/>
 		</div>
+		<div class="field">
+			<span>필름 줄 수 <output class="mono" for="stripRows">{stripRows}</output></span>
+			<input
+				id="stripRows"
+				type="range"
+				name="stripRows"
+				min="1"
+				max="10"
+				step="1"
+				bind:value={stripRows}
+			/>
+		</div>
 		<p class="mono dim hint">
-			세 줄이 화면에 다 들어가는 건 대략 22% 까지이고, 더 키우면 위아래가 잘린 채 흐릅니다. 저장하면
+			줄 수 × 크기가 화면을 넘으면 위아래가 잘린 채 흐릅니다(세 줄이면 대략 22% 까지). 저장하면
 			게스트에게도 같은 크기로 보입니다.
 		</p>
 		<p class="mono dim hint">

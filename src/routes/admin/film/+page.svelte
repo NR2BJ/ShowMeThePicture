@@ -21,16 +21,11 @@
 </script>
 
 <section class="admin-page">
-	<h1>폴더 정보</h1>
+	<h1>필름</h1>
 	<p class="mono dim">
-		필름 롤처럼 EXIF 가 없는 폴더에 현상월·카메라·렌즈·필름을 준다. 폴더명이 <code
-			>2509_01 Rollei35s colorplus200</code
-		>
-		처럼 현상월_롤번호로 시작하면 스캔 때 날짜·롤 번호를 읽고,
-		<a href="/admin/gear">장비</a>에 등록된 이름이 폴더명에 있으면 카메라·렌즈·필름도 자동으로
-		채워진다. 자동으로 읽은 폴더는 '미확정'에 있고, 한 번 저장하면 '확정'으로 옮겨가 한 줄로 보인다.
-		저장하면 그 폴더 안 파일의 날짜가 현상월(파일명 순)로 맞춰진다 — 스캐너가 EXIF 에 넣은 스캔
-		날짜도 덮어쓴다.
+		롤 폴더에 현상월·카메라·렌즈·필름을 줍니다. 폴더명이 <code>2509_01 Rollei35s colorplus200</code> 처럼
+		시작하면 스캔 때 자동으로 읽어 '미확정'에 두고, 저장하면 '확정'으로 옮겨가며 그 폴더 사진의 날짜가
+		현상월(파일명 순)로 맞춰집니다.
 	</p>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.saved}<p class="notice">
@@ -43,11 +38,11 @@
 
 	<div class="bar">
 		<nav class="tabs mono" aria-label="폴더 상태">
-			<a href="?tab=pending" class:on={data.tab === 'pending'}
-				>미확정 <span class="n">{pending.length}</span></a
-			>
 			<a href="?tab=confirmed" class:on={data.tab === 'confirmed'}
 				>확정 <span class="n">{confirmed.length}</span></a
+			>
+			<a href="?tab=pending" class:on={data.tab === 'pending'}
+				>미확정 <span class="n">{pending.length}</span></a
 			>
 		</nav>
 		<form method="POST" action={`?/applyAll&tab=${data.tab}`}>
@@ -74,7 +69,7 @@
 		<table class="table confirmed">
 			<thead>
 				<tr>
-					<th>라이브러리 · 폴더</th>
+					<th>폴더</th>
 					<th>제목</th>
 					<th>현상월</th>
 					<th>롤</th>
@@ -88,10 +83,7 @@
 			<tbody>
 				{#each confirmed as f (f.id)}
 					<tr>
-						<td
-							><span class="dim">{f.sourceName}</span>
-							<div class="mono">{f.relDir || '(루트)'}</div></td
-						>
+						<td class="mono">{f.relDir || '(루트)'}</td>
 						<td>{f.title ?? '-'}</td>
 						<td class="mono">{ym(f.developedAt)}</td>
 						<td class="mono">{f.rollNo ?? '-'}</td>

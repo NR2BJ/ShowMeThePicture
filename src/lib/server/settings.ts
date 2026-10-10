@@ -10,8 +10,10 @@ export type AppSettings = {
 	guest_max_edge: number;
 	/** 랜딩 필름 스트립에 보일 컷: A만 | A+B (보정본 없는 원본만 있는 사진은 어차피 안 나온다) */
 	landing_tiers: 'A' | 'AB';
-	/** 랜딩 필름 프레임 높이 (화면 높이의 %), 12~32 */
+	/** 랜딩 필름 프레임 높이 (화면 높이의 %), 5~50 */
 	landing_strip_vh: number;
+	/** 랜딩 필름 줄 수, 1~10 */
+	landing_rows: number;
 	show_gps: boolean;
 	scan_poll_minutes: number;
 };
@@ -28,6 +30,7 @@ export function settingsDefaults(env: {
 		guest_max_edge: env.GUEST_MAX_EDGE,
 		landing_tiers: 'A',
 		landing_strip_vh: 21,
+		landing_rows: 3,
 		show_gps: false,
 		scan_poll_minutes: env.SCAN_POLL_MINUTES
 	};

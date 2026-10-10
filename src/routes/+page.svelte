@@ -5,11 +5,13 @@
 
 	let { data }: PageProps = $props();
 
-	const LAYOUT = [
-		{ dur: 110, tilt: -1.1, dir: 'left' },
-		{ dur: 135, tilt: 0.9, dir: 'right' },
-		{ dur: 120, tilt: -0.7, dir: 'left' }
-	] as const;
+	// 줄 수는 설정값. 방향은 번갈아, 기울기·속도는 줄마다 조금씩 다르게
+	const layoutFor = (n: number) =>
+		Array.from({ length: n }, (_, i) => ({
+			dur: 110 + ((i * 17) % 45),
+			tilt: (i % 2 === 0 ? -1 : 1) * (0.7 + ((i * 7) % 5) / 10),
+			dir: (i % 2 === 0 ? 'left' : 'right') as 'left' | 'right'
+		}));
 	const MIN_PER_ROW = 12;
 
 	function placeholders(n: number): Frame[] {
@@ -29,11 +31,12 @@
 	}
 
 	const rows: StripRow[] = $derived.by(() => {
-		const src = data.frames.length ? data.frames : placeholders(MIN_PER_ROW * LAYOUT.length);
-		return LAYOUT.map((l, i) => ({
+		const layout = layoutFor(data.stripRows);
+		const src = data.frames.length ? data.frames : placeholders(MIN_PER_ROW * layout.length);
+		return layout.map((l, i) => ({
 			...l,
 			frames: pad(
-				src.filter((_, j) => j % LAYOUT.length === i),
+				src.filter((_, j) => j % layout.length === i),
 				MIN_PER_ROW
 			)
 		}));

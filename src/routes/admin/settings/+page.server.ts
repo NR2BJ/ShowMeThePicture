@@ -7,10 +7,11 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	if (!config.DATABASE_URL)
-		return { landingTiers: 'A' as const, stripVh: 21, showGps: false, noDb: true };
+		return { landingTiers: 'A' as const, stripVh: 21, stripRows: 3, showGps: false, noDb: true };
 	return {
 		landingTiers: await getSetting<'A' | 'AB'>(db(), 'landing_tiers', 'A'),
 		stripVh: await getSetting<number>(db(), 'landing_strip_vh', 21),
+		stripRows: await getSetting<number>(db(), 'landing_rows', 3),
 		showGps: await getSetting<boolean>(db(), 'show_gps', false),
 		noDb: false
 	};
@@ -25,7 +26,13 @@ export const actions: Actions = {
 		await setSetting(
 			db(),
 			'landing_strip_vh',
-			Number.isFinite(vh) ? Math.min(32, Math.max(12, vh)) : 21
+			Number.isFinite(vh) ? Math.min(50, Math.max(5, vh)) : 21
+		);
+		const rows = Math.round(Number(form.get('stripRows')));
+		await setSetting(
+			db(),
+			'landing_rows',
+			Number.isFinite(rows) ? Math.min(10, Math.max(1, rows)) : 3
 		);
 		await setSetting(db(), 'show_gps', form.get('showGps') === 'on');
 		return { ok: '저장했습니다.' };

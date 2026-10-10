@@ -48,8 +48,12 @@
 				>미확정 {sm.pairs.auto} · 확정 {sm.pairs.confirmed} · 원본 없음 {sm.pairs.unpaired}</span
 			>
 		</a>
-		<a class="card" href="/admin/folders?tab=pending" class:attn={sm.folders.pending > 0}>
-			<span class="k mono">폴더 정보</span>
+		<a
+			class="card"
+			href={sm.folders.pending > 0 ? '/admin/film?tab=pending' : '/admin/film'}
+			class:attn={sm.folders.pending > 0}
+		>
+			<span class="k mono">필름</span>
 			<span class="v">{sm.folders.pending}<small>미확정</small></span>
 			<span class="s mono dim">확정 {sm.folders.confirmed}</span>
 		</a>
@@ -74,12 +78,18 @@
 		</p>
 	{:else}
 		<table class="table">
-			<thead
-				><tr
-					><th>이름</th><th>역할</th><th>파일</th><th>처리됨</th><th>없어짐</th><th>마지막 스캔</th
-					></tr
-				></thead
-			>
+			<thead>
+				<tr>
+					<th>이름</th>
+					<th>역할</th>
+					<th>파일</th>
+					<th>처리됨</th>
+					<th>대기</th>
+					<th>실패</th>
+					<th>없어짐</th>
+					<th>마지막 스캔</th>
+				</tr>
+			</thead>
 			<tbody>
 				{#each data.sources as s (s.id)}
 					<tr>
@@ -88,7 +98,9 @@
 							<div class="mono dim">{s.rootPath}</div></td
 						>
 						<td class="mono"
-							>{s.role}{s.medium ? ` · ${s.medium}` : ''}{s.tier ? ` · ${s.tier}컷` : ''}</td
+							>{s.role === 'edit' ? '보정' : '원본'}{s.medium
+								? ` · ${s.medium === 'film' ? '필름' : '디지털'}`
+								: ''}{s.tier ? ` · ${s.tier}컷` : ''}</td
 						>
 						<td class="mono">{s.fileCount}</td>
 						<td class="mono">{s.indexedCount}</td>
@@ -100,11 +112,16 @@
 						>
 					</tr>
 				{/each}
-				<tr
-					><td class="mono dim">합계</td><td></td><td class="mono">{totals.files}</td><td
-						class="mono">{totals.indexed}</td
-					><td class="mono">{totals.missing}</td><td></td></tr
-				>
+				<tr>
+					<td class="mono dim">합계</td>
+					<td></td>
+					<td class="mono">{totals.files}</td>
+					<td class="mono">{totals.indexed}</td>
+					<td class="mono">{totals.pending}</td>
+					<td class="mono" class:bad={totals.failed > 0}>{totals.failed}</td>
+					<td class="mono">{totals.missing}</td>
+					<td></td>
+				</tr>
 			</tbody>
 		</table>
 	{/if}

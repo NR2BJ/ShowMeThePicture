@@ -81,11 +81,6 @@
 				{/each}
 			</tbody>
 		</table>
-		<p class="mono dim hint">
-			'게스트 공개' = 이 폴더에서 새로 찾는 사진의 기본값. '사진 공개 현황' = 지금 실제 상태(직접
-			바꾼 사진은 '수동'). 컷(A/B)은 분류 라벨이고 아카이브 필터로 골라 볼 수 있습니다. 폴더
-			페이지(/library/…)는 관리자 전용 작업 화면입니다.
-		</p>
 	{/if}
 
 	<h2>폴더 추가</h2>
@@ -141,10 +136,6 @@
 				{/key}
 			</label>
 		</div>
-		<p class="mono dim hint">
-			권장값이 자동으로 들어갑니다: 원본은 숨김, 보정 A컷은 공개, B컷은 숨김. 등록 뒤에는 '수정'에서
-			바꾸고 기존 사진에 일괄 적용할 수 있습니다.
-		</p>
 		<button class="btn primary" type="submit">등록하고 스캔</button>
 	</form>
 </section>
@@ -165,10 +156,5 @@
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 		gap: 0 16px;
-	}
-	.hint {
-		font-size: 12px;
-		margin: 10px 0 18px;
-		max-width: 760px;
 	}
 </style>

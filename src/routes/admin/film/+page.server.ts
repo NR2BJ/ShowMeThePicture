@@ -13,7 +13,8 @@ import type { Actions, PageServerLoad } from './$types';
 export const load: PageServerLoad = async ({ url }) => {
 	const gear = await listGear(db());
 	const folders = await listFolderMeta(db());
-	const tab = url.searchParams.get('tab') === 'confirmed' ? 'confirmed' : 'pending';
+	// 기본은 확정(한 줄 표). 미확정은 눌러서 본다 — 대시보드 카드가 미확정이 있으면 그쪽으로 보낸다
+	const tab = url.searchParams.get('tab') === 'pending' ? 'pending' : 'confirmed';
 	return {
 		folders,
 		tab,

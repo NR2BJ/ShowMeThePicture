@@ -47,6 +47,12 @@
 		margin: 0 auto;
 		padding: 24px 40px 80px;
 	}
+	/* 페이지 머리 설명: 두세 문장, 본문보다 조금 크게 */
+	.admin-page h1 + p {
+		font-size: 15px;
+		line-height: 1.65;
+		max-width: 100ch;
+	}
 	.admin-page h1 {
 		font-family: var(--font-serif);
 		font-weight: 400;
