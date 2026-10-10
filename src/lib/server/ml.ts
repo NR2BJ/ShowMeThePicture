@@ -69,8 +69,19 @@ export async function embedText(
 ): Promise<number[]> {
 	const fd = new FormData();
 	fd.append('text', text);
-	const options = needsLanguage(cfg.model) && cfg.language ? { language: cfg.language } : {};
+	// 설정 언어가 한국어라도 영어로 치면 영어로 보낸다 (NLLB 는 입력 언어를 알아야 제대로 인코딩한다)
+	const language = needsLanguage(cfg.model) ? (detectNllbLang(text) ?? cfg.language) : null;
+	const options = language ? { language } : {};
 	return predict(cfg, { clip: { textual: { modelName: cfg.model, options } } }, fd, timeoutMs);
+}
+
+/** NLLB 텍스트 인코더용 언어 코드 추정: 한글 → kor_Hang, 가나 → jpn_Jpan, 한자만 → zho_Hans, 라틴 글자만 → eng_Latn. 못 정하면 null(설정값). */
+export function detectNllbLang(text: string): string | null {
+	if (/[\u3131-\u318e\uac00-\ud7a3]/.test(text)) return 'kor_Hang';
+	if (/[\u3040-\u30ff]/.test(text)) return 'jpn_Jpan';
+	if (/[\u4e00-\u9fff]/.test(text)) return 'zho_Hans';
+	if (/[A-Za-z]/.test(text) && !/[^\x00-\x7f]/.test(text)) return 'eng_Latn';
+	return null;
 }
 
 /** pgvector 리터럴 */

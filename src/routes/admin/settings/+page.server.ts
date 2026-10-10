@@ -2,7 +2,11 @@
 import { fail } from '@sveltejs/kit';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
-import { mlPing } from '#lib/server/ml.ts';
+import { embedImage, embedText, mlPing, MlError } from '#lib/server/ml.ts';
+import { derivativePath } from '#lib/server/media.ts';
+import { readFile } from 'node:fs/promises';
+import { and, eq } from 'drizzle-orm';
+import { files, photos } from '#lib/server/db/schema.ts';
 import { enqueueEmbedMany } from '#lib/server/queue.ts';
 import { embeddingStats, filesNeedingEmbedding } from '#lib/server/search.ts';
 import { DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
@@ -61,11 +65,51 @@ export const actions: Actions = {
 			'search_language',
 			String(form.get('searchLanguage') ?? '').trim() || 'kor_Hang'
 		);
-		if (model !== prevModel) {
-			const n = await enqueueEmbedMany(await filesNeedingEmbedding(db(), model));
-			return { ok: `저장했습니다. 모델이 바뀌어 사진 ${n}장을 다시 임베딩합니다 (워커).` };
-		}
+		if (model !== prevModel)
+			return {
+				ok: `저장했습니다. 모델이 바뀌었습니다 — '모델 시험'으로 올라오는지 확인한 뒤 '빠진 임베딩 채우기'를 누르세요. 그 전에도 새로 처리되는 사진은 새 모델로 임베딩됩니다.`
+			};
 		return { ok: '저장했습니다.' };
+	},
+	/** 저장된 모델로 글 한 줄 + 사진 한 장만 인코딩해 본다. 첫 호출은 모델 내려받기·GPU 로딩이라 오래 걸릴 수 있다. */
+	testModel: async ({ locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const d = db();
+		const cfg = {
+			url: config.ML_URL,
+			model: await getSetting<string>(d, 'search_model', DEFAULT_SEARCH_MODEL),
+			language: await getSetting<string>(d, 'search_language', 'kor_Hang')
+		};
+		try {
+			const t0 = Date.now();
+			const tv = await embedText(cfg, '비 오는 밤 골목', 600_000);
+			const t1 = Date.now();
+			// preview 파생본이 이미 있는 사진 하나
+			const cands = await d
+				.select({ id: files.id })
+				.from(photos)
+				.innerJoin(files, eq(files.id, photos.primaryFileId))
+				.where(and(eq(files.status, 'active'), eq(files.derivativesReady, true)))
+				.limit(20);
+			let imgMsg = '사진 없음';
+			for (const c of cands) {
+				const bytes = await readFile(derivativePath(config.CACHE_DIR, c.id, 'preview')).catch(
+					() => null
+				);
+				if (!bytes) continue;
+				const t2 = Date.now();
+				const iv = await embedImage(cfg, new Uint8Array(bytes), 600_000);
+				imgMsg = `사진 ${((Date.now() - t2) / 1000).toFixed(1)}s (${iv.length}차원)`;
+				break;
+			}
+			return {
+				ok: `${cfg.model} 동작: 글 ${((t1 - t0) / 1000).toFixed(1)}s (${tv.length}차원) · ${imgMsg}. 두 번째부터는 훨씬 빠릅니다.`
+			};
+		} catch (e) {
+			return fail(502, {
+				error: `${cfg.model} 실패: ${e instanceof MlError ? e.message : String(e)} — ml 컨테이너 로그(docker logs)와 GPU 메모리를 확인하세요.`
+			});
+		}
 	},
 	reembed: async ({ locals }) => {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });

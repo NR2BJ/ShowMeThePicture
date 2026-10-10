@@ -99,6 +99,11 @@
 	>
 		<button class="btn quiet" type="submit" disabled={data.noDb}>빠진 임베딩 채우기</button>
 	</form>
+	<form method="POST" action="?/testModel" class="reembed">
+		<button class="btn quiet" type="submit" disabled={data.noDb}
+			>모델 시험 (글 1줄 + 사진 1장)</button
+		>
+	</form>
 </section>
 
 <style>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseClip, vectorLiteral } from './ml';
+import { detectNllbLang, parseClip, vectorLiteral } from './ml';
 
 describe('ml client', () => {
 	it('accepts the embedding as a JSON string or as an array', () => {
@@ -8,6 +8,14 @@ describe('ml client', () => {
 		expect(() => parseClip('nope')).toThrow();
 		expect(() => parseClip([])).toThrow();
 		expect(() => parseClip(undefined)).toThrow();
+	});
+	it('guesses the NLLB language from the script of the query', () => {
+		expect(detectNllbLang('비 오는 밤 골목')).toBe('kor_Hang');
+		expect(detectNllbLang('rainy night alley')).toBe('eng_Latn');
+		expect(detectNllbLang('雨の夜')).toBe('jpn_Jpan');
+		expect(detectNllbLang('夜雨')).toBe('zho_Hans');
+		expect(detectNllbLang('123')).toBeNull();
+		expect(detectNllbLang('café')).toBeNull();
 	});
 	it('formats a pgvector literal', () => {
 		expect(vectorLiteral([0.5, 1])).toBe('[0.5,1]');
