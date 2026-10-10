@@ -18,5 +18,12 @@ if [ -d /cache ]; then
 	fi
 fi
 
+# ml 컨테이너가 root 로 받아 둔 모델 캐시(ml-cache 볼륨, ML_CACHE_DIR)는 매번 소유권을 맞춘다 — 설정에서 지울 수 있게.
+# 파일 수가 적어 빠르다. app 이 떠 있는 동안 새로 받은 모델은 다음 재시작 때 맞춰진다.
+MLC="${ML_CACHE_DIR:-/mlcache}"
+if [ -d "$MLC" ]; then
+	chown -R "${PUID}:${PGID}" "$MLC" 2>/dev/null || echo "[entrypoint] ${MLC} chown 실패 — 설정에서 모델 캐시 삭제가 막힐 수 있습니다"
+fi
+
 export HOME=/tmp
 exec setpriv --reuid="$PUID" --regid="$PGID" --clear-groups "$@"
