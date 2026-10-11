@@ -1,3 +1,4 @@
+import type { OgMeta } from '#lib/og.ts';
 import type { ArchiveFacets } from '#lib/archive.ts';
 import { parseSearch } from '#lib/searchctx.ts';
 import { archiveFacets } from '#lib/server/archive.ts';
@@ -23,7 +24,8 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const s = parseSearch(url.searchParams);
 	const { q, order, filter } = s;
 	const admin = !!locals.admin;
-	const base = { q, order, filter, admin };
+	const og: OgMeta = { title: q ? `‘${q}’ 검색` : '검색' };
+	const base = { q, order, filter, admin, og };
 	if (!config.DATABASE_URL)
 		return {
 			...base,

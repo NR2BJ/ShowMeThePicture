@@ -2,6 +2,8 @@ import { error } from '@sveltejs/kit';
 import { config } from '#lib/server/config.ts';
 import { getCollectionBySlug } from '#lib/server/collections.ts';
 import { db } from '#lib/server/db/app.ts';
+import { plainSummary } from '#lib/markdown.ts';
+import type { OgMeta } from '#lib/og.ts';
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, locals }) => {
@@ -28,6 +30,14 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 					: [])
 			]
 		: [{ key: 'all', title: null as string | null, items: c.items }];
+	// 링크 미리보기: 표지(지정한 사진 또는 첫 사진)가 공개면 그 사진
+	const coverId = c.coverPhotoId ?? c.items[0]?.id ?? null;
+	const cover = c.items.find((it) => it.id === coverId);
+	const og: OgMeta = {
+		title: c.title,
+		description: plainSummary(c.statementMd) || `${c.items.length}장`,
+		image: cover && cover.visibility === 'public' ? `/og/${cover.id}.jpg` : null
+	};
 	return {
 		c: {
 			id: c.id,
@@ -37,6 +47,7 @@ export const load: PageServerLoad = async ({ params, locals }) => {
 			kind: c.kind,
 			count: c.items.length
 		},
-		groups
+		groups,
+		og
 	};
 };

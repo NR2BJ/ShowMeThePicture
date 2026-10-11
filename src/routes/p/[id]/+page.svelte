@@ -117,11 +117,6 @@
 
 <svelte:window onkeydown={onKey} />
 
-<svelte:head>
-	<title>{data.photo.title ?? current?.filename ?? '사진'}</title>
-	{#if current}<meta property="og:image" content={current.urls.preview} />{/if}
-</svelte:head>
-
 <main class="photo" class:info>
 	<figure bind:clientWidth={box.w} bind:clientHeight={box.h}>
 		{#if data.nav.prev}<a class="arrow prev" href={`/p/${data.nav.prev}${q}`} aria-label="이전 사진"

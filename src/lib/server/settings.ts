@@ -5,6 +5,8 @@ import { settings } from './db/schema';
 
 export type AppSettings = {
 	site_title: string;
+	/** 한 줄 소개 — 링크 미리보기·검색엔진 설명 */
+	site_description: string;
 	about_md: string;
 	landing_mode: 'filmstrip';
 	guest_max_edge: number;
@@ -37,6 +39,7 @@ export function settingsDefaults(env: {
 }): AppSettings {
 	return {
 		site_title: env.SITE_TITLE,
+		site_description: '',
 		about_md: '',
 		landing_mode: 'filmstrip',
 		guest_max_edge: env.GUEST_MAX_EDGE,

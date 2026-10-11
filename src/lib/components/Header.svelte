@@ -1,14 +1,19 @@
 <script lang="ts">
 	import { page } from '$app/state';
 
-	let { title, admin = null }: { title: string; admin?: { username: string } | null } = $props();
+	let {
+		title,
+		admin = null,
+		hasAbout = false
+	}: { title: string; admin?: { username: string } | null; hasAbout?: boolean } = $props();
 
-	const links = [
+	// 소개 글이 비어 있으면 게스트에게는 '소개'를 숨긴다 (관리자는 쓰러 들어갈 수 있게 보임)
+	const links = $derived([
 		{ href: '/collections', label: '컬렉션' },
 		{ href: '/archive', label: '아카이브' },
 		{ href: '/search', label: '검색' },
-		{ href: '/about', label: '소개' }
-	];
+		...(hasAbout || admin ? [{ href: '/about', label: '소개' }] : [])
+	]);
 	const onLanding = $derived(page.url.pathname === '/');
 </script>
 

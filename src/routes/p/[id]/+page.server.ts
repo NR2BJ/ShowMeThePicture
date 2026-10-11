@@ -17,6 +17,7 @@ import { setFileRotation } from '#lib/server/rotation.ts';
 import { similarPhotos } from '#lib/server/search.ts';
 import { resetPhotoVisibility } from '#lib/server/visibility.ts';
 import { getSetting } from '#lib/server/settings.ts';
+import type { OgMeta } from '#lib/og.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params, url, locals }) => {
@@ -48,9 +49,28 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		console.error('[similar]', e);
 		return [];
 	});
+	// 링크 미리보기: 제목(없으면 찍은 날), 장비 한 줄, 공개 사진이면 그 사진
+	const when = photo.takenAt
+		? new Intl.DateTimeFormat('ko-KR', {
+				timeZone: 'Asia/Tokyo',
+				year: 'numeric',
+				month: 'long',
+				day: 'numeric'
+			}).format(new Date(photo.takenAt))
+		: null;
+	const gearLine = [photo.effective.camera, photo.effective.lens, photo.effective.filmStock]
+		.filter(Boolean)
+		.join(' · ');
+	const og: OgMeta = {
+		title: photo.title ?? when ?? '사진',
+		description: [photo.caption, gearLine, photo.title ? when : null].filter(Boolean).join(' — '),
+		image: photo.visibility === 'public' ? `/og/${photo.id}.jpg` : null,
+		type: 'article'
+	};
 	return {
 		photo,
 		nav,
+		og,
 		ctx,
 		similar,
 		showGps,

@@ -20,11 +20,13 @@ import {
 } from '#lib/server/search.ts';
 import { DEFAULT_DIVERSITY, DEFAULT_DUP_THRESHOLD, DEFAULT_SEARCH_MODEL } from '#lib/search.ts';
 import { getSetting, setSetting } from '#lib/server/settings.ts';
+import { siteInfo } from '#lib/server/site.ts';
 import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async () => {
 	if (!config.DATABASE_URL)
 		return {
+			site: { title: config.SITE_TITLE, description: '', aboutMd: '' },
 			landingTiers: 'A' as const,
 			stripVh: 21,
 			stripRows: 3,
@@ -42,6 +44,7 @@ export const load: PageServerLoad = async () => {
 		};
 	const searchModel = await getSetting<string>(db(), 'search_model', DEFAULT_SEARCH_MODEL);
 	return {
+		site: await siteInfo(db()),
 		landingTiers: await getSetting<'A' | 'AB'>(db(), 'landing_tiers', 'A'),
 		stripVh: await getSetting<number>(db(), 'landing_strip_vh', 21),
 		stripRows: await getSetting<number>(db(), 'landing_rows', 3),
@@ -68,6 +71,22 @@ export const actions: Actions = {
 	save: async ({ request, locals }) => {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });
 		const form = await request.formData();
+		// 사이트 (제목을 비우면 SITE_TITLE 환경변수로)
+		await setSetting(
+			db(),
+			'site_title',
+			String(form.get('siteTitle') ?? '')
+				.trim()
+				.slice(0, 80)
+		);
+		await setSetting(
+			db(),
+			'site_description',
+			String(form.get('siteDescription') ?? '')
+				.trim()
+				.slice(0, 200)
+		);
+		await setSetting(db(), 'about_md', String(form.get('aboutMd') ?? '').slice(0, 20000));
 		await setSetting(db(), 'landing_tiers', form.get('landingTiers') === 'AB' ? 'AB' : 'A');
 		const vh = Math.round(Number(form.get('stripVh')));
 		await setSetting(

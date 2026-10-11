@@ -1,3 +1,4 @@
+import type { OgMeta } from '#lib/og.ts';
 import { isMonthKey, parseFilter, type ArchiveFacets } from '#lib/archive.ts';
 import {
 	ARCHIVE_PAGE,
@@ -9,6 +10,8 @@ import {
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import type { PageServerLoad } from './$types';
+
+const OG: OgMeta = { title: '아카이브' };
 
 const EMPTY_FACETS: ArchiveFacets = {
 	medium: { film: 0, digital: 0 },
@@ -26,6 +29,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 	const filter = parseFilter(url.searchParams);
 	if (!config.DATABASE_URL)
 		return {
+			og: OG,
 			items: [],
 			hasMore: false,
 			months: [],
@@ -42,6 +46,7 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 		archiveFacets(db(), { admin, filter })
 	]);
 	return {
+		og: OG,
 		items: page.items,
 		hasMore: page.hasMore,
 		months,

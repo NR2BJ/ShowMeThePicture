@@ -1,17 +1,19 @@
 <script lang="ts">
 	import EditorialFlow from '#lib/components/EditorialFlow.svelte';
+	import { renderMarkdown } from '#lib/markdown.ts';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 	const ctx = $derived(`c:${data.c.slug}`);
 </script>
 
-<svelte:head><title>{data.c.title}</title></svelte:head>
-
 <section class="page">
 	<header class="head">
 		<p class="mono dim kicker"><a href="/collections">컬렉션</a> · {data.c.count}장</p>
 		<h1>{data.c.title}</h1>
-		{#if data.c.statementMd}<p class="statement">{data.c.statementMd}</p>{/if}
+		{#if data.c.statementMd}
+			<!-- eslint-disable-next-line svelte/no-at-html-tags -- renderMarkdown 이 HTML 을 이스케이프한다 -->
+			<div class="statement">{@html renderMarkdown(data.c.statementMd)}</div>
+		{/if}
 	</header>
 	{#each data.groups as g (g.key)}
 		{#if g.title}<h2>{g.title}</h2>{/if}

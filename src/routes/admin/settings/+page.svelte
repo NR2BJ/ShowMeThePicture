@@ -39,6 +39,32 @@
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
 
 	<form method="POST" action="?/save" class="edit" use:enhance={track((v) => (saving = v))}>
+		<h2>사이트</h2>
+		<label class="field"
+			><span>사이트 제목 · 비우면 기본 제목(SITE_TITLE)</span><input
+				type="text"
+				name="siteTitle"
+				value={data.site.title}
+				maxlength="80"
+				onchange={submit}
+			/></label
+		>
+		<label class="field"
+			><span>한 줄 소개 · 링크 미리보기와 검색엔진에 쓰임</span><input
+				type="text"
+				name="siteDescription"
+				value={data.site.description}
+				maxlength="200"
+				placeholder="예: 필름과 디지털로 찍은 사진들"
+				onchange={submit}
+			/></label
+		>
+		<label class="field"
+			><span
+				>소개 글 · /about · 마크다운(# 제목, **굵게**, [링크](주소), - 목록) · 비우면 메뉴에서 숨김</span
+			><textarea name="aboutMd" rows="10" onchange={submit}>{data.site.aboutMd}</textarea></label
+		>
+
 		<h2>랜딩</h2>
 		<div class="field">
 			<span>필름 스트립에 보일 컷</span>
