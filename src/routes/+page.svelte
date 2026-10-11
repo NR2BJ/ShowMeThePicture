@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import FilmStrip from '#lib/components/FilmStrip.svelte';
 	import type { Frame, StripRow } from '#lib/types.ts';
 	import type { PageProps } from './$types';
@@ -6,13 +7,21 @@
 	let { data }: PageProps = $props();
 
 	// 줄 수는 설정값. 방향은 번갈아, 기울기·속도는 줄마다 조금씩 다르게
+	// 속도는 줄마다 같게(줄마다 다르면 한 줄만 빨라 보였다)
 	const layoutFor = (n: number) =>
 		Array.from({ length: n }, (_, i) => ({
-			dur: 110 + ((i * 17) % 45),
+			dur: 120,
 			tilt: (i % 2 === 0 ? -1 : 1) * (0.7 + ((i * 7) % 5) / 10),
 			dir: (i % 2 === 0 ? 'left' : 'right') as 'left' | 'right'
 		}));
 	const MIN_PER_ROW = 12;
+	// 랜딩은 스크롤할 게 없다 — 아이폰의 고무줄 스크롤(당겼다 튕기기)을 이 페이지에서만 끈다
+	onMount(() => {
+		const els = [document.documentElement, document.body];
+		const prev = els.map((e) => e.style.overscrollBehavior);
+		els.forEach((e) => (e.style.overscrollBehavior = 'none'));
+		return () => els.forEach((e, i) => (e.style.overscrollBehavior = prev[i]));
+	});
 
 	function placeholders(n: number): Frame[] {
 		return Array.from({ length: n }, (_, i) => ({
@@ -56,6 +65,8 @@
 	.landing {
 		height: 100dvh;
 		overflow: hidden;
+		/* 위아래로 끌어도 페이지가 움직이지 않게 (탭은 그대로 된다) */
+		touch-action: none;
 		padding: 72px 0 36px;
 		box-sizing: border-box;
 	}

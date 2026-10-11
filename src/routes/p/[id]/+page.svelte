@@ -107,13 +107,14 @@
 		touch = null;
 		if (!quick || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
 		const to = dx > 0 ? data.nav.prev : data.nav.next;
-		if (to) goto(`/p/${to}${q}`);
+		if (to) goto(`/p/${to}${q}`, { replace: true });
 	}
 
 	function onKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-		if (e.key === 'ArrowLeft' && data.nav.prev) goto(`/p/${data.nav.prev}${q}`);
-		else if (e.key === 'ArrowRight' && data.nav.next) goto(`/p/${data.nav.next}${q}`);
+		if (e.key === 'ArrowLeft' && data.nav.prev) goto(`/p/${data.nav.prev}${q}`, { replace: true });
+		else if (e.key === 'ArrowRight' && data.nav.next)
+			goto(`/p/${data.nav.next}${q}`, { replace: true });
 		else if (e.key === '\\') toggle();
 		else if (e.key === 'i') info = !info;
 		else if (e.key === 'Escape') {
@@ -135,31 +136,35 @@
 <svelte:window onkeydown={onKey} />
 
 <main class="photo" class:info>
-	<figure
-		bind:clientWidth={box.w}
-		bind:clientHeight={box.h}
-		ontouchstart={touchStart}
-		ontouchend={touchEnd}
-	>
-		{#if data.nav.prev}<a class="arrow prev" href={`/p/${data.nav.prev}${q}`} aria-label="이전 사진"
-				>←</a
+	<!-- 넘기기는 방문 기록을 쌓지 않는다(replacestate) — 뒤로 가기 한 번이면 목록으로 -->
+	<figure ontouchstart={touchStart} ontouchend={touchEnd}>
+		{#if data.nav.prev}<a
+				class="arrow prev"
+				href={`/p/${data.nav.prev}${q}`}
+				data-sveltekit-replacestate
+				aria-label="이전 사진">←</a
 			>{/if}
-		{#key current?.id}
-			{#if current}
-				<img
-					src={current.urls.full}
-					alt={data.photo.title ?? ''}
-					width={current.width ?? undefined}
-					height={current.height ?? undefined}
-					style:width={fit ? `${fit.w}px` : undefined}
-					style:height={fit ? `${fit.h}px` : undefined}
-					style:transform={angle ? `rotate(${angle}deg)` : undefined}
-					use:fadeIn
-				/>
-			{/if}
-		{/key}
-		{#if data.nav.next}<a class="arrow next" href={`/p/${data.nav.next}${q}`} aria-label="다음 사진"
-				>→</a
+		<div class="stage" bind:clientWidth={box.w} bind:clientHeight={box.h}>
+			{#key current?.id}
+				{#if current}
+					<img
+						src={current.urls.full}
+						alt={data.photo.title ?? ''}
+						width={current.width ?? undefined}
+						height={current.height ?? undefined}
+						style:width={fit ? `${fit.w}px` : undefined}
+						style:height={fit ? `${fit.h}px` : undefined}
+						style:transform={angle ? `rotate(${angle}deg)` : undefined}
+						use:fadeIn
+					/>
+				{/if}
+			{/key}
+		</div>
+		{#if data.nav.next}<a
+				class="arrow next"
+				href={`/p/${data.nav.next}${q}`}
+				data-sveltekit-replacestate
+				aria-label="다음 사진">→</a
 			>{/if}
 	</figure>
 
@@ -375,14 +380,24 @@
 	.photo.info {
 		grid-template-columns: 1fr 380px;
 	}
+	/* 화살표는 사진 양옆 자리에 — 사진 위에 겹치지 않게 */
 	figure {
 		position: relative;
 		margin: 0;
+		display: grid;
+		grid-template-columns: 56px minmax(0, 1fr) 56px;
+		align-items: center;
+		height: 80vh;
+		min-height: 320px;
+	}
+	.stage {
+		grid-column: 2;
+		grid-row: 1;
+		height: 100%;
+		min-width: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		height: 80vh;
-		min-height: 320px;
 	}
 	figure img {
 		max-width: 100%;
@@ -400,23 +415,25 @@
 		opacity: 1;
 	}
 	.arrow {
-		position: absolute;
-		top: 50%;
-		transform: translateY(-50%);
+		grid-row: 1;
+		align-self: stretch;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		font-family: var(--font-serif);
 		font-size: 28px;
 		color: var(--color-ink-dim);
-		opacity: 0;
+		opacity: 0.5;
 		transition: opacity 0.2s;
-		padding: 20px;
 	}
 	.arrow.prev {
-		left: -20px;
+		grid-column: 1;
 	}
 	.arrow.next {
-		right: -20px;
+		grid-column: 3;
 	}
-	figure:hover .arrow {
+	figure:hover .arrow,
+	.arrow:focus-visible {
 		opacity: 1;
 	}
 	.bar {
@@ -560,6 +577,13 @@
 		}
 		.arrow {
 			display: none;
+		}
+		/* 좁은 화면은 화살표 대신 밀어서 넘김 — 양옆 자리도 사진에 */
+		figure {
+			grid-template-columns: minmax(0, 1fr);
+		}
+		.stage {
+			grid-column: 1;
 		}
 	}
 </style>

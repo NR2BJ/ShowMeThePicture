@@ -30,10 +30,17 @@
 		const el = root;
 		if (!el) return;
 		const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+		const dpr = window.devicePixelRatio || 1;
+		let stepPx = 0;
 		const measure = () => {
 			const cell = el.querySelector<HTMLElement>('.cell');
 			const strip = el.querySelector<HTMLElement>('.strip');
 			if (!cell || !strip || cell.offsetWidth === 0) return;
+			// 칸 폭을 기기 픽셀에 맞춘다 — 칸끼리 정확히 맞물려 틈·겹침(구멍 띠의 하얀 잔상)이 없게
+			el.style.removeProperty('--step-px');
+			const w = parseFloat(getComputedStyle(cell).width);
+			stepPx = Math.round(w * dpr) / dpr;
+			el.style.setProperty('--step-px', `${stepPx}px`);
 			const n = Math.ceil(strip.offsetWidth / cell.offsetWidth) + 2;
 			if (n !== slotCount) slotCount = n;
 		};
@@ -63,7 +70,11 @@
 					const p = j - offset[r];
 					const c = Math.floor(p / S);
 					// 칸 위치(칸 단위, 왼쪽 밖 한 칸부터). 끝에서 끝으로 옮겨지는 순간은 화면 밖이다.
-					cells[j].style.setProperty('--x', String(p - c * S - 1));
+					const x = p - c * S - 1;
+					// 기기 픽셀에 맞춰 반올림 — 소수 픽셀로 움직이면 구멍 띠에 하얀 잔상이 끌리듯 보일 때가 있었다
+					if (stepPx)
+						cells[j].style.transform = `translate3d(${Math.round(x * stepPx * dpr) / dpr}px, 0, 0)`;
+					else cells[j].style.setProperty('--x', String(x));
 					if (cycles[r][j] !== c) {
 						cycles[r][j] = c;
 						const next = mod(j - c * S, n);
@@ -88,13 +99,16 @@
 	style:--fh="clamp(40px, min({frameVh}vh, {(frameVh * 1.4).toFixed(1)}vw), 960px)"
 >
 	{#each rows as row, r (r)}
-		<!-- 마우스를 올리거나 줄을 누르면 그 줄만 멈춘다 (예전 :hover 와 같은 동작) -->
+		<!-- 마우스를 올린 동안, 또는 손가락으로 누르고 있는 동안 그 줄만 멈춘다 (손을 떼거나 제스처가 취소되면 다시 흐름) -->
 		<section
 			class="strip"
 			role="group"
 			style:--tilt="{row.tilt}deg"
-			onpointerenter={() => (paused[r] = true)}
-			onpointerleave={() => (paused[r] = false)}
+			onpointerenter={(e) => e.pointerType === 'mouse' && (paused[r] = true)}
+			onpointerleave={(e) => e.pointerType === 'mouse' && (paused[r] = false)}
+			onpointerdown={(e) => e.pointerType !== 'mouse' && (paused[r] = true)}
+			onpointerup={(e) => e.pointerType !== 'mouse' && (paused[r] = false)}
+			onpointercancel={() => (paused[r] = false)}
 		>
 			{#each { length: slotCount } as _, j (j)}
 				{@const f = row.frames[idx[r]?.[j] ?? mod(j, Math.max(1, row.frames.length))]}
@@ -147,7 +161,7 @@
 		position: absolute;
 		top: 0;
 		left: 0;
-		width: var(--step);
+		width: var(--step-px, var(--step));
 		height: 100%;
 		background: var(--color-base);
 		transform: translate3d(calc(var(--x) * var(--step)), 0, 0);
@@ -163,7 +177,7 @@
 		background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='8'%3E%3Crect x='11' y='0' width='12' height='8' rx='1.5' fill='%230b0b0a'/%3E%3C/svg%3E")
 			repeat-x;
 		/* 칸 폭을 구멍 6개로 나눠 칸 경계에서도 간격이 이어지게 */
-		background-size: calc(var(--step) / 6) var(--hole);
+		background-size: calc(var(--step-px, var(--step)) / 6) var(--hole);
 	}
 	.cell::before {
 		top: calc(var(--hole) * 0.75);
