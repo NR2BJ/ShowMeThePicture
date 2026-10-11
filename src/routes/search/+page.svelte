@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { navigating } from '$app/state';
 	import ArchiveFilters from '#lib/components/ArchiveFilters.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
 	import { filterParams, type ArchiveFilter } from '#lib/archive.ts';
@@ -38,6 +39,8 @@
 		const form = (e.currentTarget as HTMLInputElement).form;
 		setTimeout(() => form?.requestSubmit(), 0);
 	}
+	// 검색 중 표시 — 첫 검색은 ML 이 텍스트 모델을 올리느라 몇 초 걸려, 표시가 없으면 탭이 안 먹은 것처럼 보였다
+	const searching = $derived(navigating.to?.url.pathname === '/search');
 	let showWeak = $state(false);
 	let showAnyway = $state(false);
 	$effect(() => {
@@ -58,6 +61,7 @@
 <section class="page">
 	<header class="head">
 		<h1>검색</h1>
+		{#if searching}<p class="mono dim searching" aria-live="polite">찾는 중…</p>{/if}
 	</header>
 	<form class="q" method="GET" action="/search">
 		{#each keep as [k, v] (k)}<input type="hidden" name={k} value={v} />{/each}
@@ -71,7 +75,7 @@
 			onkeydown={onEnter}
 			oncompositionend={onComposed}
 		/>
-		<button class="btn" type="submit">찾기</button>
+		<button class="btn" type="submit" disabled={searching}>{searching ? '찾는 중' : '찾기'}</button>
 	</form>
 	{#if data.q && !data.error}
 		<ArchiveFilters
@@ -217,6 +221,15 @@
 		cursor: pointer;
 		text-decoration: underline;
 		text-underline-offset: 3px;
+	}
+	.searching {
+		color: var(--color-amber);
+		animation: pulse 1.2s ease-in-out infinite;
+	}
+	@keyframes pulse {
+		50% {
+			opacity: 0.4;
+		}
 	}
 	.examples {
 		display: flex;
