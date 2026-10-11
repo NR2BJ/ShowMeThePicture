@@ -54,13 +54,17 @@
 		const v = current;
 		if (!v) return '';
 		const parts: string[] = [];
-		if (v.takenAt)
-			parts.push(
-				new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-					.format(new Date(v.takenAt))
-					.replace(/\.\s?/g, '.')
-					.replace(/\.$/, '')
+		if (v.takenAt) {
+			const d = Object.fromEntries(
+				new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' })
+					.formatToParts(new Date(v.takenAt))
+					.map((x) => [x.type, x.value])
 			);
+			// 필름은 날짜가 롤(현상월)에서 온 값이라 일(日)은 의미가 없다 — 연·월만
+			parts.push(
+				data.photo.medium === 'film' ? `${d.year}.${d.month}` : `${d.year}.${d.month}.${d.day}`
+			);
+		}
 		const e = data.photo.effective;
 		if (e.camera) parts.push(e.camera);
 		if (e.lens) parts.push(e.lens);
@@ -451,6 +455,7 @@
 			<SpecSheet
 				variant={current}
 				effective={data.photo.effective}
+				film={data.photo.medium === 'film'}
 				showGps={data.showGps}
 				admin={data.admin}
 			/>

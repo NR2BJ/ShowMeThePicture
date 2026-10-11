@@ -5,12 +5,15 @@
 		variant,
 		effective = null,
 		showGps = false,
-		admin = false
+		admin = false,
+		film = false
 	}: {
 		variant: Variant;
 		effective?: EffectiveMeta | null;
 		showGps?: boolean;
 		admin?: boolean;
+		/** 필름 스캔: 촬영 시각·출처는 실제 찍은 시각과 무관(롤 현상월·스캔일·파일 시각)이라 감춘다 — 연·월은 롤 칸에 있다 */
+		film?: boolean;
 	} = $props();
 
 	const fmtDate = (iso: string | null) =>
@@ -37,10 +40,12 @@
 		const g: { title: string; rows: [string, string | null][] }[] = [
 			{
 				title: '촬영',
-				rows: [
-					['시각', fmtDate(v.takenAt)],
-					['출처', v.takenAtSource ? (srcLabel[v.takenAtSource] ?? v.takenAtSource) : null]
-				]
+				rows: film
+					? []
+					: [
+							['시각', fmtDate(v.takenAt)],
+							['출처', v.takenAtSource ? (srcLabel[v.takenAtSource] ?? v.takenAtSource) : null]
+						]
 			},
 			effective
 				? {

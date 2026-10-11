@@ -64,7 +64,8 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 				timeZone: 'Asia/Tokyo',
 				year: 'numeric',
 				month: 'long',
-				day: 'numeric'
+				// 필름은 롤 현상월이라 일자 없이
+				...(photo.medium === 'film' ? {} : { day: 'numeric' as const })
 			}).format(new Date(photo.takenAt))
 		: null;
 	const gearLine = [photo.effective.camera, photo.effective.lens, photo.effective.filmStock]
