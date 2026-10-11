@@ -1,13 +1,21 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import type { StripRow } from '#lib/types.ts';
 
 	// frameVh: 프레임 높이(화면 높이 %), 관리자 설정값
 	let { rows, frameVh = 21 }: { rows: StripRow[]; frameVh?: number } = $props();
+	// 레이아웃이 다 잡힌 뒤에 흐르기 시작한다 (그 전에 시작하면 브라우저가 처음 잰 띠 길이로 애니메이션을 고정할 수 있다)
+	let ready = $state(false);
+	onMount(() => {
+		const id = setTimeout(() => (ready = true), 60);
+		return () => clearTimeout(id);
+	});
 </script>
 
 <div
 	class="strips"
+	class:ready
 	aria-label="무작위 사진 필름 스트립"
 	style:--fh="clamp(40px, min({frameVh}vh, {(frameVh * 1.4).toFixed(1)}vw), 960px)"
 >
@@ -61,9 +69,11 @@
 		/* 각인 글자가 구멍 띠와 겹치지 않도록 띠(1.3vh) + 글자(1.1vh) + 여유만큼 */
 		padding: clamp(18px, 3vh, 64px) 0;
 		background: var(--color-base);
+	}
+	.ready .track {
 		animation: scroll var(--dur, 90s) linear infinite;
 	}
-	.strip[data-dir='right'] .track {
+	.ready .strip[data-dir='right'] .track {
 		animation-direction: reverse;
 	}
 	.strip:hover .track {
@@ -144,7 +154,7 @@
 		opacity: 0.6;
 	}
 	@media (prefers-reduced-motion: reduce) {
-		.track {
+		.ready .track {
 			animation: none;
 		}
 	}

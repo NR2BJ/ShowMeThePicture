@@ -56,7 +56,11 @@
 </script>
 
 <main class="landing">
-	<FilmStrip {rows} frameVh={data.stripVh} />
+	<!-- 폰 판단이 바뀌면 줄을 새로 만든다 — 아이폰은 이미 돌던 애니메이션을 처음 띠 길이로 계속 돌려서, 띠가 짧아지면
+	     끝을 지나 빈 곳을 보여 주거나(10~20초 뒤 사진이 사라짐) 가운데 줄이 처음부터 비었다 -->
+	{#key narrow}
+		<FilmStrip {rows} frameVh={data.stripVh} />
+	{/key}
 	{#if data.frames.length === 0}
 		<p class="empty mono">
 			아직 등록된 사진이 없습니다 · 관리자로 로그인해 라이브러리에 폴더를 등록하세요
