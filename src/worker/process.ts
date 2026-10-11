@@ -15,6 +15,7 @@ import type { SizeName } from '#lib/media.ts';
 import { deriveAll, removeDerivatives } from './image.ts';
 import { adoptMovedTwin, findMovedTwin } from '#lib/server/filemoves.ts';
 import { recalcPhoto } from '#lib/server/pairing.ts';
+import { mapGearNames } from '#lib/server/gear.ts';
 
 export type ProcessCtx = {
 	db: Db;
@@ -199,6 +200,7 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 		})
 		.where(eq(files.id, fileId));
 
+	await mapGearNames(db, { camera: ex.cameraModel, lens: ex.lens });
 	await attachPhoto(ctx, fileId, source, { takenAt, isRaw: file.kind === 'raw' });
 	// 옮겨 온 파일: 컷(폴더가 바뀜)·공개 기본값까지 다시 계산 — 직접 정한 값은 그대로
 	if (movedPhotoId) await recalcPhoto(db, movedPhotoId, { revisitVisibility: true });

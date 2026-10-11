@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gearKeys } from './gear';
+import { gearKeys, matchGear } from './gear';
 import { normalizeStem, parseRollFolder, stemOf } from './stem';
 
 describe('normalizeStem', () => {
@@ -119,5 +119,20 @@ describe('gearKeys', () => {
 		expect(gearKeys('Kodak Gold 200')).not.toContain('200');
 		expect(gearKeys('Fuji Speed 400')).not.toContain('speed');
 		expect(gearKeys('NX500')).toEqual(['nx500']);
+	});
+});
+
+describe('EXIF 이름 → 등록 장비', () => {
+	const items = [
+		{ kind: 'camera' as const, name: 'Fujifilm Finepix F31fd', fixedLens: 'Fujinon 8-24mm' },
+		{ kind: 'camera' as const, name: 'Rollei 35S', fixedLens: 'Sonnar 40mm f/2.8' },
+		{ kind: 'camera' as const, name: 'Samsung NX500', fixedLens: null }
+	];
+	it('브랜드가 빠진 EXIF 기종도 등록 이름으로', () => {
+		expect(matchGear('FinePix F31fd', items).camera).toBe('Fujifilm Finepix F31fd');
+		expect(matchGear('NX500', items).camera).toBe('Samsung NX500');
+	});
+	it('관계없는 이름은 맞추지 않는다', () => {
+		expect(matchGear('ILCE-7M3', items).camera).toBeNull();
 	});
 });

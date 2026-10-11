@@ -3,7 +3,7 @@ import path from 'node:path';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import type { Db } from './db';
 import { files, folderMeta, photos, sources } from './db/schema';
-import { listGear, toItems } from './gear';
+import { listGear, toItems, rebuildGearNames } from './gear';
 import { parseRollFolder } from './stem';
 
 export type FolderMetaRow = typeof folderMeta.$inferSelect;
@@ -189,6 +189,8 @@ export async function updateFolderMeta(
 		})
 		.where(eq(folderMeta.id, id))
 		.returning();
+	// 롤의 카메라·렌즈 이름이 바뀌었을 수 있으니 장비 이름 대응표를 다시
+	await rebuildGearNames(db);
 	return row ?? null;
 }
 

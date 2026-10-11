@@ -28,7 +28,8 @@
 		mtime: '파일 수정시각',
 		manual: '수동'
 	};
-	const tag = (s: string | null) => (s === 'manual' ? ' (수동)' : s === 'roll' ? ' (롤)' : '');
+	const tag = (s: string | null) =>
+		s === 'manual' ? ' (수동)' : s === 'roll' ? ' (롤)' : s === 'gear' ? ' (고정렌즈)' : '';
 
 	let showAll = $state(false);
 	const groups = $derived.by(() => {
@@ -53,7 +54,8 @@
 							],
 							[
 								'EXIF 기종',
-								effective.from.camera !== 'exif' && v.cameraModel ? v.cameraModel : null
+								// 보이는 이름이 EXIF 기종과 다르면(수동·롤·등록 이름으로 맞춤) 원래 EXIF 기종도 보여 준다
+								v.cameraModel && v.cameraModel !== effective.camera ? v.cameraModel : null
 							]
 						]
 					}

@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-
 import type { ArchiveFilter } from '#lib/archive.ts';
 import { mediaUrl, versionOf } from '#lib/media.ts';
 import type { Db } from './db';
+import { resolveGear } from './gear';
 import { files, photoMeta, photos, sources } from './db/schema';
 import { folderMetaForSource, pickFolderMeta, toRollInfo, type RollInfo } from './folders';
 
@@ -155,7 +156,8 @@ export type Variant = {
 	};
 };
 
-export type MetaSource = 'manual' | 'exif' | 'roll' | null;
+/** gear: 장비 등록의 고정렌즈로 채운 렌즈 */
+export type MetaSource = 'manual' | 'exif' | 'roll' | 'gear' | null;
 export type EffectiveMeta = {
 	camera: string | null;
 	lens: string | null;
@@ -295,6 +297,11 @@ export async function getPhotoDetail(
 		{ camera: base?.cameraModel ?? null, lens: base?.lens ?? null },
 		roll
 	);
+	// 등록 장비 이름으로 맞추고, 렌즈가 비면 카메라의 고정렌즈 (photo_meta 뷰와 같은 규칙)
+	const g = await resolveGear(db, effective.camera, effective.lens);
+	effective.camera = g.camera;
+	effective.lens = g.lens;
+	if (g.lensFromGear) effective.from.lens = 'gear';
 	return {
 		id: p.id,
 		takenAt: p.takenAt ? p.takenAt.toISOString() : null,

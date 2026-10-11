@@ -14,6 +14,7 @@ import {
 	type ScanSourceJob
 } from '#lib/server/jobs.ts';
 import { rebuildAllSmart } from '#lib/server/collections.ts';
+import { rebuildGearNames } from '#lib/server/gear.ts';
 import { pairAfterProcess, pairEditFile, unpairedEditIds } from '#lib/server/pairing.ts';
 import { MlError } from '#lib/server/ml.ts';
 import { embedFile } from './embed.ts';
@@ -43,6 +44,9 @@ for (const name of Object.values(Q)) {
 	}
 }
 
+// 장비 이름 대응표(gear_names)를 기동 때 한 번 맞춘다 — 배포 직후에도 등록 이름·고정렌즈가 바로 보이게
+await rebuildGearNames(db).catch((e) => console.error('[worker] gear names', e));
+
 await boss.work<ScanSourceJob>(Q.SCAN_SOURCE, async (jobs) => {
 	for (const job of jobs) {
 		const t0 = Date.now();
@@ -57,6 +61,7 @@ await boss.work<ScanSourceJob>(Q.SCAN_SOURCE, async (jobs) => {
 			`scan ${job.data.sourceId}: seen=${s.seen} added=${s.added} changed=${s.changed} missing=${s.missing} requeued=${s.requeued} (${Date.now() - t0}ms)`
 		);
 		await rebuildAllSmart(db);
+		await rebuildGearNames(db);
 	}
 });
 

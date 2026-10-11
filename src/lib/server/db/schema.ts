@@ -269,6 +269,20 @@ export const gear = pgTable(
 	(t) => [uniqueIndex('gear_kind_name_uq').on(t.kind, t.name)]
 );
 
+/** EXIF·폴더에서 읽은 장비 이름 → 등록 장비 (비슷하면 같은 장비로, gear.matchGear). photo_meta 뷰가 등록 이름으로 보여 주고
+ *  렌즈가 비면 그 카메라의 고정렌즈를 쓴다. 원본 EXIF 는 그대로. 장비를 바꾸거나 스캔이 끝나면 다시 맞춘다. */
+export const gearNames = pgTable(
+	'gear_names',
+	{
+		kind: gearKind('kind').notNull(),
+		raw: text('raw').notNull(),
+		gearId: text('gear_id')
+			.notNull()
+			.references(() => gear.id, { onDelete: 'cascade' })
+	},
+	(t) => [primaryKey({ columns: [t.kind, t.raw] })]
+);
+
 // ---- folder_meta: 롤/세션 메타, 하위 폴더에 상속 ----
 export const folderMeta = pgTable(
 	'folder_meta',
