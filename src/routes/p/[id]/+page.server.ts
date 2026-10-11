@@ -9,8 +9,7 @@ import {
 	getPhotoDetail,
 	neighbors,
 	scopeFromCtx,
-	setPhotoMetaOverride,
-	setPhotoVisibility
+	setPhotoMetaOverride
 } from '#lib/server/gallery.ts';
 import { listGear } from '#lib/server/gear.ts';
 import { setFileRotation } from '#lib/server/rotation.ts';
@@ -18,7 +17,8 @@ import { similarPhotos } from '#lib/server/search.ts';
 import {
 	resetPhotoTier,
 	resetPhotoVisibility,
-	setPhotoTierManual
+	setPhotoTierManual,
+	setPhotoVisibilityManual
 } from '#lib/server/visibility.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import type { OgMeta } from '#lib/og.ts';
@@ -94,7 +94,7 @@ export const actions: Actions = {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });
 		const form = await request.formData();
 		const v = form.get('visibility') === 'public' ? 'public' : 'hidden';
-		await setPhotoVisibility(db(), params.id, v);
+		await setPhotoVisibilityManual(db(), params.id, v);
 		return { ok: true };
 	},
 	resetVisibility: async ({ params, locals }) => {

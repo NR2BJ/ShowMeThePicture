@@ -7,6 +7,7 @@
 	const cut = (t: 'A' | 'B' | null) => (t ? `${t}컷` : '없음');
 </script>
 
+<!-- 공개 여부나 컷이 폴더 기본값(자동 컷)과 다른 사진만 나온다. 기본값과 같아지면 목록에서 빠진다. -->
 <section class="admin-page">
 	<h1>직접 바꾼 사진</h1>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
@@ -14,7 +15,7 @@
 	{#if data.overrides.length === 0}
 		<p class="dim">아직 없습니다.</p>
 	{:else}
-		<table class="table">
+		<table class="table overrides">
 			<thead
 				><tr
 					><th></th><th>파일</th><th>라이브러리</th><th>공개 · 기본값</th><th>컷 · 자동</th><th
@@ -36,10 +37,7 @@
 									<form method="POST" action="?/reset" use:enhance>
 										<input type="hidden" name="photoId" value={o.id} /><button
 											class="btn quiet"
-											type="submit"
-											>{o.defaultVisibility === o.visibility
-												? '수동 표시 해제'
-												: '기본값으로'}</button
+											type="submit">기본값으로</button
 										>
 									</form>
 								{:else}<span class="mono dim">· 기본값</span>{/if}
@@ -53,8 +51,7 @@
 									<form method="POST" action="?/resetTier" use:enhance>
 										<input type="hidden" name="photoId" value={o.id} /><button
 											class="btn quiet"
-											type="submit"
-											>{o.defaultTier === o.tier ? '수동 표시 해제' : '자동으로'}</button
+											type="submit">자동으로</button
 										>
 									</form>
 								{:else}<span class="mono dim">· 자동</span>{/if}
@@ -69,6 +66,10 @@
 </section>
 
 <style>
+	/* 버튼이 있는 칸과 없는 칸 모두 상하 가운데 */
+	.overrides :global(td) {
+		vertical-align: middle;
+	}
 	.th {
 		display: block;
 		width: 96px;
@@ -83,6 +84,7 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		min-height: 48px;
 		white-space: nowrap;
 	}
 </style>

@@ -24,9 +24,11 @@ export async function setPhotoVisibilityManual(
 	photoId: string,
 	v: Visibility
 ): Promise<void> {
+	// 폴더 기본값과 같아지면 '직접 바꿈'이 아니다 — 표시를 지워 모아보기에서 빠지고 폴더 일괄 적용을 다시 따른다
+	const def = await defaultVisibilityForPhoto(db, photoId);
 	await db
 		.update(photos)
-		.set({ visibility: v, visibilityManual: true, updatedAt: new Date() })
+		.set({ visibility: v, visibilityManual: v !== def, updatedAt: new Date() })
 		.where(eq(photos.id, photoId));
 }
 
@@ -66,12 +68,17 @@ export async function setPhotoTierManual(
 		.limit(1);
 	if (!p) return { madePublic: false };
 	const madePublic = tier !== null && p.visibility === 'hidden';
+	// 자동 컷·폴더 기본값과 같아지면 '직접 바꿈' 표시를 남기지 않는다
+	const autoTier = await defaultTierForPhoto(db, photoId);
+	const defVis = madePublic ? await defaultVisibilityForPhoto(db, photoId) : null;
 	await db
 		.update(photos)
 		.set({
 			tier,
-			tierManual: true,
-			...(madePublic ? { visibility: 'public' as const, visibilityManual: true } : {}),
+			tierManual: tier !== autoTier,
+			...(madePublic
+				? { visibility: 'public' as const, visibilityManual: defVis !== 'public' }
+				: {}),
 			updatedAt: new Date()
 		})
 		.where(eq(photos.id, photoId));
@@ -157,17 +164,28 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 		.limit(500);
 	const out: Override[] = [];
 	for (const r of rows) {
+		const defaultVisibility = await defaultVisibilityForPhoto(db, r.id);
+		const defaultTier = await defaultTierForPhoto(db, r.id);
+		const visDiff = r.visibilityManual && r.visibility !== defaultVisibility;
+		const tierDiff = r.tierManual && r.tier !== defaultTier;
+		// 기본값과 같아진 '직접 바꿈' 표시는 여기서 정리한다 (예전에 남은 것 포함)
+		if ((r.visibilityManual && !visDiff) || (r.tierManual && !tierDiff))
+			await db
+				.update(photos)
+				.set({ visibilityManual: visDiff, tierManual: tierDiff })
+				.where(eq(photos.id, r.id));
+		if (!visDiff && !tierDiff) continue;
 		out.push({
 			id: r.id,
 			visibility: r.visibility,
-			defaultVisibility: await defaultVisibilityForPhoto(db, r.id),
+			defaultVisibility,
 			thumb: mediaUrl(r.fileId, 'thumb', versionOf(r.contentHash, r.rotation)),
 			filename: r.filename,
 			source: r.source,
 			tier: r.tier,
-			visibilityManual: r.visibilityManual,
-			tierManual: r.tierManual,
-			defaultTier: r.tierManual ? await defaultTierForPhoto(db, r.id) : r.tier,
+			visibilityManual: visDiff,
+			tierManual: tierDiff,
+			defaultTier,
 			updatedAt: r.updatedAt.toISOString()
 		});
 	}
