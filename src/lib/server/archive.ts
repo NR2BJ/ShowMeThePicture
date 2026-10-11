@@ -1,5 +1,5 @@
 // 아카이브 쿼리: 키셋(커서) 페이지 + 월 히스토그램 + 필터 facet. 무한 스크롤(/api/archive)과 우측 타임라인, 필터 바가 쓴다.
-import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import {
 	KINDS,
 	MEDIUMS,
@@ -147,4 +147,19 @@ export async function archiveFacets(db: Db, o: ArchiveOpts): Promise<ArchiveFace
 		lens,
 		film
 	};
+}
+
+/** 피드가 되살아날 때 바뀐 사진만 새로 받기: id 목록 → 지금 보여야 할 항목(조건에 안 맞게 된 것은 빠짐) */
+export async function archiveItemsByIds(
+	db: Db,
+	o: ArchiveOpts & { ids: string[] }
+): Promise<GalleryItem[]> {
+	if (o.ids.length === 0) return [];
+	const rows = await db
+		.select(itemSelect)
+		.from(photos)
+		.innerJoin(files, fileOn(o))
+		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
+		.where(and(...conds(o), inArray(photos.id, o.ids.slice(0, 200))));
+	return rows.map(toItem);
 }

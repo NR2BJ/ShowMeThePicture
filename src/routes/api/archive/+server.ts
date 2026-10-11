@@ -3,22 +3,15 @@ import { json } from '@sveltejs/kit';
 import { parseFilter } from '#lib/archive.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
-import { ARCHIVE_PAGE, listArchive } from '#lib/server/archive.ts';
+import { ARCHIVE_PAGE, archiveItemsByIds, listArchive } from '#lib/server/archive.ts';
 import { getSourceBySlug } from '#lib/server/sources.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
 	const headers = { 'cache-control': 'private, no-store' };
 	if (!config.DATABASE_URL) return json({ items: [], hasMore: false }, { headers });
-	const id = url.searchParams.get('id');
-	if (!id) return json({ items: [], hasMore: false }, { headers });
 	const admin = !!locals.admin;
 	const filter = parseFilter(url.searchParams);
-	const dir = url.searchParams.get('dir') === 'newer' ? 'newer' : 'older';
-	const ta = url.searchParams.get('ta') || null;
-	const limitRaw = Number(url.searchParams.get('limit') ?? ARCHIVE_PAGE);
-	const limit = Number.isInteger(limitRaw) ? Math.min(200, Math.max(1, limitRaw)) : ARCHIVE_PAGE;
-	// source=<slug>: 폴더 페이지(관리자 전용)의 무한 스크롤
 	const slug = url.searchParams.get('source');
 	let scope: { kind: 'library'; sourceId: string } | undefined;
 	if (slug) {
@@ -26,6 +19,23 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 		if (!src) return json({ items: [], hasMore: false }, { headers, status: 404 });
 		scope = { kind: 'library', sourceId: src.id };
 	}
+	// ids=a,b,c: 되살린 목록에서 바뀐 사진만 새로 받기
+	const ids = url.searchParams.get('ids');
+	if (ids) {
+		const items = await archiveItemsByIds(db(), {
+			admin,
+			filter,
+			scope,
+			ids: ids.split(',').filter(Boolean)
+		});
+		return json({ items, hasMore: false }, { headers });
+	}
+	const id = url.searchParams.get('id');
+	if (!id) return json({ items: [], hasMore: false }, { headers });
+	const dir = url.searchParams.get('dir') === 'newer' ? 'newer' : 'older';
+	const ta = url.searchParams.get('ta') || null;
+	const limitRaw = Number(url.searchParams.get('limit') ?? ARCHIVE_PAGE);
+	const limit = Number.isInteger(limitRaw) ? Math.min(200, Math.max(1, limitRaw)) : ARCHIVE_PAGE;
 	const page = await listArchive(db(), { admin, filter, dir, cursor: { ta, id }, limit, scope });
 	return json(page, { headers });
 };

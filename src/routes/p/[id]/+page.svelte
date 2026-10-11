@@ -2,6 +2,7 @@
 	import { enhance, type SubmitFunction } from '$app/forms';
 	import { beforeNavigate, goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
+	import { markChanged } from '#lib/changed.ts';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import GearSelect from '#lib/components/GearSelect.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
@@ -202,7 +203,8 @@
 	const act = $derived(urlCtx ? `&ctx=${encodeURIComponent(urlCtx)}` : '');
 	const keep: SubmitFunction =
 		() =>
-		async ({ update }) => {
+		async ({ update, result }) => {
+			if (result.type === 'success') markChanged(data.photo.id);
 			await update({ reset: false });
 		};
 	async function postRotation(fileId: string, rotation: number) {
@@ -227,6 +229,7 @@
 		if (view) frozen = { ...view }; // 저장하는 동안 돌려 놓은 화면 그대로
 		try {
 			await postRotation(c.id, (c.rotation + t) % 4);
+			markChanged(data.photo.id);
 			await invalidateAll();
 			const n = current;
 			if (n && n.id === c.id) {
@@ -248,7 +251,10 @@
 		if (!saveTimer || !current) return;
 		clearTimeout(saveTimer);
 		saveTimer = null;
-		if (turns !== 0) void postRotation(current.id, (current.rotation + turns) % 4);
+		if (turns !== 0) {
+			void postRotation(current.id, (current.rotation + turns) % 4);
+			markChanged(data.photo.id);
+		}
 	});
 
 	function onKey(e: KeyboardEvent) {

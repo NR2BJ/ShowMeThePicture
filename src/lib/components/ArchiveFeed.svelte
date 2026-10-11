@@ -16,6 +16,7 @@
 		type MonthBucket
 	} from '#lib/archive.ts';
 	import type { GalleryItem } from '#lib/server/gallery.ts';
+	import { takeChanged } from '#lib/changed.ts';
 
 	export type FeedData = {
 		items: GalleryItem[];
@@ -121,6 +122,7 @@
 			olderDone = v.olderDone;
 			newerDone = v.newerDone;
 			pinMonth = null;
+			void refreshChanged();
 			// SvelteKit 의 스크롤 복원은 목록이 다시 그려지기 전에 돌 수 있어(높이 부족 → 0 으로 잘림) 직접 되돌린다
 			const y = v.scrollY;
 			const go = () => window.scrollTo(0, y);
@@ -138,6 +140,23 @@
 	}
 	export function restore(v: FeedSnapshot) {
 		snap.restore(v);
+	}
+
+	/** 사진 페이지에서 바뀐 사진만 새로 받아 바꿔 끼운다 (조건에 안 맞게 된 것은 뺀다) */
+	async function refreshChanged() {
+		const changed = takeChanged().filter((id) => items.some((x) => x.id === id));
+		if (changed.length === 0) return;
+		try {
+			const u = `/api/archive?ids=${changed.map(encodeURIComponent).join(',')}${qs ? `&${qs}` : ''}${apiExtra ? `&${apiExtra}` : ''}`;
+			const r = await fetch(u);
+			if (!r.ok) return;
+			const fresh = new Map(((await r.json()) as Page).items.map((x) => [x.id, x]));
+			items = items
+				.filter((x) => !changed.includes(x.id) || fresh.has(x.id))
+				.map((x) => fresh.get(x.id) ?? x);
+		} catch {
+			/* 다음 새로고침 때 맞춰진다 */
+		}
 	}
 
 	async function fetchPage(dir: 'older' | 'newer', edge: GalleryItem): Promise<Page> {
