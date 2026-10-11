@@ -139,6 +139,7 @@ export type Override = {
 	defaultTier: 'A' | 'B' | null;
 	/** 직접 돌려 저장한 파일들 (turns: 1=90° 오른쪽, 2=180°, 3=90° 왼쪽) */
 	rotations: RotatedFile[];
+	takenAt: string | null;
 	updatedAt: string;
 };
 
@@ -179,6 +180,7 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 			tier: photos.tier,
 			visibilityManual: photos.visibilityManual,
 			tierManual: photos.tierManual,
+			takenAt: photos.takenAt,
 			updatedAt: photos.updatedAt,
 			fileId: files.id,
 			filename: files.filename,
@@ -197,7 +199,8 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 				sql`exists (select 1 from ${files} f where f.photo_id = ${photos.id} and f.status = 'active' and f.rotation % 4 <> 0)`
 			)
 		)
-		.orderBy(desc(photos.updatedAt))
+		// 찍은 날짜순(최신 위) — updated_at 은 페어링·재처리 같은 자동 작업에도 바뀌어 순서가 들쭉날쭉했다
+		.orderBy(sql`${photos.takenAt} desc nulls last`, desc(photos.id))
 		.limit(500);
 	const out: Override[] = [];
 	for (const r of rows) {
@@ -225,6 +228,7 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 			tierManual: tierDiff,
 			defaultTier,
 			rotations,
+			takenAt: r.takenAt ? r.takenAt.toISOString() : null,
 			updatedAt: r.updatedAt.toISOString()
 		});
 	}

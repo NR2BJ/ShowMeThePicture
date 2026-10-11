@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { enhance, type SubmitFunction } from '$app/forms';
 	import { beforeNavigate, goto, invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import GearSelect from '#lib/components/GearSelect.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
@@ -192,7 +193,9 @@
 
 	// 관리자 버튼은 페이지를 새로 불러오지 않고 처리한다 — 새로 불러오면 주소의 ctx 가 빠져 이전/다음이 아카이브 전체로 바뀌었다
 	// 처리 주소에도 ctx 를 붙인다 — 처리 뒤 주소가 이 주소 기준으로 다시 잡힌다
-	const act = $derived(`&ctx=${encodeURIComponent(data.ctx)}`);
+	// 주소에 ctx 가 없었으면 붙이지 않는다 — 붙이면 처리 뒤 주소가 바뀌며 방문 기록이 한 칸 늘어 뒤로 가기를 두 번 눌러야 했다
+	const urlCtx = $derived(page.url.searchParams.get('ctx'));
+	const act = $derived(urlCtx ? `&ctx=${encodeURIComponent(urlCtx)}` : '');
 	const keep: SubmitFunction =
 		() =>
 		async ({ update }) => {
@@ -263,7 +266,9 @@
 								? `/search?${data.ctx.slice(7)}`
 								: data.ctx.startsWith('landing:')
 									? '/'
-									: '/archive'
+									: data.ctx === 'manual'
+										? '/admin/visibility'
+										: '/archive'
 				);
 		}
 	}

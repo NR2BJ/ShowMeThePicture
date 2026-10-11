@@ -24,6 +24,14 @@ export type ArchiveOpts = { admin: boolean; filter?: ArchiveFilter; scope?: Scop
 const conds = (o: ArchiveOpts) =>
 	baseConds({ scope: o.scope ?? { kind: 'archive' }, admin: o.admin, filter: o.filter });
 
+/** 썸네일로 쓸 파일: 아카이브는 사진의 대표 파일, 폴더 페이지는 그 폴더 안의 파일(RAW 우선) — 원본 폴더에서 보정본이 보이지 않게 */
+function fileOn(o: ArchiveOpts) {
+	const sc = o.scope;
+	if (sc?.kind !== 'library') return eq(files.id, photos.primaryFileId);
+	return sql`${files.id} = (select f2.id from ${files} f2 where f2.photo_id = ${photos.id} and f2.source_id = ${sc.sourceId}
+		and f2.status = 'active' and f2.derivatives_ready order by (f2.kind = 'raw') desc, f2.id limit 1)`;
+}
+
 /** 키셋 커서: 경계 항목의 taken_at(ISO, 없으면 null) + id. 정렬 키는 (coalesce(taken_at,'epoch'), id) 내림차순. */
 export type ArchiveCursor = { ta: string | null; id: string };
 const EPOCH = new Date(0).toISOString();
@@ -61,7 +69,7 @@ export async function listArchive(
 	const rows = await db
 		.select(itemSelect)
 		.from(photos)
-		.innerJoin(files, eq(files.id, photos.primaryFileId))
+		.innerJoin(files, fileOn(o))
 		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
 		.where(and(...where))
 		.orderBy(
@@ -81,7 +89,7 @@ export async function archiveMonths(db: Db, o: ArchiveOpts): Promise<MonthBucket
 			count: sql<number>`count(*)::int`
 		})
 		.from(photos)
-		.innerJoin(files, eq(files.id, photos.primaryFileId))
+		.innerJoin(files, fileOn(o))
 		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
 		.where(and(...conds(o)))
 		.groupBy(sql`1`);
@@ -96,7 +104,7 @@ export async function archiveMonths(db: Db, o: ArchiveOpts): Promise<MonthBucket
 export async function archiveFacets(db: Db, o: ArchiveOpts): Promise<ArchiveFacets> {
 	const f = o.filter ?? {};
 	const from = sql`from ${photos}
-		inner join ${files} on ${files.id} = ${photos.primaryFileId}
+		inner join ${files} on ${fileOn(o)}
 		left join ${photoMeta} on ${photoMeta.photoId} = ${photos.id}`;
 	const where = (without: keyof ArchiveFilter) =>
 		sql.join(
