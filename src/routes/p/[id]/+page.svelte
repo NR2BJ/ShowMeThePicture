@@ -336,7 +336,7 @@
 						value={data.photo.visibility === 'public' ? 'hidden' : 'public'}
 					/>
 					<!-- 폭 고정: 숨기기 ↔ 공개하기 를 눌러도 옆 버튼이 밀리지 않게 -->
-					<button type="submit" class="pill quiet fixed"
+					<button type="submit" class="pill quiet same-width"
 						>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
 					>
 				</form>
@@ -580,7 +580,7 @@
 		color: var(--color-ink);
 		border-color: var(--color-ink);
 	}
-	.pill.fixed {
+	.pill.same-width {
 		min-width: 7.5em;
 		text-align: center;
 	}
