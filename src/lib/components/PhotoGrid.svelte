@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { thumbHashToDataURL } from 'thumbhash';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import type { GalleryItem } from '#lib/server/gallery.ts';
@@ -13,6 +14,8 @@
 		gap = 12
 	}: { items: Item[]; ctx?: string; targetHeight?: number; gap?: number } = $props();
 
+	// A/B 컷 딱지는 관리자에게만 (레이아웃 data.admin)
+	const admin = $derived(!!(page.data as { admin?: unknown }).admin);
 	let width = $state(0);
 	let root: HTMLDivElement | undefined = $state();
 	// bind:clientWidth 는 ResizeObserver 라 한 프레임 늦다. 첫 배치(와 뒤로 가기 스크롤 복원)가 맞도록 마운트 때 바로 잰다.
@@ -75,7 +78,7 @@
 						use:fadeIn
 					/>
 					{#if it.visibility === 'hidden'}<span class="badge">숨김</span>{/if}
-					{#if it.tier === 'B'}<span class="badge b">B</span>{/if}
+					{#if admin && it.tier === 'B'}<span class="badge b">B</span>{/if}
 					{#if it.dup}<span class="badge dup">+{it.dup}</span>{/if}
 				</a>
 			{/each}

@@ -1,6 +1,7 @@
 <script lang="ts">
 	// 아카이브 필터 바: 매체·컷은 집합 토글(비어 있음 = 전체), 카메라·렌즈·필름은 하나 고르기. 바꾸면 주소가 바뀌고 목록이 처음부터 다시 선다.
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import {
 		KINDS,
 		KIND_LABEL,
@@ -47,12 +48,14 @@
 		apply({ ...filter, [key]: v || undefined });
 	}
 	const active = $derived(isFilterActive(filter));
+	// 컷(A/B/원본만) 축은 관리자용 — 게스트에게는 숨긴다
+	const admin = $derived(!!(page.data as { admin?: unknown }).admin);
 	const otherGear = (key: 'camera' | 'lens' | 'film') =>
 		(['camera', 'lens', 'film'] as const).some((k) => k !== key && !!filter[k]);
 	// 고른 필터 수 (폰에서 접힌 버튼에 표시)
 	const activeCount = $derived(
 		(filter.medium?.length ? 1 : 0) +
-			(filter.kind?.length ? 1 : 0) +
+			(admin && filter.kind?.length ? 1 : 0) +
 			(filter.camera ? 1 : 0) +
 			(filter.lens ? 1 : 0) +
 			(filter.film ? 1 : 0)
@@ -84,19 +87,21 @@
 			>
 		{/each}
 	</div>
-	<div class="group" role="group" aria-label="컷">
-		{#each KINDS as k (k)}
-			<button
-				type="button"
-				class="chip"
-				class:on={kindOn(k)}
-				class:empty={!facets.kind[k]}
-				aria-pressed={kindOn(k)}
-				onclick={() => apply({ ...filter, kind: toggle(KINDS, filter.kind, k) })}
-				>{KIND_LABEL[k]} <span class="n">{facets.kind[k]}</span></button
-			>
-		{/each}
-	</div>
+	{#if admin}
+		<div class="group" role="group" aria-label="컷">
+			{#each KINDS as k (k)}
+				<button
+					type="button"
+					class="chip"
+					class:on={kindOn(k)}
+					class:empty={!facets.kind[k]}
+					aria-pressed={kindOn(k)}
+					onclick={() => apply({ ...filter, kind: toggle(KINDS, filter.kind, k) })}
+					>{KIND_LABEL[k]} <span class="n">{facets.kind[k]}</span></button
+				>
+			{/each}
+		</div>
+	{/if}
 	{#each [['camera', '카메라', facets.camera, filter.camera], ['lens', '렌즈', facets.lens, filter.lens], ['film', '필름', facets.film, filter.film]] as const as [key, label, values, cur] (key)}
 		<!-- 다른 장비를 골라서 값이 하나로 정해졌으면 숨김 (예: 고정렌즈 카메라를 고르면 렌즈는 하나뿐) -->
 		{#if cur || values.length > 1 || (values.length === 1 && !otherGear(key))}

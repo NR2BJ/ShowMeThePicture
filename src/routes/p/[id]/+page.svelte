@@ -239,7 +239,8 @@
 	<div class="bar">
 		<p class="line mono">
 			{dateLine}
-			{#if data.photo.tier}<span class="dim"> · {data.photo.tier}컷</span>{/if}
+			<!-- A/B 컷은 관리자용 라벨 — 게스트에게는 안 보인다 -->
+			{#if data.admin && data.photo.tier}<span class="dim"> · {data.photo.tier}컷</span>{/if}
 			{#if data.photo.visibility === 'hidden'}<span class="dim">
 					· 숨김</span
 				>{/if}{#if data.admin && data.photo.visibilityManual}<span class="dim">
