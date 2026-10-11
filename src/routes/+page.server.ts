@@ -1,3 +1,4 @@
+import { landingCtx } from '#lib/archive.ts';
 import type { Frame } from '#lib/types.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
@@ -10,10 +11,12 @@ export const load: PageServerLoad = async () => {
 	let dbError: string | null = null;
 	let stripVh = 21;
 	let stripRows = 3;
+	let tiers: 'A' | 'AB' = 'A';
 	try {
 		if (config.DATABASE_URL) {
 			stripVh = await getSetting<number>(db(), 'landing_strip_vh', 21);
 			stripRows = await getSetting<number>(db(), 'landing_rows', 3);
+			tiers = await getSetting<'A' | 'AB'>(db(), 'landing_tiers', 'A');
 		}
 		stripRows = Math.min(10, Math.max(1, Number(stripRows) || 3));
 		frames = await getLandingFrames(Math.max(42, stripRows * 14));
@@ -24,6 +27,7 @@ export const load: PageServerLoad = async () => {
 	return {
 		frames,
 		dbError,
+		ctx: landingCtx(tiers),
 		stripVh: Math.min(50, Math.max(5, Number(stripVh) || 21)),
 		stripRows: Math.min(10, Math.max(1, Number(stripRows) || 3))
 	};

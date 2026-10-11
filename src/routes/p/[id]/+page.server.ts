@@ -32,7 +32,12 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	const fromSearch = searchFromCtx(ctx);
 	const nav = fromSearch?.q
 		? await searchNeighbors(db(), fromSearch, admin, photo.id)
-		: await neighbors(db(), photo, { scope, admin, filter: filterFromCtx(ctx) });
+		: await neighbors(db(), photo, {
+				scope,
+				// 랜딩은 공개 사진만 보여 주므로 관리자라도 공개 사진끼리 넘긴다
+				admin: ctx.startsWith('landing:') ? false : admin,
+				filter: filterFromCtx(ctx)
+			});
 	const showGps = admin || (await getSetting<boolean>(db(), 'show_gps', false));
 	const gearRows = admin ? await listGear(db()) : [];
 	const gear = {

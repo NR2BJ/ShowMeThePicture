@@ -8,7 +8,12 @@
 	import type { StripRow } from '#lib/types.ts';
 
 	// frameVh: 프레임 높이(화면 높이 %), 관리자 설정값
-	let { rows, frameVh = 21 }: { rows: StripRow[]; frameVh?: number } = $props();
+	// ctx: 사진 페이지가 이전/다음을 랜딩에 나오는 컷끼리 넘기게
+	let {
+		rows,
+		frameVh = 21,
+		ctx = 'landing:kind=A'
+	}: { rows: StripRow[]; frameVh?: number; ctx?: string } = $props();
 
 	/** 속도: dur 초에 14칸 — 예전 띠 방식과 비슷 */
 	const STEPS_PER_LOOP = 14;
@@ -116,7 +121,7 @@
 					{#if f}
 						<a
 							class="frame"
-							href={f.src ? `/p/${f.id}` : undefined}
+							href={f.src ? `/p/${f.id}?ctx=${encodeURIComponent(ctx)}` : undefined}
 							tabindex={f.src ? undefined : -1}
 						>
 							{#if f.src}

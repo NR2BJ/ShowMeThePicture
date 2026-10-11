@@ -93,21 +93,64 @@
 		return { w: odd ? vh : vw, h: odd ? vw : vh };
 	});
 
-	// 폰: 사진을 좌우로 밀어 이전/다음 (화살표는 좁은 화면에서 숨긴다). 세로로 더 많이 움직였으면 스크롤로 본다.
-	let touch: { x: number; y: number; t: number } | null = null;
-	function touchStart(e: TouchEvent) {
-		if (e.touches.length !== 1) return (touch = null);
-		touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-	}
-	function touchEnd(e: TouchEvent) {
-		if (!touch) return;
-		const dx = e.changedTouches[0].clientX - touch.x;
-		const dy = e.changedTouches[0].clientY - touch.y;
-		const quick = Date.now() - touch.t < 700;
-		touch = null;
-		if (!quick || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
-		const to = dx > 0 ? data.nav.prev : data.nav.next;
-		if (to) goto(`/p/${to}${q}`, { replace: true });
+	// 폰·태블릿: 사진을 좌우로 밀어 이전/다음. 손가락이 처음 몇 px 움직일 때 방향을 정하고, 가로면 페이지 스크롤을 막고
+	// 사진이 손가락을 따라온다(세로면 그냥 스크롤). 예전엔 손을 뗀 뒤에야 판단해 그사이 페이지가 위아래로 움직였다.
+	let dragX = $state(0);
+	let dragging = $state(false);
+	function swipe(node: HTMLElement) {
+		let sx = 0;
+		let sy = 0;
+		let axis: 'x' | 'y' | null = null;
+		let active = false;
+		const reset = () => {
+			active = false;
+			dragging = false;
+			dragX = 0;
+		};
+		const start = (e: TouchEvent) => {
+			if (e.touches.length !== 1) return reset();
+			active = true;
+			axis = null;
+			sx = e.touches[0].clientX;
+			sy = e.touches[0].clientY;
+		};
+		const move = (e: TouchEvent) => {
+			if (!active || e.touches.length !== 1) return;
+			const dx = e.touches[0].clientX - sx;
+			const dy = e.touches[0].clientY - sy;
+			if (!axis) {
+				if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+				axis = Math.abs(dx) > Math.abs(dy) ? 'x' : 'y';
+			}
+			if (axis !== 'x') return;
+			e.preventDefault();
+			dragging = true;
+			// 더 넘길 사진이 없는 쪽은 살짝만 끌린다
+			const blocked = (dx > 0 && !data.nav.prev) || (dx < 0 && !data.nav.next);
+			dragX = blocked ? dx * 0.25 : dx;
+		};
+		const end = (e: TouchEvent) => {
+			if (!active) return;
+			const wasX = axis === 'x';
+			const dx = e.changedTouches[0].clientX - sx;
+			reset();
+			if (!wasX) return;
+			const to = dx > 0 ? data.nav.prev : data.nav.next;
+			if (to && Math.abs(dx) > Math.min(80, node.clientWidth * 0.18))
+				goto(`/p/${to}${q}`, { replace: true });
+		};
+		node.addEventListener('touchstart', start, { passive: true });
+		node.addEventListener('touchmove', move, { passive: false });
+		node.addEventListener('touchend', end);
+		node.addEventListener('touchcancel', reset);
+		return {
+			destroy() {
+				node.removeEventListener('touchstart', start);
+				node.removeEventListener('touchmove', move);
+				node.removeEventListener('touchend', end);
+				node.removeEventListener('touchcancel', reset);
+			}
+		};
 	}
 
 	function onKey(e: KeyboardEvent) {
@@ -127,7 +170,9 @@
 							? `/archive?${data.ctx.slice(8)}`
 							: data.ctx.startsWith('search:')
 								? `/search?${data.ctx.slice(7)}`
-								: '/archive'
+								: data.ctx.startsWith('landing:')
+									? '/'
+									: '/archive'
 				);
 		}
 	}
@@ -137,14 +182,20 @@
 
 <main class="photo" class:info>
 	<!-- 넘기기는 방문 기록을 쌓지 않는다(replacestate) — 뒤로 가기 한 번이면 목록으로 -->
-	<figure ontouchstart={touchStart} ontouchend={touchEnd}>
+	<figure use:swipe>
 		{#if data.nav.prev}<a
 				class="arrow prev"
 				href={`/p/${data.nav.prev}${q}`}
 				data-sveltekit-replacestate
 				aria-label="이전 사진">←</a
 			>{/if}
-		<div class="stage" bind:clientWidth={box.w} bind:clientHeight={box.h}>
+		<div
+			class="stage"
+			class:dragging
+			bind:clientWidth={box.w}
+			bind:clientHeight={box.h}
+			style:transform={dragX ? `translateX(${dragX}px)` : undefined}
+		>
 			{#key current?.id}
 				{#if current}
 					<img
@@ -391,6 +442,7 @@
 		min-height: 320px;
 	}
 	.stage {
+		transition: transform 0.2s ease;
 		grid-column: 2;
 		grid-row: 1;
 		height: 100%;
@@ -413,6 +465,9 @@
 	}
 	figure img:global(.loaded) {
 		opacity: 1;
+	}
+	.stage.dragging {
+		transition: none;
 	}
 	.arrow {
 		grid-row: 1;

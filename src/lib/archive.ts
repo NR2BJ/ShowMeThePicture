@@ -128,7 +128,12 @@ export function archiveCtx(f: ArchiveFilter): string {
 	return q ? `archive:${q}` : 'archive';
 }
 export function filterFromCtx(ctx: string): ArchiveFilter {
-	return ctx.startsWith('archive:')
-		? parseFilter(new URLSearchParams(ctx.slice('archive:'.length)))
-		: {};
+	for (const prefix of ['archive:', 'landing:'])
+		if (ctx.startsWith(prefix)) return parseFilter(new URLSearchParams(ctx.slice(prefix.length)));
+	return {};
+}
+
+/** 랜딩에서 연 사진: 랜딩에 나오는 컷(A 또는 A+B, 공개)끼리만 넘긴다. Esc 는 랜딩으로. */
+export function landingCtx(tiers: 'A' | 'AB'): string {
+	return `landing:kind=${tiers === 'AB' ? 'A,B' : 'A'}`;
 }

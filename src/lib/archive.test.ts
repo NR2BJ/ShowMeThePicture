@@ -3,6 +3,7 @@ import {
 	archiveCtx,
 	archiveHref,
 	filterFromCtx,
+	landingCtx,
 	filterParams,
 	groupByMonth,
 	monthKey,
@@ -35,6 +36,8 @@ describe('parseFilter', () => {
 		expect(archiveCtx({})).toBe('archive');
 		expect(filterFromCtx('archive')).toEqual({});
 		expect(filterFromCtx('library:film')).toEqual({});
+		expect(filterFromCtx(landingCtx('A'))).toEqual({ kind: ['A'] });
+		expect(filterFromCtx(landingCtx('AB'))).toEqual({ kind: ['A', 'B'] });
 		expect(archiveHref({})).toBe('/archive');
 		expect(archiveHref({ medium: ['film'] }, { from: '2025-09' })).toBe(
 			'/archive?medium=film&from=2025-09'
