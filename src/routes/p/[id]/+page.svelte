@@ -420,10 +420,11 @@
 		color: var(--color-amber);
 		margin: 0 0 10px;
 	}
+	/* 버튼 줄은 화면 바닥이 아니라 사진 바로 밑에 — 모바일 주소창이 들어가고 나와도(보이는 높이가 바뀌어도) 움직이지 않게 */
 	.photo {
-		min-height: calc(100dvh - 92px);
 		display: grid;
-		grid-template-rows: 1fr auto;
+		grid-template-rows: auto auto;
+		align-content: start;
 		grid-template-columns: 1fr;
 		padding: 0 40px 28px;
 		gap: 16px;
@@ -437,9 +438,13 @@
 		margin: 0;
 		display: grid;
 		grid-template-columns: 56px minmax(0, 1fr) 56px;
+		/* 줄 높이를 figure 높이로 고정 — auto 면 사진 영역(.stage)의 height:100% 가 안 먹어, 처음 연 세로 사진이 원래 비율로
+		   커져 버튼을 가렸다 */
+		grid-template-rows: minmax(0, 1fr);
 		align-items: center;
-		height: 80vh;
-		min-height: 320px;
+		/* svh: 주소창이 다 나와 있을 때의 화면 높이 — 스크롤로 주소창이 숨어도 크기가 바뀌지 않는다. 헤더 + 버튼 줄 자리를 뺀다 */
+		height: calc(100svh - 240px);
+		min-height: 300px;
 	}
 	.stage {
 		transition: transform 0.2s ease;
