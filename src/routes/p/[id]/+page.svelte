@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { enhance, type SubmitFunction } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import GearSelect from '#lib/components/GearSelect.svelte';
@@ -153,6 +154,22 @@
 		};
 	}
 
+	// 관리자 버튼은 페이지를 새로 불러오지 않고 처리한다 — 새로 불러오면 주소의 ctx 가 빠져 이전/다음이 아카이브 전체로 바뀌었다
+	// 처리 주소에도 ctx 를 붙인다 — 처리 뒤 주소가 이 주소 기준으로 다시 잡힌다
+	const act = $derived(`&ctx=${encodeURIComponent(data.ctx)}`);
+	const keep: SubmitFunction =
+		() =>
+		async ({ update }) => {
+			await update({ reset: false });
+		};
+	const keepRotate: SubmitFunction =
+		() =>
+		async ({ update }) => {
+			await update({ reset: false });
+			// 저장한 방향이 파생본에 들어갔으니 이 파일의 보기 회전은 0 으로
+			if (current) angles[current.id] = 0;
+		};
+
 	function onKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 		if (e.key === 'ArrowLeft' && data.nav.prev) goto(`/p/${data.nav.prev}${q}`, { replace: true });
@@ -296,7 +313,7 @@
 					>
 				</button>
 				{#if data.admin && turns !== 0 && current}
-					<form method="POST" action="?/rotate">
+					<form use:enhance={keepRotate} method="POST" action={`?/rotate${act}`}>
 						<input type="hidden" name="fileId" value={current.id} />
 						<input type="hidden" name="rotation" value={(current.rotation + turns) % 4} />
 						<button type="submit" class="chip on" title="이 방향으로 파생본을 다시 만듭니다"
@@ -309,7 +326,7 @@
 				>{info ? '닫기' : '정보'}</button
 			>
 			{#if data.admin}
-				<form method="POST" action="?/visibility">
+				<form use:enhance={keep} method="POST" action={`?/visibility${act}`}>
 					<input
 						type="hidden"
 						name="visibility"
@@ -320,7 +337,7 @@
 					>
 				</form>
 				{#if data.photo.visibilityManual}
-					<form method="POST" action="?/resetVisibility">
+					<form use:enhance={keep} method="POST" action={`?/resetVisibility${act}`}>
 						<button type="submit" class="pill quiet" title="폴더 기본값으로 되돌립니다"
 							>기본값으로</button
 						>
@@ -333,7 +350,7 @@
 						rel="noopener">원본 파일</a
 					>{/if}
 				{#if data.manualCollections.length}
-					<form method="POST" action="?/collect" class="collect">
+					<form use:enhance={keep} method="POST" action={`?/collect${act}`} class="collect">
 						<select name="collectionId">
 							{#each data.manualCollections as mc (mc.id)}<option value={mc.id}>{mc.title}</option
 								>{/each}
@@ -354,7 +371,7 @@
 				admin={data.admin}
 			/>
 			{#if data.admin}
-				<form method="POST" action="?/meta" class="meta-edit">
+				<form use:enhance={keep} method="POST" action={`?/meta${act}`} class="meta-edit">
 					<h3>장비 수정 (이 사진만)</h3>
 					<label
 						><span>카메라</span>
