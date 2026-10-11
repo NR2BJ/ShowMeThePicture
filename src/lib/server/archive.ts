@@ -13,7 +13,7 @@ import {
 	type MonthBucket
 } from '#lib/archive.ts';
 import type { Db } from './db';
-import { files, photoMeta, photos } from './db/schema';
+import { files, gear, photoMeta, photos } from './db/schema';
 import { baseConds, itemSelect, orderKey, toItem, type GalleryItem, type Scope } from './gallery';
 
 export const ARCHIVE_PAGE = 120;
@@ -126,7 +126,10 @@ export async function archiveFacets(db: Db, o: ArchiveOpts): Promise<ArchiveFace
 			sql`select ${photoMeta.camera} as v, count(*)::int as n ${from} where ${where('camera')} and ${photoMeta.camera} is not null group by 1 order by 2 desc, 1`
 		),
 		run(
-			sql`select ${photoMeta.lens} as v, count(*)::int as n ${from} where ${where('lens')} and ${photoMeta.lens} is not null group by 1 order by 2 desc, 1`
+			// 고정렌즈(등록 카메라의 렌즈)는 카메라에 딸린 값이라 렌즈 선택지에서 뺀다
+			sql`select ${photoMeta.lens} as v, count(*)::int as n ${from} where ${where('lens')} and ${photoMeta.lens} is not null
+				and ${photoMeta.lens} not in (select ${gear.fixedLens} from ${gear} where ${gear.kind} = 'camera' and ${gear.fixedLens} is not null)
+				group by 1 order by 2 desc, 1`
 		),
 		run(
 			sql`select ${photoMeta.filmStock} as v, count(*)::int as n ${from} where ${where('film')} and ${photoMeta.filmStock} is not null group by 1 order by 2 desc, 1`
