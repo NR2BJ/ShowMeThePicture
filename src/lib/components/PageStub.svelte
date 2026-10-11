@@ -9,7 +9,7 @@
 
 <style>
 	.stub {
-		min-height: calc(100dvh - 92px);
+		min-height: calc(100svh - 92px);
 		display: flex;
 		flex-direction: column;
 		justify-content: flex-end;

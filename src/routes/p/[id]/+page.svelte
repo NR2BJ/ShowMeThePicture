@@ -618,7 +618,7 @@
 		grid-row: 1 / span 2;
 		border-left: 1px solid var(--color-ink-faint);
 		padding: 8px 0 0 24px;
-		max-height: calc(100dvh - 120px);
+		max-height: calc(100svh - 120px);
 		overflow: auto;
 	}
 	@media (max-width: 900px) {

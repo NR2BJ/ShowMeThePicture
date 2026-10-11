@@ -22,7 +22,8 @@
 		color: var(--color-ink);
 	}
 	body {
-		min-height: 100dvh;
+		/* svh: 모바일 주소창이 들어가고 나와도 바뀌지 않는 높이 — dvh 면 그때마다 레이아웃이 다시 잡혀 페이지가 툭 움직인다 */
+		min-height: 100svh;
 		font-family: var(--font-sans);
 		font-size: 20px;
 		line-height: 1.5;
