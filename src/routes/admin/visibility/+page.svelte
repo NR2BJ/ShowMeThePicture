@@ -1,11 +1,14 @@
 <script lang="ts">
+	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	const d = (iso: string) => new Date(iso).toLocaleString('ko-KR');
+	const vis = (v: 'public' | 'hidden') => (v === 'public' ? '공개' : '숨김');
+	const cut = (t: 'A' | 'B' | null) => (t ? `${t}컷` : '없음');
 </script>
 
 <section class="admin-page">
-	<h1>직접 바꾼 공개 설정</h1>
+	<h1>직접 바꾼 사진</h1>
 	{#if form?.error}<p class="notice error">{form.error}</p>{/if}
 	{#if form?.ok}<p class="notice">{form.ok}</p>{/if}
 	{#if data.overrides.length === 0}
@@ -14,43 +17,50 @@
 		<table class="table">
 			<thead
 				><tr
-					><th></th><th>파일</th><th>라이브러리</th><th>지금</th><th>폴더 기본값</th><th
+					><th></th><th>파일</th><th>라이브러리</th><th>공개 · 기본값</th><th>컷 · 자동</th><th
 						>바꾼 시각</th
-					><th></th></tr
+					></tr
 				></thead
 			>
 			<tbody>
 				{#each data.overrides as o (o.id)}
 					<tr>
 						<td><a href={`/p/${o.id}`}><img src={o.thumb} alt="" class="th" /></a></td>
-						<td class="mono"
-							>{o.filename}{#if o.tier}
-								<span class="dim">· {o.tier}컷</span>{/if}</td
-						>
+						<td class="mono">{o.filename}</td>
 						<td class="mono dim">{o.source}</td>
-						<td class="mono" class:pub={o.visibility === 'public'}
-							>{o.visibility === 'public' ? '공개' : '숨김'}</td
-						>
-						<td class="mono dim"
-							>{o.defaultVisibility === 'public'
-								? '공개'
-								: '숨김'}{#if o.defaultVisibility === o.visibility}
-								(같음){/if}</td
-						>
-						<td class="mono dim">{d(o.updatedAt)}</td>
-						<td class="acts">
-							<form method="POST" action="?/reset">
-								<input type="hidden" name="photoId" value={o.id} /><button
-									class="btn quiet"
-									type="submit"
-									>{o.defaultVisibility === o.visibility
-										? '수동 표시 해제'
-										: o.defaultVisibility === 'public'
-											? '공개하기'
-											: '숨기기'}</button
-								>
-							</form>
+						<td>
+							<div class="cell">
+								<span class="mono" class:on={o.visibility === 'public'}>{vis(o.visibility)}</span>
+								{#if o.visibilityManual}
+									<span class="mono dim">· 기본 {vis(o.defaultVisibility)}</span>
+									<form method="POST" action="?/reset" use:enhance>
+										<input type="hidden" name="photoId" value={o.id} /><button
+											class="btn quiet"
+											type="submit"
+											>{o.defaultVisibility === o.visibility
+												? '수동 표시 해제'
+												: '기본값으로'}</button
+										>
+									</form>
+								{:else}<span class="mono dim">· 기본값</span>{/if}
+							</div>
 						</td>
+						<td>
+							<div class="cell">
+								<span class="mono" class:on={!!o.tier}>{cut(o.tier)}</span>
+								{#if o.tierManual}
+									<span class="mono dim">· 자동 {cut(o.defaultTier)}</span>
+									<form method="POST" action="?/resetTier" use:enhance>
+										<input type="hidden" name="photoId" value={o.id} /><button
+											class="btn quiet"
+											type="submit"
+											>{o.defaultTier === o.tier ? '수동 표시 해제' : '자동으로'}</button
+										>
+									</form>
+								{:else}<span class="mono dim">· 자동</span>{/if}
+							</div>
+						</td>
+						<td class="mono dim">{d(o.updatedAt)}</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -66,12 +76,13 @@
 		object-fit: cover;
 		background: #000;
 	}
-	.pub {
+	.on {
 		color: var(--color-amber);
 	}
-	.acts {
+	.cell {
 		display: flex;
-		gap: 6px;
+		align-items: center;
+		gap: 8px;
 		white-space: nowrap;
 	}
 </style>

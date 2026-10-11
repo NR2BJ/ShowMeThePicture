@@ -210,11 +210,11 @@ export async function changeSourceRole(
 			await db.execute(sql`
 				update ${photos} p set tier = sub.tier, updated_at = now()
 				from (
-					select f.photo_id, max(s.tier) as tier
+					select f.photo_id, min(s.tier) as tier -- enum 순서 A < B: A 가 하나라도 있으면 A
 					from ${files} f join ${sources} s on s.id = f.source_id
 					where f.variant_role = 'edit' and f.status = 'active'
 					group by f.photo_id
-				) sub where sub.photo_id = p.id and exists (select 1 from ${files} f2 where f2.photo_id = p.id and f2.source_id = ${id})`);
+				) sub where sub.photo_id = p.id and not p.tier_manual and exists (select 1 from ${files} f2 where f2.photo_id = p.id and f2.source_id = ${id})`);
 		}
 	}
 	return { relinkNeeded: roleChanged, fileCount: rows.length };

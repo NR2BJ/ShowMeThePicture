@@ -1,6 +1,6 @@
 // 사진 공개 여부: 폴더(Source) 기본값 → 사진별 값. 관리자가 직접 바꾸면 visibility_manual 로 표시해
-// 폴더 기본값을 나중에 바꿔도 덮어쓰지 않는다. (컷 A/B 는 분류일 뿐 공개 여부와 무관)
-import { and, desc, eq, inArray, sql } from 'drizzle-orm';
+// 폴더 기본값을 나중에 바꿔도 덮어쓰지 않는다. 컷(A/B)도 사진별로 직접 정할 수 있다(tier_manual) — 숨김 사진을 A/B 로 올리면 공개로.
+import { and, desc, eq, inArray, or, sql } from 'drizzle-orm';
 import { mediaUrl, versionOf } from '#lib/media.ts';
 import type { Db } from './db';
 import { files, photos, sources } from './db/schema';
@@ -37,6 +37,55 @@ export async function resetPhotoVisibility(db: Db, photoId: string): Promise<Vis
 		.set({ visibility: v, visibilityManual: false, updatedAt: new Date() })
 		.where(eq(photos.id, photoId));
 	return v;
+}
+
+export type Tier = 'A' | 'B';
+
+/** 사진의 "자동 컷": 보정 폴더 컷 중 A 가 있으면 A, B 가 있으면 B, 보정본이 없으면 null */
+export async function defaultTierForPhoto(db: Db, photoId: string): Promise<Tier | null> {
+	const rows = await db
+		.select({ tier: sources.tier })
+		.from(files)
+		.innerJoin(sources, eq(sources.id, files.sourceId))
+		.where(
+			and(eq(files.photoId, photoId), eq(files.status, 'active'), eq(files.variantRole, 'edit'))
+		);
+	return rows.some((r) => r.tier === 'A') ? 'A' : rows.some((r) => r.tier === 'B') ? 'B' : null;
+}
+
+/** 컷을 직접 정한다. 숨김 사진을 A/B 로 올리면 공개로 바꾼다(그 뒤 숨기기로 다시 숨길 수 있다). */
+export async function setPhotoTierManual(
+	db: Db,
+	photoId: string,
+	tier: Tier | null
+): Promise<{ madePublic: boolean }> {
+	const [p] = await db
+		.select({ visibility: photos.visibility })
+		.from(photos)
+		.where(eq(photos.id, photoId))
+		.limit(1);
+	if (!p) return { madePublic: false };
+	const madePublic = tier !== null && p.visibility === 'hidden';
+	await db
+		.update(photos)
+		.set({
+			tier,
+			tierManual: true,
+			...(madePublic ? { visibility: 'public' as const, visibilityManual: true } : {}),
+			updatedAt: new Date()
+		})
+		.where(eq(photos.id, photoId));
+	return { madePublic };
+}
+
+/** 직접 정한 컷을 풀고 자동 컷으로. 공개 여부는 그대로 둔다(따로 되돌린다). */
+export async function resetPhotoTier(db: Db, photoId: string): Promise<Tier | null> {
+	const t = await defaultTierForPhoto(db, photoId);
+	await db
+		.update(photos)
+		.set({ tier: t, tierManual: false, updatedAt: new Date() })
+		.where(eq(photos.id, photoId));
+	return t;
 }
 
 /** 폴더에 속한 사진들에 공개 여부를 일괄 적용. includeManual=false 면 수동 설정은 건드리지 않는다. */
@@ -78,16 +127,21 @@ export type Override = {
 	filename: string;
 	source: string;
 	tier: 'A' | 'B' | null;
+	visibilityManual: boolean;
+	tierManual: boolean;
+	defaultTier: 'A' | 'B' | null;
 	updatedAt: string;
 };
 
-/** 관리자가 직접 바꾼 사진 목록 (폴더 기본값과 다른지도 같이) */
+/** 관리자가 직접 바꾼 사진 목록 — 공개 여부 또는 컷을 바꾼 것 (폴더 기본값·자동 컷과 같이) */
 export async function listManualOverrides(db: Db): Promise<Override[]> {
 	const rows = await db
 		.select({
 			id: photos.id,
 			visibility: photos.visibility,
 			tier: photos.tier,
+			visibilityManual: photos.visibilityManual,
+			tierManual: photos.tierManual,
 			updatedAt: photos.updatedAt,
 			fileId: files.id,
 			filename: files.filename,
@@ -98,7 +152,7 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 		.from(photos)
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
 		.innerJoin(sources, eq(sources.id, files.sourceId))
-		.where(eq(photos.visibilityManual, true))
+		.where(or(eq(photos.visibilityManual, true), eq(photos.tierManual, true)))
 		.orderBy(desc(photos.updatedAt))
 		.limit(500);
 	const out: Override[] = [];
@@ -111,6 +165,9 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 			filename: r.filename,
 			source: r.source,
 			tier: r.tier,
+			visibilityManual: r.visibilityManual,
+			tierManual: r.tierManual,
+			defaultTier: r.tierManual ? await defaultTierForPhoto(db, r.id) : r.tier,
 			updatedAt: r.updatedAt.toISOString()
 		});
 	}

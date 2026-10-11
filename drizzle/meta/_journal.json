@@ -71,6 +71,13 @@
       "when": 1791642496387,
       "tag": "0009_embeddings_untyped",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791705826584,
+      "tag": "0010_tier_manual",
+      "breakpoints": true
     }
   ]
 }

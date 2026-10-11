@@ -167,7 +167,8 @@ async function recalcPhoto(db: Db, photoId: string): Promise<void> {
 			primaryFileId: primary.id,
 			originalFileId: original?.id ?? null,
 			takenAt,
-			tier,
+			// 직접 정한 컷은 그대로
+			tier: sql`case when ${photos.tierManual} then ${photos.tier} else ${tier}::tier end`,
 			updatedAt: new Date()
 		})
 		.where(eq(photos.id, photoId));

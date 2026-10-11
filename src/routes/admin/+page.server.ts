@@ -42,7 +42,7 @@ export const load: PageServerLoad = async () => {
 					total: sql<number>`count(*)::int`,
 					pub: sql<number>`count(*) filter (where ${photos.visibility} = 'public')::int`,
 					hidden: sql<number>`count(*) filter (where ${photos.visibility} = 'hidden')::int`,
-					manual: sql<number>`count(*) filter (where ${photos.visibilityManual})::int`,
+					manual: sql<number>`count(*) filter (where ${photos.visibilityManual} or ${photos.tierManual})::int`,
 					a: sql<number>`count(*) filter (where ${photos.tier} = 'A')::int`,
 					b: sql<number>`count(*) filter (where ${photos.tier} = 'B')::int`,
 					original: sql<number>`count(*) filter (where ${photos.tier} is null)::int`

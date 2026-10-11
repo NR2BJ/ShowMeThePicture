@@ -106,6 +106,8 @@ export const photos = pgTable(
 		visibilityManual: boolean('visibility_manual').notNull().default(false),
 		/** A=걸작, B=보정은 했지만 그 정도는 아님, null=보정본 없음 */
 		tier: tier('tier'),
+		/** 관리자가 직접 정한 컷(true 면 폴더 컷·페어링 재계산이 덮어쓰지 않는다) — 원본 폴더의 필름 스캔·카메라 JPG 를 A/B 로 올릴 때 */
+		tierManual: boolean('tier_manual').notNull().default(false),
 		medium: medium('medium'),
 		/** 사진별 장비 덮어쓰기 {camera, lens, filmStock}. null 이면 롤 메타/EXIF 를 따른다 */
 		metaOverride: jsonb('meta_override').$type<{

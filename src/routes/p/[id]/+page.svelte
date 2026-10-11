@@ -240,7 +240,9 @@
 		<p class="line mono">
 			{dateLine}
 			<!-- A/B 컷은 관리자용 라벨 — 게스트에게는 안 보인다 -->
-			{#if data.admin && data.photo.tier}<span class="dim"> · {data.photo.tier}컷</span>{/if}
+			{#if data.admin && data.photo.tier}<span class="dim">
+					· {data.photo.tier}컷{data.photo.tierManual ? '(직접)' : ''}</span
+				>{/if}
 			{#if data.photo.visibility === 'hidden'}<span class="dim">
 					· 숨김</span
 				>{/if}{#if data.admin && data.photo.visibilityManual}<span class="dim">
@@ -337,10 +339,30 @@
 						>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
 					>
 				</form>
+				<!-- 컷 직접 정하기: 원본 폴더의 필름 스캔·카메라 JPG 도 A/B 로 올릴 수 있다 -->
+				<form use:enhance={keep} method="POST" action={`?/tier${act}`} class="tiers">
+					{#each [['A', 'A컷'], ['B', 'B컷'], ['', '컷 없음']] as [t, label] (t)}
+						<button
+							type="submit"
+							name="tier"
+							value={t}
+							class="pill quiet"
+							class:on={(data.photo.tier ?? '') === t}
+							title={t ? `${label}으로 (숨김이면 공개로 바뀜)` : '컷 표시를 뺍니다'}>{label}</button
+						>
+					{/each}
+				</form>
+				{#if data.photo.tierManual}
+					<form use:enhance={keep} method="POST" action={`?/resetTier${act}`}>
+						<button type="submit" class="pill quiet" title="폴더 컷(자동)으로 되돌립니다"
+							>컷 자동으로</button
+						>
+					</form>
+				{/if}
 				{#if data.photo.visibilityManual}
 					<form use:enhance={keep} method="POST" action={`?/resetVisibility${act}`}>
 						<button type="submit" class="pill quiet" title="폴더 기본값으로 되돌립니다"
-							>기본값으로</button
+							>공개 기본값으로</button
 						>
 					</form>
 				{/if}
@@ -569,6 +591,11 @@
 		background: transparent;
 		color: var(--color-ink);
 		border-color: var(--color-ink);
+	}
+	/* 지금 컷 */
+	.tiers .pill.on {
+		color: var(--color-amber);
+		border-color: var(--color-amber);
 	}
 	.chips {
 		display: inline-flex;

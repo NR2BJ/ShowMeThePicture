@@ -271,6 +271,7 @@ export type PhotoDetail = {
 	medium: 'film' | 'digital' | null;
 	visibility: 'public' | 'hidden';
 	visibilityManual: boolean;
+	tierManual: boolean;
 	title: string | null;
 	caption: string | null;
 	primaryFileId: string | null;
@@ -376,6 +377,7 @@ export async function getPhotoDetail(
 		medium: p.medium,
 		visibility: p.visibility,
 		visibilityManual: p.visibilityManual,
+		tierManual: p.tierManual,
 		title: p.title,
 		caption: p.caption,
 		primaryFileId: p.primaryFileId,

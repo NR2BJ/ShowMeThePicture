@@ -1,0 +1,1 @@
+ALTER TABLE "photos" ADD COLUMN "tier_manual" boolean DEFAULT false NOT NULL;

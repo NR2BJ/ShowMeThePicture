@@ -15,7 +15,11 @@ import {
 import { listGear } from '#lib/server/gear.ts';
 import { setFileRotation } from '#lib/server/rotation.ts';
 import { similarPhotos } from '#lib/server/search.ts';
-import { resetPhotoVisibility } from '#lib/server/visibility.ts';
+import {
+	resetPhotoTier,
+	resetPhotoVisibility,
+	setPhotoTierManual
+} from '#lib/server/visibility.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import type { OgMeta } from '#lib/og.ts';
 import type { Actions, PageServerLoad } from './$types';
@@ -96,6 +100,19 @@ export const actions: Actions = {
 	resetVisibility: async ({ params, locals }) => {
 		if (!locals.admin) return fail(403, { error: 'forbidden' });
 		await resetPhotoVisibility(db(), params.id);
+		return { ok: true };
+	},
+	/** 관리자: 컷을 직접 정한다 (A·B·없음). 숨김 사진을 A/B 로 올리면 공개로 바뀐다. */
+	tier: async ({ params, request, locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const form = await request.formData();
+		const t = String(form.get('tier') ?? '');
+		await setPhotoTierManual(db(), params.id, t === 'A' || t === 'B' ? t : null);
+		return { ok: true };
+	},
+	resetTier: async ({ params, locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		await resetPhotoTier(db(), params.id);
 		return { ok: true };
 	},
 	meta: async ({ params, request, locals }) => {
