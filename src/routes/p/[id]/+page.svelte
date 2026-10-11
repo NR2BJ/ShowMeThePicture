@@ -81,10 +81,35 @@
 		if (!current) return;
 		angles = { ...angles, [current.id]: (angles[current.id] ?? 0) + deg };
 	}
+	// 방향 저장 중에는 돌려 놓은 화면을 그대로 둔다(frozen) — 새 파생본(이미 돌아간 이미지)이 다 받아지면
+	// 애니메이션 없이(noAnim) 바꿔 끼운다. 예전엔 보기 각도가 0 으로 돌아가는 회전 애니메이션이 보였다.
+	type View = {
+		id: string;
+		src: string;
+		width: number | null;
+		height: number | null;
+		angle: number;
+	};
+	let frozen = $state<View | null>(null);
+	let noAnim = $state(false);
+	const view = $derived<View | null>(
+		current
+			? frozen && frozen.id === current.id
+				? frozen
+				: {
+						id: current.id,
+						src: current.urls.full,
+						width: current.width,
+						height: current.height,
+						angle
+					}
+			: null
+	);
+	const viewTurns = $derived(view ? (((view.angle / 90) % 4) + 4) % 4 : 0);
 	const fit = $derived.by(() => {
-		const v = current;
+		const v = view;
 		if (!v?.width || !v?.height || !box.w || !box.h) return null;
-		const odd = turns % 2 === 1;
+		const odd = viewTurns % 2 === 1;
 		const vw0 = odd ? v.height : v.width;
 		const vh0 = odd ? v.width : v.height;
 		const scale = Math.min(box.w / vw0, box.h / vh0, 1);
@@ -162,13 +187,25 @@
 		async ({ update }) => {
 			await update({ reset: false });
 		};
-	const keepRotate: SubmitFunction =
-		() =>
-		async ({ update }) => {
+	const keepRotate: SubmitFunction = () => {
+		if (view) frozen = { ...view };
+		return async ({ update }) => {
 			await update({ reset: false });
-			// 저장한 방향이 파생본에 들어갔으니 이 파일의 보기 회전은 0 으로
-			if (current) angles[current.id] = 0;
+			const c = current;
+			if (!c) {
+				frozen = null;
+				return;
+			}
+			// 새 파생본을 미리 받아 둔 뒤 한 번에 바꾼다: 이미지 교체 + 보기 회전 0, 둘 다 애니메이션 없이
+			const img = new Image();
+			img.src = c.urls.full;
+			await img.decode().catch(() => {});
+			noAnim = true;
+			angles[c.id] = 0;
+			frozen = null;
+			requestAnimationFrame(() => requestAnimationFrame(() => (noAnim = false)));
 		};
+	};
 
 	function onKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -216,13 +253,14 @@
 			{#key current?.id}
 				{#if current}
 					<img
-						src={current.urls.full}
+						src={view?.src ?? current.urls.full}
 						alt={data.photo.title ?? ''}
-						width={current.width ?? undefined}
-						height={current.height ?? undefined}
+						width={view?.width ?? undefined}
+						height={view?.height ?? undefined}
+						class:no-anim={noAnim}
 						style:width={fit ? `${fit.w}px` : undefined}
 						style:height={fit ? `${fit.h}px` : undefined}
-						style:transform={angle ? `rotate(${angle}deg)` : undefined}
+						style:transform={view?.angle ? `rotate(${view.angle}deg)` : undefined}
 						use:fadeIn
 					/>
 				{/if}
@@ -495,6 +533,9 @@
 		transition:
 			opacity 0.15s ease,
 			transform 0.2s ease;
+	}
+	figure img.no-anim {
+		transition: none;
 	}
 	figure img:global(.loaded) {
 		opacity: 1;
