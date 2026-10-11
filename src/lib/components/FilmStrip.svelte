@@ -24,12 +24,7 @@
 							tabindex={copy === 1 || !f.src ? -1 : undefined}
 						>
 							{#if f.src}
-								<img
-									src={f.src}
-									alt=""
-									loading={copy === 0 && i < 8 ? 'eager' : 'lazy'}
-									use:fadeIn
-								/>
+								<img src={f.src} alt="" loading="eager" use:fadeIn />
 							{/if}
 							<span class="rt">{f.label}</span>
 							<span class="rb">{f.num}</span>
@@ -151,14 +146,6 @@
 	@media (prefers-reduced-motion: reduce) {
 		.track {
 			animation: none;
-		}
-	}
-	@media (max-width: 720px) {
-		.strips {
-			--fh: 96px;
-		}
-		.strip:nth-child(n + 3) {
-			display: none;
 		}
 	}
 </style>

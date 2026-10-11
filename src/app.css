@@ -28,6 +28,9 @@
 		line-height: 1.5;
 		-webkit-font-smoothing: antialiased;
 		text-rendering: optimizeLegibility;
+		/* 한글도 띄어쓰기 단위로만 줄바꿈 — 좁은 칸에서 한 글자씩 세로로 쌓이지 않게. 긴 낱말만 넘칠 때 끊는다 */
+		word-break: keep-all;
+		overflow-wrap: break-word;
 	}
 	::selection {
 		background: var(--color-amber);
@@ -80,6 +83,35 @@
 	}
 	.admin-nav form {
 		margin-left: auto;
+	}
+	/* 폰: 관리자 메뉴는 여러 줄로 감싸 전부 보이게, 표는 표 안에서 옆으로 민다 */
+	@media (max-width: 720px) {
+		.admin-nav {
+			flex-wrap: wrap;
+			gap: 10px 18px;
+			padding: 0 16px 14px;
+			white-space: nowrap;
+			align-items: center;
+		}
+		.admin-nav form {
+			flex: 1 0 100%;
+			margin-left: 0;
+		}
+		.admin-page {
+			padding: 16px 16px 60px;
+		}
+		.admin-page h1 {
+			font-size: 36px;
+		}
+		.table {
+			display: block;
+			overflow-x: auto;
+			white-space: nowrap;
+			font-size: 17px;
+		}
+		.table td {
+			padding: 8px;
+		}
 	}
 	.field {
 		display: grid;

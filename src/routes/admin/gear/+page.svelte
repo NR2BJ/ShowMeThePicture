@@ -239,6 +239,16 @@
 		white-space: normal;
 		overflow-wrap: anywhere;
 	}
+	/* 폰: 칸 폭을 고정하지 않고 표 안에서 옆으로 민다 (고정 폭이면 이름·렌즈가 한 글자씩 세로로 쌓였다) */
+	@media (max-width: 720px) {
+		.gear {
+			table-layout: auto;
+		}
+		.gear td.wrap {
+			white-space: nowrap;
+			overflow-wrap: normal;
+		}
+	}
 	.gear tr.group-start td {
 		border-top: 1px solid var(--color-ink-faint);
 	}

@@ -47,6 +47,8 @@
 		apply({ ...filter, [key]: v || undefined });
 	}
 	const active = $derived(isFilterActive(filter));
+	const otherGear = (key: 'camera' | 'lens' | 'film') =>
+		(['camera', 'lens', 'film'] as const).some((k) => k !== key && !!filter[k]);
 	// 고른 필터 수 (폰에서 접힌 버튼에 표시)
 	const activeCount = $derived(
 		(filter.medium?.length ? 1 : 0) +
@@ -96,7 +98,8 @@
 		{/each}
 	</div>
 	{#each [['camera', '카메라', facets.camera, filter.camera], ['lens', '렌즈', facets.lens, filter.lens], ['film', '필름', facets.film, filter.film]] as const as [key, label, values, cur] (key)}
-		{#if values.length > 0 || cur}
+		<!-- 다른 장비를 골라서 값이 하나로 정해졌으면 숨김 (예: 고정렌즈 카메라를 고르면 렌즈는 하나뿐) -->
+		{#if cur || values.length > 1 || (values.length === 1 && !otherGear(key))}
 			<label class="pick">
 				<span>{label}</span>
 				<select onchange={(e) => pick(key, e)}>
