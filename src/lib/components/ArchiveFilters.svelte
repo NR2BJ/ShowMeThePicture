@@ -50,8 +50,10 @@
 	const active = $derived(isFilterActive(filter));
 	// 컷(A/B/원본만) 축은 관리자용 — 게스트에게는 숨긴다
 	const admin = $derived(!!(page.data as { admin?: unknown }).admin);
-	const otherGear = (key: 'camera' | 'lens' | 'film') =>
-		(['camera', 'lens', 'film'] as const).some((k) => k !== key && !!filter[k]);
+	// 0장인 선택지는 숨긴다(고른 것은 남김). 고를 게 하나뿐인 묶음·선택 상자는 통째로 숨긴다
+	// (예: F31fd 폴더에서는 매체가 디지털뿐이라 매체 묶음이 없다. 원본만 폴더라도 직접 A/B 로 올린 사진이 있으면 A/B 가 보인다)
+	const mediums = $derived(MEDIUMS.filter((m) => facets.medium[m] > 0 || mediumOn(m)));
+	const kinds = $derived(KINDS.filter((k) => facets.kind[k] > 0 || kindOn(k)));
 	// 고른 필터 수 (폰에서 접힌 버튼에 표시)
 	const activeCount = $derived(
 		(filter.medium?.length ? 1 : 0) +
@@ -74,22 +76,24 @@
 	<span aria-hidden="true">{open ? '▴' : '▾'}</span></button
 >
 <div class="filters mono" class:open aria-label="필터">
-	<div class="group" role="group" aria-label="매체">
-		{#each MEDIUMS as m (m)}
-			<button
-				type="button"
-				class="chip"
-				class:on={mediumOn(m)}
-				class:empty={!facets.medium[m]}
-				aria-pressed={mediumOn(m)}
-				onclick={() => apply({ ...filter, medium: toggle(MEDIUMS, filter.medium, m) })}
-				>{MEDIUM_LABEL[m]} <span class="n">{facets.medium[m]}</span></button
-			>
-		{/each}
-	</div>
-	{#if admin}
+	{#if mediums.length > 1}
+		<div class="group" role="group" aria-label="매체">
+			{#each mediums as m (m)}
+				<button
+					type="button"
+					class="chip"
+					class:on={mediumOn(m)}
+					class:empty={!facets.medium[m]}
+					aria-pressed={mediumOn(m)}
+					onclick={() => apply({ ...filter, medium: toggle(MEDIUMS, filter.medium, m) })}
+					>{MEDIUM_LABEL[m]} <span class="n">{facets.medium[m]}</span></button
+				>
+			{/each}
+		</div>
+	{/if}
+	{#if admin && kinds.length > 1}
 		<div class="group" role="group" aria-label="컷">
-			{#each KINDS as k (k)}
+			{#each kinds as k (k)}
 				<button
 					type="button"
 					class="chip"
@@ -103,8 +107,8 @@
 		</div>
 	{/if}
 	{#each [['camera', '카메라', facets.camera, filter.camera], ['lens', '렌즈', facets.lens, filter.lens], ['film', '필름', facets.film, filter.film]] as const as [key, label, values, cur] (key)}
-		<!-- 다른 장비를 골라서 값이 하나로 정해졌으면 숨김 (예: 고정렌즈 카메라를 고르면 렌즈는 하나뿐) -->
-		{#if cur || values.length > 1 || (values.length === 1 && !otherGear(key))}
+		<!-- 값이 하나뿐이면 숨김 (단일 카메라 폴더, 고정렌즈 카메라를 고른 뒤의 렌즈 등) -->
+		{#if cur || values.length > 1}
 			<label class="pick">
 				<span>{label}</span>
 				<select onchange={(e) => pick(key, e)}>

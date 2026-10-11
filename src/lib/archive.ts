@@ -130,6 +130,9 @@ export function archiveCtx(f: ArchiveFilter): string {
 export function filterFromCtx(ctx: string): ArchiveFilter {
 	for (const prefix of ['archive:', 'landing:'])
 		if (ctx.startsWith(prefix)) return parseFilter(new URLSearchParams(ctx.slice(prefix.length)));
+	// 폴더 페이지: 'library:<slug>?<필터 query>'
+	if (ctx.startsWith('library:') && ctx.includes('?'))
+		return parseFilter(new URLSearchParams(ctx.slice(ctx.indexOf('?') + 1)));
 	return {};
 }
 

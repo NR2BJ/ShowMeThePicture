@@ -117,24 +117,29 @@ async function listLibraryPhotos(
 	db: Db,
 	o: ListOptions & { scope: { kind: 'library'; sourceId: string } }
 ) {
-	const vis = o.admin ? sql`` : sql`and p.visibility = 'public'`;
+	// 이 폴더에 파일이 있는 사진 — 대표 파일은 이 폴더 파일 중 RAW 우선. 아카이브와 같은 필터(유효 장비는 photo_meta).
+	const vis = o.admin ? sql`` : sql`and ${photos.visibility} = 'public'`;
+	const fc = filterConds(o.filter);
+	const extra = fc.length ? sql` and ${sql.join(fc, sql` and `)}` : sql``;
+	const from = sql`from ${files} f join ${photos} on ${photos.id} = f.photo_id
+			left join ${photoMeta} on ${photoMeta.photoId} = ${photos.id}
+			where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis}${extra}`;
 	const rows = (await db.execute(sql`
 		select * from (
-			select distinct on (p.id) p.id, p.taken_at, p.tier, p.medium, p.visibility,
+			select distinct on (${photos.id}) ${photos.id} as id, ${photos.takenAt} as taken_at, ${photos.tier} as tier,
+			       ${photos.medium} as medium, ${photos.visibility} as visibility,
 			       f.id as file_id, f.width, f.height, f.thumbhash, f.content_hash, f.rotation, f.camera_model
-			from ${files} f join ${photos} p on p.id = f.photo_id
-			where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis}
-			order by p.id, (f.kind = 'raw') desc, f.id
+			${from}
+			order by ${photos.id}, (f.kind = 'raw') desc, f.id
 		) t
 		order by coalesce(t.taken_at, 'epoch'::timestamptz) desc, t.id desc
 		limit ${o.limit + 1} offset ${Math.max(0, o.page - 1) * o.limit}`)) as unknown as Record<
 		string,
 		unknown
 	>[];
-	const [{ total }] = (await db.execute(sql`
-		select count(distinct p.id)::int as total
-		from ${files} f join ${photos} p on p.id = f.photo_id
-		where f.source_id = ${o.scope.sourceId} and f.status = 'active' and f.derivatives_ready ${vis}`)) as unknown as {
+	const [{ total }] = (await db.execute(
+		sql`select count(distinct ${photos.id})::int as total ${from}`
+	)) as unknown as {
 		total: number;
 	}[];
 	const items = rows.slice(0, o.limit).map((r) =>
@@ -441,7 +446,8 @@ export async function setPhotoVisibility(
 /** ctx 파라미터("archive" | "library:<slug>") → Scope. slug 가 없으면 archive. */
 export async function scopeFromCtx(db: Db, ctx: string | null): Promise<Scope> {
 	if (ctx?.startsWith('library:')) {
-		const slug = ctx.slice('library:'.length);
+		// 'library:<slug>' 또는 'library:<slug>?<필터 query>'
+		const slug = ctx.slice('library:'.length).split('?')[0];
 		const [s] = await db
 			.select({ id: sources.id })
 			.from(sources)

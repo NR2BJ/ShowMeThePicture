@@ -1,10 +1,18 @@
 <script lang="ts">
 	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
+	import ArchiveFilters from '#lib/components/ArchiveFilters.svelte';
 	import Pager from '#lib/components/Pager.svelte';
+	import { filterParams, type ArchiveFilter } from '#lib/archive.ts';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
-	const ctx = $derived(`library:${data.source.slug}`);
+	// 사진 페이지 이전/다음·Esc 가 필터를 유지하도록 ctx 에 query 를 싣는다
+	const ctx = $derived(`library:${data.source.slug}${data.query ? `?${data.query}` : ''}`);
+	const base = $derived(`/library/${data.source.slug}`);
+	const hrefFor = (f: ArchiveFilter) => {
+		const q = filterParams(f).toString();
+		return q ? `${base}?${q}` : base;
+	};
 </script>
 
 <section class="page" use:autoRefresh={8000}>
@@ -22,6 +30,7 @@
 		</p>
 	</header>
 	<p class="mono dim path">{data.source.rootPath}</p>
+	<ArchiveFilters filter={data.filter} facets={data.facets} {hrefFor} />
 	{#if data.items.length === 0}
 		<p class="mono dim">
 			아직 처리된 사진이 없습니다. 스캔과 파생본 생성이 끝나면 여기에 나타납니다.
@@ -29,7 +38,7 @@
 	{:else}
 		<PhotoGrid items={data.items} {ctx} />
 	{/if}
-	<Pager page={data.page} hasMore={data.hasMore} base={`/library/${data.source.slug}`} />
+	<Pager page={data.page} hasMore={data.hasMore} base={hrefFor(data.filter)} />
 </section>
 
 <style>

@@ -14,15 +14,15 @@ import {
 } from '#lib/archive.ts';
 import type { Db } from './db';
 import { files, photoMeta, photos } from './db/schema';
-import { baseConds, itemSelect, orderKey, toItem, type GalleryItem } from './gallery';
+import { baseConds, itemSelect, orderKey, toItem, type GalleryItem, type Scope } from './gallery';
 
 export const ARCHIVE_PAGE = 120;
 /** 월 묶음 기준 시간대 = 서버(Node) 로컬. 촬영 시각의 저장·표시도 같은 기준이라 월 경계가 어긋나지 않는다. */
 export const ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-export type ArchiveOpts = { admin: boolean; filter?: ArchiveFilter };
+export type ArchiveOpts = { admin: boolean; filter?: ArchiveFilter; scope?: Scope };
 const conds = (o: ArchiveOpts) =>
-	baseConds({ scope: { kind: 'archive' }, admin: o.admin, filter: o.filter });
+	baseConds({ scope: o.scope ?? { kind: 'archive' }, admin: o.admin, filter: o.filter });
 
 /** 키셋 커서: 경계 항목의 taken_at(ISO, 없으면 null) + id. 정렬 키는 (coalesce(taken_at,'epoch'), id) 내림차순. */
 export type ArchiveCursor = { ta: string | null; id: string };
@@ -99,7 +99,10 @@ export async function archiveFacets(db: Db, o: ArchiveOpts): Promise<ArchiveFace
 		inner join ${files} on ${files.id} = ${photos.primaryFileId}
 		left join ${photoMeta} on ${photoMeta.photoId} = ${photos.id}`;
 	const where = (without: keyof ArchiveFilter) =>
-		sql.join(conds({ admin: o.admin, filter: { ...f, [without]: undefined } }), sql` and `);
+		sql.join(
+			conds({ admin: o.admin, scope: o.scope, filter: { ...f, [without]: undefined } }),
+			sql` and `
+		);
 	const run = async (q: ReturnType<typeof sql>): Promise<FacetValue[]> =>
 		((await db.execute(q)) as unknown as { v: string | null; n: number }[])
 			.filter((r) => r.v !== null)
