@@ -2,7 +2,6 @@
 	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
-	const d = (iso: string) => new Date(iso).toLocaleString('ko-KR');
 	const vis = (v: 'public' | 'hidden') => (v === 'public' ? '공개' : '숨김');
 	const cut = (t: 'A' | 'B' | null) => (t ? `${t}컷` : '없음');
 	const turn = (n: 1 | 2 | 3) => (n === 1 ? '90° 오른쪽' : n === 2 ? '180°' : '90° 왼쪽');
@@ -21,13 +20,14 @@
 				><tr
 					><th></th><th>파일</th><th>라이브러리</th><th>공개 · 기본값</th><th>컷 · 자동</th><th
 						>방향</th
-					><th>바꾼 시각</th></tr
+					></tr
 				></thead
 			>
 			<tbody>
 				{#each data.overrides as o (o.id)}
 					<tr>
-						<td><a href={`/p/${o.id}`}><img src={o.thumb} alt="" class="th" /></a></td>
+						<td class="thumb"><a href={`/p/${o.id}`}><img src={o.thumb} alt="" class="th" /></a></td
+						>
 						<td class="mono">{o.filename}</td>
 						<td class="mono dim">{o.source}</td>
 						<td>
@@ -73,7 +73,6 @@
 								{:else}<span class="mono dim">원래대로</span>{/if}
 							</div>
 						</td>
-						<td class="mono dim">{d(o.updatedAt)}</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -86,9 +85,14 @@
 	.overrides :global(td) {
 		vertical-align: middle;
 	}
+	/* 썸네일 칸은 폭 고정 — 다른 칸이 줄바꿈 없이 자리를 차지하면 이미지(max-width:100%)가 거의 0 으로 줄어 안 보였다 */
+	.thumb {
+		width: 96px;
+	}
 	.th {
 		display: block;
 		width: 96px;
+		max-width: none;
 		height: 64px;
 		object-fit: cover;
 		background: #000;

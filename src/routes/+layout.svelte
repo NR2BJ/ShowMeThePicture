@@ -15,9 +15,19 @@
 	// 페이지가 load 에서 og 를 주면 그걸로, 아니면 사이트 기본값. 제목·미리보기 태그는 여기 한 군데서만 낸다.
 	// 서버에서는 컴포넌트가 그려지는 동안(요청 문맥 안) 미리 읽어 둔다 — <title> 은 별도 렌더러에서 나중에 평가되는데,
 	// 그때 page.data 를 읽으면 'state_read_outside_render' 로 500 이 났다(개발 서버 재시작 직후 재현).
-	const ssrOg = import.meta.env.SSR ? ((page.data as { og?: OgMeta }).og ?? {}) : null;
+	// 개발 서버가 코드를 다시 불러온 직후엔 page 모듈이 바뀌어 여기서도 읽기가 실패할 때가 있다 — 500 대신 기본값으로.
+	function safe<T>(read: () => T, fallback: T): T {
+		try {
+			return read();
+		} catch {
+			return fallback;
+		}
+	}
+	const ssrOg = import.meta.env.SSR
+		? safe(() => (page.data as { og?: OgMeta }).og ?? {}, {} as OgMeta)
+		: null;
 	const og = $derived(ssrOg ?? (page.data as { og?: OgMeta }).og ?? {});
-	const ssrPath = import.meta.env.SSR ? page.url.pathname : null;
+	const ssrPath = import.meta.env.SSR ? safe(() => page.url.pathname, '/') : null;
 	const path = $derived(ssrPath ?? page.url.pathname);
 	const title = $derived(og.title ? `${og.title} · ${data.site.title}` : data.site.title);
 	const description = $derived(og.description || data.site.description);
