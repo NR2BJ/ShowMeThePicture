@@ -137,10 +137,40 @@ export type Override = {
 	visibilityManual: boolean;
 	tierManual: boolean;
 	defaultTier: 'A' | 'B' | null;
+	/** 직접 돌려 저장한 파일들 (turns: 1=90° 오른쪽, 2=180°, 3=90° 왼쪽) */
+	rotations: RotatedFile[];
 	updatedAt: string;
 };
 
-/** 관리자가 직접 바꾼 사진 목록 — 공개 여부 또는 컷을 바꾼 것 (폴더 기본값·자동 컷과 같이) */
+export type RotatedFile = { fileId: string; name: string; turns: 1 | 2 | 3 };
+
+/** 사진에서 방향을 저장해 둔 파일들 — 보정본/RAW/JPG 이름과 같이 */
+export async function rotatedFiles(db: Db, photoId: string): Promise<RotatedFile[]> {
+	const rows = await db
+		.select({
+			id: files.id,
+			rotation: files.rotation,
+			kind: files.kind,
+			role: files.variantRole,
+			label: files.variantLabel
+		})
+		.from(files)
+		.where(and(eq(files.photoId, photoId), eq(files.status, 'active')));
+	return rows
+		.filter((r) => ((r.rotation % 4) + 4) % 4 !== 0)
+		.map((r) => ({
+			fileId: r.id,
+			name:
+				r.role === 'edit'
+					? `보정본${r.label && r.label !== '기본' ? ` ${r.label}` : ''}`
+					: r.kind === 'raw'
+						? 'RAW'
+						: 'JPG',
+			turns: (((r.rotation % 4) + 4) % 4) as 1 | 2 | 3
+		}));
+}
+
+/** 관리자가 직접 바꾼 사진 목록 — 공개 여부·컷이 기본값과 다르거나, 방향을 저장한 파일이 있는 것 */
 export async function listManualOverrides(db: Db): Promise<Override[]> {
 	const rows = await db
 		.select({
@@ -159,7 +189,14 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 		.from(photos)
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
 		.innerJoin(sources, eq(sources.id, files.sourceId))
-		.where(or(eq(photos.visibilityManual, true), eq(photos.tierManual, true)))
+		.where(
+			or(
+				eq(photos.visibilityManual, true),
+				eq(photos.tierManual, true),
+				// 방향을 저장한 파일이 있는 사진
+				sql`exists (select 1 from ${files} f where f.photo_id = ${photos.id} and f.status = 'active' and f.rotation % 4 <> 0)`
+			)
+		)
 		.orderBy(desc(photos.updatedAt))
 		.limit(500);
 	const out: Override[] = [];
@@ -174,7 +211,8 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 				.update(photos)
 				.set({ visibilityManual: visDiff, tierManual: tierDiff })
 				.where(eq(photos.id, r.id));
-		if (!visDiff && !tierDiff) continue;
+		const rotations = await rotatedFiles(db, r.id);
+		if (!visDiff && !tierDiff && rotations.length === 0) continue;
 		out.push({
 			id: r.id,
 			visibility: r.visibility,
@@ -186,6 +224,7 @@ export async function listManualOverrides(db: Db): Promise<Override[]> {
 			visibilityManual: visDiff,
 			tierManual: tierDiff,
 			defaultTier,
+			rotations,
 			updatedAt: r.updatedAt.toISOString()
 		});
 	}
