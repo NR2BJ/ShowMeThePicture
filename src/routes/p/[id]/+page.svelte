@@ -107,7 +107,9 @@
 						? `/library/${data.ctx.slice(8)}`
 						: data.ctx.startsWith('archive:')
 							? `/archive?${data.ctx.slice(8)}`
-							: '/archive'
+							: data.ctx.startsWith('search:')
+								? `/search?${data.ctx.slice(7)}`
+								: '/archive'
 				);
 		}
 	}

@@ -1,5 +1,6 @@
 // 시맨틱 검색: 질의/사진 벡터와 가까운 사진. 임베딩은 사진의 primary 파일 것(보정본 우선)을 쓴다.
 import { and, eq, ne, sql } from 'drizzle-orm';
+import type { ArchiveFilter } from '#lib/archive.ts';
 import {
 	collapseNearDuplicates,
 	DEFAULT_DUP_THRESHOLD,
@@ -66,7 +67,13 @@ export async function diversityStrength(db: Db): Promise<number> {
  *  mean/std 는 접기 기준·관리자 숫자용. */
 export async function searchByText(
 	db: Db,
-	o: { admin: boolean; text: string; limit?: number; order?: 'mix' | 'score' }
+	o: {
+		admin: boolean;
+		text: string;
+		limit?: number;
+		order?: 'mix' | 'score';
+		filter?: ArchiveFilter;
+	}
 ): Promise<SearchResult> {
 	const cfg = await mlConfig(db);
 	const vec = await embedText(cfg, o.text);
@@ -81,7 +88,8 @@ export async function searchByText(
 			model: cfg.model,
 			vec,
 			limit: dup > 0 || strength > 0 ? limit * 2 : limit,
-			minCenter
+			minCenter,
+			filter: o.filter
 		}),
 		queryStats(db, { model: cfg.model, vec, minCenter })
 	]);

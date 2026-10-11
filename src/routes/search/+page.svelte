@@ -1,5 +1,8 @@
 <script lang="ts">
+	import ArchiveFilters from '#lib/components/ArchiveFilters.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
+	import { filterParams, type ArchiveFilter } from '#lib/archive.ts';
+	import { searchCtx, searchHref, type SearchOrder } from '#lib/searchctx.ts';
 	import { splitByRelevance } from '#lib/search.ts';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
@@ -11,10 +14,19 @@
 	const noMatch = $derived(data.floor != null && data.items.length > 0 && split.top < data.floor);
 	// 보기 전환: 다양하게(기본 — 거의 같은 컷 묶기·다양성 재정렬) · 점수순(모델 점수 그대로). 지금 보기 하나만 표시.
 	const view = $derived(data.order);
-	const views: [string, string, string][] = [
-		['mix', '다양하게', ''],
-		['score', '점수순', '&order=score']
+	const views: [SearchOrder, string][] = [
+		['mix', '다양하게'],
+		['score', '점수순']
 	];
+	const hrefWith = (o: { order?: SearchOrder; filter?: ArchiveFilter }) =>
+		searchHref({ q: data.q, order: o.order ?? data.order, filter: o.filter ?? data.filter });
+	// 사진 페이지 prev/next 가 이 검색 결과 순서를 따라간다
+	const ctx = $derived(searchCtx({ q: data.q, order: data.order, filter: data.filter }));
+	// 새 검색어를 넣어도 보기·필터는 유지
+	const keep = $derived([
+		...(data.order === 'score' ? [['order', 'score']] : []),
+		...filterParams(data.filter)
+	] as [string, string][]);
 	let showWeak = $state(false);
 	let showAnyway = $state(false);
 	$effect(() => {
@@ -40,6 +52,7 @@
 		{/if}
 	</header>
 	<form class="q" method="GET" action="/search">
+		{#each keep as [k, v] (k)}<input type="hidden" name={k} value={v} />{/each}
 		<input
 			type="search"
 			name="q"
@@ -49,6 +62,13 @@
 		/>
 		<button class="btn" type="submit">찾기</button>
 	</form>
+	{#if data.q && !data.error}
+		<ArchiveFilters
+			filter={data.filter}
+			facets={data.facets}
+			hrefFor={(f) => hrefWith({ filter: f })}
+		/>
+	{/if}
 	{#if !data.q}
 		<p class="mono dim examples">
 			{#each EXAMPLES as ex (ex)}<a href={`/search?q=${encodeURIComponent(ex)}`}>{ex}</a>{/each}
@@ -75,12 +95,11 @@
 		</p>
 	{:else}
 		<p class="mono dim order">
-			{#each views as [v, label, query] (v)}
-				<a class:on={view === v} href={`/search?q=${encodeURIComponent(data.q)}${query}`}>{label}</a
-				>
+			{#each views as [v, label] (v)}
+				<a class:on={view === v} href={hrefWith({ order: v })}>{label}</a>
 			{/each}
 		</p>
-		<PhotoGrid items={split.strong} ctx="archive" />
+		<PhotoGrid items={split.strong} {ctx} />
 		{#if split.weak.length > 0 || data.collapsed > 0 || data.admin}
 			<p class="mono dim more">
 				{#if split.weak.length > 0}
@@ -108,7 +127,7 @@
 					>
 				{/if}
 			</p>
-			{#if showWeak && split.weak.length > 0}<PhotoGrid items={split.weak} ctx="archive" />{/if}
+			{#if showWeak && split.weak.length > 0}<PhotoGrid items={split.weak} {ctx} />{/if}
 		{/if}
 	{/if}
 </section>

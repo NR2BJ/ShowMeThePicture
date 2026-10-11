@@ -14,10 +14,19 @@
 		type MediumKey
 	} from '#lib/archive.ts';
 
-	let { filter, facets }: { filter: ArchiveFilter; facets: ArchiveFacets } = $props();
+	// hrefFor: 필터 → 주소 (기본은 /archive; 검색 페이지는 검색어·보기를 붙인 /search 주소)
+	let {
+		filter,
+		facets,
+		hrefFor = (f: ArchiveFilter) => archiveHref(f)
+	}: {
+		filter: ArchiveFilter;
+		facets: ArchiveFacets;
+		hrefFor?: (f: ArchiveFilter) => string;
+	} = $props();
 
 	function apply(next: ArchiveFilter) {
-		void goto(archiveHref(next));
+		void goto(hrefFor(next));
 	}
 	// 집합 토글: 아무것도 안 골랐으면(전체) 누른 것만, 이미 고른 걸 다시 누르면 빼고, 전부 고르면 다시 전체
 	function toggle<T extends string>(
@@ -83,7 +92,7 @@
 			</label>
 		{/if}
 	{/each}
-	{#if active}<a class="clear" href="/archive">필터 지우기</a>{/if}
+	{#if active}<a class="clear" href={hrefFor({})}>필터 지우기</a>{/if}
 </div>
 
 <style>

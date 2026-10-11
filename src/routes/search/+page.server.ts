@@ -1,41 +1,51 @@
+import type { ArchiveFacets } from '#lib/archive.ts';
+import { parseSearch } from '#lib/searchctx.ts';
+import { archiveFacets } from '#lib/server/archive.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import { MlError } from '#lib/server/ml.ts';
 import { embeddingStats, searchByText, searchFloor, type SearchHit } from '#lib/server/search.ts';
+import { rememberSearch } from '#lib/server/searchnav.ts';
 import type { PageServerLoad } from './$types';
 
 const EMPTY = { items: [] as SearchHit[], mean: 0, std: 0, collapsed: 0 };
+const EMPTY_FACETS: ArchiveFacets = {
+	medium: { film: 0, digital: 0 },
+	kind: { A: 0, B: 0, original: 0 },
+	camera: [],
+	lens: [],
+	film: []
+};
 
-/** ?q=비 오는 밤 골목 → 질의를 벡터로 바꿔 가까운 사진 60장(비슷한 컷은 묶음). ML 이 없으면 안내만.
- *  floor: 관리자가 설정에서 정한 이 모델의 '맞는 사진 없음' 기준 유사도 (없으면 null). mean/std: 라이브러리 전체 분포. */
+/** ?q=비 오는 밤 골목 → 질의를 벡터로 바꿔 가까운 사진 60장. 보기(order: 다양하게|점수순)와 아카이브와 같은 필터.
+ *  facets: 필터 선택지별 검색 대상 장수(라이브러리 기준). floor: 이 모델의 '맞는 사진 없음' 기준(없으면 null). */
 export const load: PageServerLoad = async ({ url, locals }) => {
-	const q = (url.searchParams.get('q') ?? '').trim().slice(0, 200);
+	const s = parseSearch(url.searchParams);
+	const { q, order, filter } = s;
 	const admin = !!locals.admin;
-	// 보기: 기본은 다양하게(같은 장면이 이어지면 뒤로 미룸), 'score' 는 점수순
-	// 예전 관리자용 &raw=1 주소도 점수순으로
-	const order: 'mix' | 'score' =
-		url.searchParams.get('order') === 'score' || url.searchParams.get('raw') === '1'
-			? 'score'
-			: 'mix';
+	const base = { q, order, filter, admin };
 	if (!config.DATABASE_URL)
 		return {
-			q,
+			...base,
 			...EMPTY,
-			order,
+			facets: EMPTY_FACETS,
 			error: null,
 			stats: null,
-			admin,
 			floor: null as number | null
 		};
-	const stats = await embeddingStats(db());
+	const [stats, facets] = await Promise.all([
+		embeddingStats(db()),
+		archiveFacets(db(), { admin, filter })
+	]);
 	const floor = await searchFloor(db(), stats.model);
-	if (!q) return { q, ...EMPTY, order, error: null, stats, admin, floor };
+	if (!q) return { ...base, ...EMPTY, facets, error: null, stats, floor };
 	try {
-		const r = await searchByText(db(), { admin, text: q, limit: 60, order });
-		return { q, ...r, order, error: null, stats, admin, floor };
+		const r = await searchByText(db(), { admin, text: q, limit: 60, order, filter });
+		rememberSearch(s, admin, r);
+		return { ...base, ...r, facets, error: null, stats, floor };
 	} catch (e) {
 		const msg = e instanceof MlError ? e.message : '검색 중 문제가 생겼습니다';
 		console.error('[search]', e);
-		return { q, ...EMPTY, order, error: msg, stats, admin, floor };
+		return { ...base, ...EMPTY, facets, error: msg, stats, floor };
 	}
 };

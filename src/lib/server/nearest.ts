@@ -3,7 +3,8 @@
 import { and, desc, eq, ne, sql, type SQL } from 'drizzle-orm';
 import { cosine } from '#lib/search.ts';
 import type { Db } from './db';
-import { embeddings, files, photos } from './db/schema';
+import type { ArchiveFilter } from '#lib/archive.ts';
+import { embeddings, files, photoMeta, photos } from './db/schema';
 import { baseConds, itemSelect, toItem, type GalleryItem } from './gallery';
 import { vectorLiteral } from './ml';
 
@@ -70,6 +71,8 @@ export async function nearest(
 		limit: number;
 		excludePhotoId?: string;
 		minCenter?: number;
+		/** 아카이브와 같은 필터 (매체·컷·카메라·렌즈·필름) */
+		filter?: ArchiveFilter;
 	}
 ): Promise<HitVec[]> {
 	const c = await libraryCenter(db, o.model, o.minCenter);
@@ -78,7 +81,7 @@ export async function nearest(
 	const dist = sql<number>`1 - ${sim}`;
 	const conds = [
 		eq(embeddings.model, o.model),
-		...baseConds({ scope: { kind: 'archive' }, admin: o.admin })
+		...baseConds({ scope: { kind: 'archive' }, admin: o.admin, filter: o.filter })
 	];
 	if (o.excludePhotoId) conds.push(ne(photos.id, o.excludePhotoId));
 	const rows = await db
@@ -86,6 +89,7 @@ export async function nearest(
 		.from(embeddings)
 		.innerJoin(photos, eq(photos.primaryFileId, embeddings.fileId))
 		.innerJoin(files, eq(files.id, photos.primaryFileId))
+		.leftJoin(photoMeta, eq(photoMeta.photoId, photos.id))
 		.where(and(...conds))
 		.orderBy(desc(sim))
 		.limit(o.limit);

@@ -1,5 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { filterFromCtx } from '#lib/archive.ts';
+import { searchFromCtx } from '#lib/searchctx.ts';
+import { searchNeighbors } from '#lib/server/searchnav.ts';
 import { addPhotoToCollection, manualCollections } from '#lib/server/collections.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
@@ -25,7 +27,11 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 	// ctx: 'archive' | 'archive:<필터 query>' | 'library:<slug>' — prev/next 가 같은 목록을 따라간다
 	const ctx = url.searchParams.get('ctx') ?? 'archive';
 	const scope = await scopeFromCtx(db(), ctx);
-	const nav = await neighbors(db(), photo, { scope, admin, filter: filterFromCtx(ctx) });
+	// 검색에서 왔으면 검색 결과 순서대로, 아니면 날짜순 목록
+	const fromSearch = searchFromCtx(ctx);
+	const nav = fromSearch?.q
+		? await searchNeighbors(db(), fromSearch, admin, photo.id)
+		: await neighbors(db(), photo, { scope, admin, filter: filterFromCtx(ctx) });
 	const showGps = admin || (await getSetting<boolean>(db(), 'show_gps', false));
 	const gearRows = admin ? await listGear(db()) : [];
 	const gear = {
