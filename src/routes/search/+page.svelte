@@ -9,6 +9,13 @@
 	const z = $derived(data.std > 0 ? (split.top - data.mean) / data.std : 0);
 	// 관리자가 설정한 기준보다 1등 유사도가 낮으면 '맞는 사진 없음' — 모델이 모르는 말(윤슬 등)에 엉뚱한 사진을 깔지 않게
 	const noMatch = $derived(data.floor != null && data.items.length > 0 && split.top < data.floor);
+	// 보기 전환 한 줄: 다양하게(기본) · 점수순 · 모델 순서(관리자 — 묶기·재정렬·보정 모두 끔). 지금 보기 하나만 표시.
+	const view = $derived(data.raw ? 'raw' : data.order);
+	const views = $derived([
+		['mix', '다양하게', ''],
+		['score', '점수순', '&order=score'],
+		...(data.admin ? [['raw', '모델 순서', '&raw=1']] : [])
+	] as [string, string, string][]);
 	let showWeak = $state(false);
 	let showAnyway = $state(false);
 	$effect(() => {
@@ -69,11 +76,8 @@
 		</p>
 	{:else}
 		<p class="mono dim order">
-			{#each [['mix', '다양하게'], ['score', '점수순']] as [v, label] (v)}
-				<a
-					class:on={data.order === v}
-					href={`/search?q=${encodeURIComponent(data.q)}${v === 'score' ? '&order=score' : ''}`}
-					>{label}</a
+			{#each views as [v, label, query] (v)}
+				<a class:on={view === v} href={`/search?q=${encodeURIComponent(data.q)}${query}`}>{label}</a
 				>
 			{/each}
 		</p>
@@ -101,11 +105,7 @@
 							3
 						)} / 평균 {data.mean.toFixed(3)} / 기준 {Number.isFinite(split.cut)
 							? split.cut.toFixed(3)
-							: '—'} · z {z.toFixed(1)} ·
-						<a
-							href={`/search?q=${encodeURIComponent(data.q)}${data.order === 'score' ? '&order=score' : ''}${data.raw ? '' : '&raw=1'}`}
-							>{data.raw ? '보정·묶기 켜기' : '모델 순서 그대로 보기'}</a
-						></span
+							: '—'} · z {z.toFixed(1)}</span
 					>
 				{/if}
 			</p>
@@ -174,11 +174,6 @@
 		margin: 4px 0 14px;
 		font-size: 16px;
 		line-height: 1.6;
-	}
-	.more a {
-		color: var(--color-amber);
-		text-decoration: underline;
-		text-underline-offset: 3px;
 	}
 	.more button,
 	.nomatch button {
