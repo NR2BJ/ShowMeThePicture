@@ -46,7 +46,13 @@ for (const name of Object.values(Q)) {
 await boss.work<ScanSourceJob>(Q.SCAN_SOURCE, async (jobs) => {
 	for (const job of jobs) {
 		const t0 = Date.now();
-		const s = await scanSource(db, boss, job.data.sourceId, job.data.full ?? false);
+		const s = await scanSource(
+			db,
+			boss,
+			job.data.sourceId,
+			job.data.full ?? false,
+			config.CACHE_DIR
+		);
 		log(
 			`scan ${job.data.sourceId}: seen=${s.seen} added=${s.added} changed=${s.changed} missing=${s.missing} requeued=${s.requeued} (${Date.now() - t0}ms)`
 		);

@@ -3,6 +3,7 @@
 import path from 'node:path';
 import { and, between, eq, inArray, isNotNull, ne, sql } from 'drizzle-orm';
 import type { Db } from './db';
+import { defaultVisibilityForPhoto } from './visibility';
 import { files, pairCandidates, photos, sources } from './db/schema';
 
 export type PairFile = {
@@ -125,7 +126,13 @@ export async function loadPairFile(db: Db, fileId: string): Promise<PairFile | n
 	return (f as PairFile | undefined) ?? null;
 }
 
-async function recalcPhoto(db: Db, photoId: string): Promise<void> {
+/** 사진의 대표·원본 파일, 촬영 시각, 컷(직접 정한 컷은 그대로)을 남은(active) 파일로 다시 계산한다.
+ *  revisitVisibility: 직접 바꾸지 않은 공개 여부도 폴더 기본값으로 다시 맞춘다(보정본이 사라졌을 때 등). */
+export async function recalcPhoto(
+	db: Db,
+	photoId: string,
+	opts: { revisitVisibility?: boolean } = {}
+): Promise<void> {
 	const vs = await db
 		.select({
 			id: files.id,
@@ -172,6 +179,13 @@ async function recalcPhoto(db: Db, photoId: string): Promise<void> {
 			updatedAt: new Date()
 		})
 		.where(eq(photos.id, photoId));
+	if (opts.revisitVisibility) {
+		const def = await defaultVisibilityForPhoto(db, photoId);
+		await db
+			.update(photos)
+			.set({ visibility: def })
+			.where(and(eq(photos.id, photoId), eq(photos.visibilityManual, false)));
+	}
 }
 
 /** 보정 파일을 원본의 Photo 에 붙인다. 보정 파일이 갖고 있던 Photo 는 비면 지운다. */

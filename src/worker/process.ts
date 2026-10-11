@@ -13,6 +13,8 @@ import { metadataJson, normalizeExif } from './exif.ts';
 import { openSource } from '#lib/server/derive.ts';
 import type { SizeName } from '#lib/media.ts';
 import { deriveAll, removeDerivatives } from './image.ts';
+import { adoptMovedTwin, findMovedTwin } from '#lib/server/filemoves.ts';
+import { recalcPhoto } from '#lib/server/pairing.ts';
 
 export type ProcessCtx = {
 	db: Db;
@@ -62,6 +64,26 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 	}
 
 	const contentHash = await sha256(abs);
+	// 다른 폴더에서 옮겨 온 파일이면(같은 내용의 옛 파일이 디스크에서 사라짐) 옛 사진·방향을 넘겨받는다
+	let movedPhotoId: string | null = null;
+	if (!file.photoId) {
+		const twin = await findMovedTwin(db, fileId, contentHash);
+		if (twin) {
+			movedPhotoId = await adoptMovedTwin(db, ctx.cacheDir, fileId, twin, {
+				role: source.role,
+				label:
+					source.role === 'edit'
+						? (file.editLabel ?? '기본')
+						: file.kind === 'raw'
+							? 'RAW'
+							: file.ext.toUpperCase()
+			});
+			file.rotation = twin.rotation;
+			ctx.log(
+				`file ${fileId} moved from ${twin.id}${movedPhotoId ? ` (photo ${movedPhotoId})` : ''}`
+			);
+		}
+	}
 	const tags = await ctx.exiftool.read(abs);
 	const ex = normalizeExif(tags);
 	const metadata = metadataJson(tags);
@@ -178,6 +200,8 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 		.where(eq(files.id, fileId));
 
 	await attachPhoto(ctx, fileId, source, { takenAt, isRaw: file.kind === 'raw' });
+	// 옮겨 온 파일: 컷(폴더가 바뀜)·공개 기본값까지 다시 계산 — 직접 정한 값은 그대로
+	if (movedPhotoId) await recalcPhoto(db, movedPhotoId, { revisitVisibility: true });
 }
 
 type SourceRow = typeof sources.$inferSelect;

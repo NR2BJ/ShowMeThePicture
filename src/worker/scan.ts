@@ -9,6 +9,7 @@ import { ensureFolderMeta } from '#lib/server/folders.ts';
 import { extOf, IMAGE_EXTS, isIgnoredDir, kindOf } from '#lib/server/fs.ts';
 import { Q, type ProcessFileJob } from '#lib/server/jobs.ts';
 import { normalizeStem, stemOf } from '#lib/server/stem.ts';
+import { purgeLongMissing, refreshPhotosOfFiles } from '#lib/server/filemoves.ts';
 
 type Entry = { rel: string; size: number; mtime: Date };
 
@@ -47,7 +48,8 @@ export async function scanSource(
 	db: Db,
 	boss: PgBoss,
 	sourceId: string,
-	full: boolean
+	full: boolean,
+	cacheDir?: string
 ): Promise<ScanSummary> {
 	const [source] = await db.select().from(sources).where(eq(sources.id, sourceId)).limit(1);
 	if (!source) throw new Error(`source not found: ${sourceId}`);
@@ -144,6 +146,9 @@ export async function scanSource(
 			.where(inArray(files.id, gone.slice(i, i + 500)));
 	}
 	summary.missing = gone.length;
+	// 사라진 파일의 사진은 남은 파일로 다시 계산(보정본이 지워지면 원본으로) — 예전엔 대표 파일이 사라진 채 남아 목록에서 빠졌다
+	await refreshPhotosOfFiles(db, gone);
+	if (cacheDir) await purgeLongMissing(db, cacheDir, sourceId);
 
 	for (const fileId of toProcess) {
 		const data: ProcessFileJob = { fileId };
