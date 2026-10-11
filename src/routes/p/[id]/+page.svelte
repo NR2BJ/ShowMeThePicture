@@ -335,7 +335,8 @@
 						name="visibility"
 						value={data.photo.visibility === 'public' ? 'hidden' : 'public'}
 					/>
-					<button type="submit" class="pill quiet"
+					<!-- 폭 고정: 숨기기 ↔ 공개하기 를 눌러도 옆 버튼이 밀리지 않게 -->
+					<button type="submit" class="pill quiet fixed"
 						>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
 					>
 				</form>
@@ -352,20 +353,7 @@
 						>
 					{/each}
 				</form>
-				{#if data.photo.tierManual}
-					<form use:enhance={keep} method="POST" action={`?/resetTier${act}`}>
-						<button type="submit" class="pill quiet" title="폴더 컷(자동)으로 되돌립니다"
-							>컷 자동으로</button
-						>
-					</form>
-				{/if}
-				{#if data.photo.visibilityManual}
-					<form use:enhance={keep} method="POST" action={`?/resetVisibility${act}`}>
-						<button type="submit" class="pill quiet" title="폴더 기본값으로 되돌립니다"
-							>공개 기본값으로</button
-						>
-					</form>
-				{/if}
+				<!-- 되돌리기(공개 기본값·컷 자동)는 관리자 '직접 바꾼 사진' 페이지에서 — 여기서 버튼이 생겼다 사라지면 다른 버튼 위치가 바뀐다 -->
 				{#if current}<a
 						class="pill quiet"
 						href={`/media/${current.id}/original`}
@@ -591,6 +579,10 @@
 		background: transparent;
 		color: var(--color-ink);
 		border-color: var(--color-ink);
+	}
+	.pill.fixed {
+		min-width: 7.5em;
+		text-align: center;
 	}
 	/* 지금 컷 */
 	.tiers .pill.on {
