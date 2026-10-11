@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { enhance, type SubmitFunction } from '$app/forms';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto, invalidateAll } from '$app/navigation';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import GearSelect from '#lib/components/GearSelect.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
@@ -77,9 +77,20 @@
 	});
 	const angle = $derived(current ? (angles[current.id] ?? 0) : 0);
 	const turns = $derived((((angle / 90) % 4) + 4) % 4);
+	// 관리자는 돌리면 바로 저장(마지막으로 누르고 0.7초 뒤 한 번 — 저장마다 파생본을 다시 만들므로), 손님은 보기만 돈다
+	const SAVE_DELAY = 700;
+	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+	let rotSaving = $state(false);
 	function rotateBy(deg: number) {
-		if (!current) return;
+		if (!current || rotSaving) return;
 		angles = { ...angles, [current.id]: (angles[current.id] ?? 0) + deg };
+		if (data.admin) {
+			if (saveTimer) clearTimeout(saveTimer);
+			saveTimer = setTimeout(() => {
+				saveTimer = null;
+				void saveRotation();
+			}, SAVE_DELAY);
+		}
 	}
 	// 방향 저장 중에는 돌려 놓은 화면을 그대로 둔다(frozen) — 새 파생본(이미 돌아간 이미지)이 다 받아지면
 	// 애니메이션 없이(noAnim) 바꿔 끼운다. 예전엔 보기 각도가 0 으로 돌아가는 회전 애니메이션이 보였다.
@@ -187,25 +198,51 @@
 		async ({ update }) => {
 			await update({ reset: false });
 		};
-	const keepRotate: SubmitFunction = () => {
-		if (view) frozen = { ...view };
-		return async ({ update }) => {
-			await update({ reset: false });
-			const c = current;
-			if (!c) {
-				frozen = null;
-				return;
+	async function postRotation(fileId: string, rotation: number) {
+		const fd = new FormData();
+		fd.set('fileId', fileId);
+		fd.set('rotation', String(rotation));
+		await fetch(`?/rotate${act}`, {
+			method: 'POST',
+			body: fd,
+			headers: { 'x-sveltekit-action': 'true' }
+		});
+	}
+	async function saveRotation() {
+		const c = current;
+		if (!c) return;
+		const t = turns;
+		if (t === 0) {
+			angles[c.id] = 0; // 한 바퀴 돌아 제자리면 저장할 것 없음
+			return;
+		}
+		rotSaving = true;
+		if (view) frozen = { ...view }; // 저장하는 동안 돌려 놓은 화면 그대로
+		try {
+			await postRotation(c.id, (c.rotation + t) % 4);
+			await invalidateAll();
+			const n = current;
+			if (n && n.id === c.id) {
+				// 새 파생본을 미리 받아 둔 뒤 한 번에 바꾼다: 이미지 교체 + 보기 회전 0, 둘 다 애니메이션 없이
+				const img = new Image();
+				img.src = n.urls.full;
+				await img.decode().catch(() => {});
 			}
-			// 새 파생본을 미리 받아 둔 뒤 한 번에 바꾼다: 이미지 교체 + 보기 회전 0, 둘 다 애니메이션 없이
-			const img = new Image();
-			img.src = c.urls.full;
-			await img.decode().catch(() => {});
 			noAnim = true;
 			angles[c.id] = 0;
-			frozen = null;
 			requestAnimationFrame(() => requestAnimationFrame(() => (noAnim = false)));
-		};
-	};
+		} finally {
+			frozen = null;
+			rotSaving = false;
+		}
+	}
+	// 저장 대기 중에 다른 사진으로 넘어가면 그 자리에서 저장
+	beforeNavigate(() => {
+		if (!saveTimer || !current) return;
+		clearTimeout(saveTimer);
+		saveTimer = null;
+		if (turns !== 0) void postRotation(current.id, (current.rotation + turns) % 4);
+	});
 
 	function onKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
@@ -311,7 +348,8 @@
 					type="button"
 					class="chip icon"
 					onclick={() => rotateBy(-90)}
-					title="왼쪽으로 90° (반시계)"
+					disabled={rotSaving}
+					title={data.admin ? '왼쪽으로 90° — 바로 저장' : '왼쪽으로 90° (보기만)'}
 					aria-label="왼쪽으로 90° 회전"
 				>
 					<svg
@@ -334,7 +372,8 @@
 					type="button"
 					class="chip icon"
 					onclick={() => rotateBy(90)}
-					title="오른쪽으로 90° (시계)"
+					disabled={rotSaving}
+					title={data.admin ? '오른쪽으로 90° — 바로 저장' : '오른쪽으로 90° (보기만)'}
 					aria-label="오른쪽으로 90° 회전"
 				>
 					<span>오른쪽</span>
@@ -353,15 +392,6 @@
 						/></svg
 					>
 				</button>
-				{#if data.admin && turns !== 0 && current}
-					<form use:enhance={keepRotate} method="POST" action={`?/rotate${act}`}>
-						<input type="hidden" name="fileId" value={current.id} />
-						<input type="hidden" name="rotation" value={(current.rotation + turns) % 4} />
-						<button type="submit" class="chip on" title="이 방향으로 파생본을 다시 만듭니다"
-							>이 방향 저장</button
-						>
-					</form>
-				{/if}
 			</span>
 			<button type="button" class="pill quiet" onclick={() => (info = !info)} title="i 키"
 				>{info ? '닫기' : '정보'}</button
