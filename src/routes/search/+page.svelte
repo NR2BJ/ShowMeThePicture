@@ -27,6 +27,17 @@
 		...(data.order === 'score' ? [['order', 'score']] : []),
 		...filterParams(data.filter)
 	] as [string, string][]);
+	// 한글 입력 중 엔터: 첫 엔터는 글자 확정에 쓰여 검색이 안 나가는 브라우저가 있다 — 확정되는 순간 검색을 보낸다
+	let submitOnCompose = false;
+	function onEnter(e: KeyboardEvent) {
+		if (e.key === 'Enter' && (e.isComposing || e.keyCode === 229)) submitOnCompose = true;
+	}
+	function onComposed(e: CompositionEvent) {
+		if (!submitOnCompose) return;
+		submitOnCompose = false;
+		const form = (e.currentTarget as HTMLInputElement).form;
+		setTimeout(() => form?.requestSubmit(), 0);
+	}
 	let showWeak = $state(false);
 	let showAnyway = $state(false);
 	$effect(() => {
@@ -47,9 +58,6 @@
 <section class="page">
 	<header class="head">
 		<h1>검색</h1>
-		{#if data.stats && data.stats.total > 0}
-			<p class="mono dim">{data.stats.done} / {data.stats.total}장 준비됨</p>
-		{/if}
 	</header>
 	<form class="q" method="GET" action="/search">
 		{#each keep as [k, v] (k)}<input type="hidden" name={k} value={v} />{/each}
@@ -59,6 +67,9 @@
 			value={data.q}
 			placeholder="말로 찾기 — 예: 비 오는 밤 골목"
 			autocomplete="off"
+			enterkeyhint="search"
+			onkeydown={onEnter}
+			oncompositionend={onComposed}
 		/>
 		<button class="btn" type="submit">찾기</button>
 	</form>
@@ -71,13 +82,17 @@
 	{/if}
 	{#if !data.q}
 		<p class="mono dim examples">
-			{#each EXAMPLES as ex (ex)}<a href={`/search?q=${encodeURIComponent(ex)}`}>{ex}</a>{/each}
+			<!-- 누를 때 검색창이 포커스를 잃지 않게(mousedown 기본 동작 막기) — 폰 키보드가 먼저 내려가며 화면이 움직여 탭이 빗나갔다 -->
+			{#each EXAMPLES as ex (ex)}<a
+					href={`/search?q=${encodeURIComponent(ex)}`}
+					onmousedown={(e) => e.preventDefault()}>{ex}</a
+				>{/each}
 		</p>
 	{:else if data.error}
 		<p class="notice error">{data.error}</p>
 	{:else if data.items.length === 0}
 		<p class="mono dim">
-			맞는 사진이 없습니다.{#if data.stats && data.stats.done === 0}
+			맞는 사진이 없습니다.{#if data.admin && data.stats && data.stats.done === 0}
 				아직 임베딩된 사진이 없습니다 — 관리자 설정에서 ML 서버 연결과 임베딩 상태를 확인하세요.{/if}
 		</p>
 	{:else if noMatch && !showAnyway}
