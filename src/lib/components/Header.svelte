@@ -103,18 +103,35 @@
 	nav .admin.on {
 		color: var(--color-amber);
 	}
+	nav a,
+	.brand {
+		white-space: nowrap;
+	}
+	/* 폰: 제목 한 줄, 그 밑에 메뉴 한 줄. 관리자는 열쇠 아이콘만 */
 	@media (max-width: 720px) {
 		header {
-			padding: 18px 20px;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 10px 16px;
+			padding: 14px 16px;
 		}
 		.brand {
-			font-size: 30px;
+			font-size: 26px;
 		}
 		nav {
-			gap: 16px;
+			gap: 18px;
+			flex: 1 0 100%;
+			align-items: center;
 		}
 		nav a {
-			font-size: 19px;
+			font-size: 17px;
+		}
+		nav .admin {
+			margin-left: auto;
+			padding-left: 12px;
+		}
+		nav .admin span {
+			display: none;
 		}
 	}
 </style>

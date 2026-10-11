@@ -93,6 +93,23 @@
 		return { w: odd ? vh : vw, h: odd ? vw : vh };
 	});
 
+	// 폰: 사진을 좌우로 밀어 이전/다음 (화살표는 좁은 화면에서 숨긴다). 세로로 더 많이 움직였으면 스크롤로 본다.
+	let touch: { x: number; y: number; t: number } | null = null;
+	function touchStart(e: TouchEvent) {
+		if (e.touches.length !== 1) return (touch = null);
+		touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+	}
+	function touchEnd(e: TouchEvent) {
+		if (!touch) return;
+		const dx = e.changedTouches[0].clientX - touch.x;
+		const dy = e.changedTouches[0].clientY - touch.y;
+		const quick = Date.now() - touch.t < 700;
+		touch = null;
+		if (!quick || Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+		const to = dx > 0 ? data.nav.prev : data.nav.next;
+		if (to) goto(`/p/${to}${q}`);
+	}
+
 	function onKey(e: KeyboardEvent) {
 		if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 		if (e.key === 'ArrowLeft' && data.nav.prev) goto(`/p/${data.nav.prev}${q}`);
@@ -118,7 +135,12 @@
 <svelte:window onkeydown={onKey} />
 
 <main class="photo" class:info>
-	<figure bind:clientWidth={box.w} bind:clientHeight={box.h}>
+	<figure
+		bind:clientWidth={box.w}
+		bind:clientHeight={box.h}
+		ontouchstart={touchStart}
+		ontouchend={touchEnd}
+	>
 		{#if data.nav.prev}<a class="arrow prev" href={`/p/${data.nav.prev}${q}`} aria-label="이전 사진"
 				>←</a
 			>{/if}

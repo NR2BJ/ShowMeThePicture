@@ -47,9 +47,28 @@
 		apply({ ...filter, [key]: v || undefined });
 	}
 	const active = $derived(isFilterActive(filter));
+	// 고른 필터 수 (폰에서 접힌 버튼에 표시)
+	const activeCount = $derived(
+		(filter.medium?.length ? 1 : 0) +
+			(filter.kind?.length ? 1 : 0) +
+			(filter.camera ? 1 : 0) +
+			(filter.lens ? 1 : 0) +
+			(filter.film ? 1 : 0)
+	);
+	// 폰에서는 접어 두고 버튼으로 연다 (넓은 화면은 늘 펼침 — CSS)
+	let open = $state(false);
 </script>
 
-<div class="filters mono" aria-label="필터">
+<button
+	type="button"
+	class="toggle mono"
+	class:on={active}
+	aria-expanded={open}
+	onclick={() => (open = !open)}
+	>필터{#if activeCount}&nbsp;· {activeCount}{/if}
+	<span aria-hidden="true">{open ? '▴' : '▾'}</span></button
+>
+<div class="filters mono" class:open aria-label="필터">
 	<div class="group" role="group" aria-label="매체">
 		{#each MEDIUMS as m (m)}
 			<button
@@ -153,6 +172,48 @@
 		border: 1px solid var(--color-ink-faint);
 		padding: 5px 8px;
 		max-width: 260px;
+	}
+	.toggle {
+		display: none;
+	}
+	/* 폰: 필터는 버튼으로 접고, 장비 선택은 한 줄씩 같은 폭으로 */
+	@media (max-width: 720px) {
+		.toggle {
+			display: inline-flex;
+			gap: 8px;
+			font-size: 15px;
+			letter-spacing: 0.06em;
+			color: var(--color-ink-dim);
+			background: transparent;
+			border: 1px solid var(--color-ink-faint);
+			padding: 6px 12px;
+			margin: -8px 0 16px;
+			cursor: pointer;
+		}
+		.toggle.on {
+			color: var(--color-amber);
+			border-color: var(--color-amber);
+		}
+		.filters {
+			display: none;
+			gap: 10px;
+			margin-top: 0;
+		}
+		.filters.open {
+			display: flex;
+		}
+		.pick {
+			width: 100%;
+		}
+		.pick span {
+			flex: none;
+			width: 3.5em;
+		}
+		.pick select {
+			flex: 1;
+			min-width: 0;
+			max-width: none;
+		}
 	}
 	.clear {
 		color: var(--color-ink-dim);
