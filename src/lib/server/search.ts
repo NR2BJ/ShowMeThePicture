@@ -61,19 +61,20 @@ export async function diversityStrength(db: Db): Promise<number> {
 }
 
 /** 글로 찾기. ML 서버가 없으면 MlError 가 난다 — 호출 측에서 안내로 바꾼다.
- *  limit 의 두 배를 가져와 거의 같은 컷을 묶고(search_dup), 다양성 재정렬(search_diversity) 뒤 limit 장까지.
- *  order 'score': 재정렬 없이 점수순(누구나). raw: 관리자 비교용 — 허브 보정·묶기·재정렬 모두 끄고 모델 순서 그대로.
+ *  order 'mix'(기본): limit 의 두 배를 가져와 거의 같은 컷을 묶고(search_dup), 허브 보정(search_hub 를 켰을 때)·
+ *  다양성 재정렬(search_diversity) 뒤 limit 장. order 'score': 아무 처리 없이 모델 점수순 그대로(Immich 와 같은 방식).
  *  mean/std 는 접기 기준·관리자 숫자용. */
 export async function searchByText(
 	db: Db,
-	o: { admin: boolean; text: string; limit?: number; raw?: boolean; order?: 'mix' | 'score' }
+	o: { admin: boolean; text: string; limit?: number; order?: 'mix' | 'score' }
 ): Promise<SearchResult> {
 	const cfg = await mlConfig(db);
 	const vec = await embedText(cfg, o.text);
 	const limit = o.limit ?? 60;
-	const dup = o.raw ? 0 : await dupThreshold(db);
-	const strength = o.raw || o.order === 'score' ? 0 : await diversityStrength(db);
-	const minCenter = o.raw ? Number.POSITIVE_INFINITY : await hubCenterGate(db);
+	const plain = o.order === 'score';
+	const dup = plain ? 0 : await dupThreshold(db);
+	const strength = plain ? 0 : await diversityStrength(db);
+	const minCenter = plain ? Number.POSITIVE_INFINITY : await hubCenterGate(db);
 	const [hits, stats] = await Promise.all([
 		nearest(db, {
 			admin: o.admin,

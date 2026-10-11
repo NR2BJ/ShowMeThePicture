@@ -9,13 +9,12 @@
 	const z = $derived(data.std > 0 ? (split.top - data.mean) / data.std : 0);
 	// 관리자가 설정한 기준보다 1등 유사도가 낮으면 '맞는 사진 없음' — 모델이 모르는 말(윤슬 등)에 엉뚱한 사진을 깔지 않게
 	const noMatch = $derived(data.floor != null && data.items.length > 0 && split.top < data.floor);
-	// 보기 전환 한 줄: 다양하게(기본) · 점수순 · 모델 순서(관리자 — 묶기·재정렬·보정 모두 끔). 지금 보기 하나만 표시.
-	const view = $derived(data.raw ? 'raw' : data.order);
-	const views = $derived([
+	// 보기 전환: 다양하게(기본 — 거의 같은 컷 묶기·다양성 재정렬) · 점수순(모델 점수 그대로). 지금 보기 하나만 표시.
+	const view = $derived(data.order);
+	const views: [string, string, string][] = [
 		['mix', '다양하게', ''],
-		['score', '점수순', '&order=score'],
-		...(data.admin ? [['raw', '모델 순서', '&raw=1']] : [])
-	] as [string, string, string][]);
+		['score', '점수순', '&order=score']
+	];
 	let showWeak = $state(false);
 	let showAnyway = $state(false);
 	$effect(() => {
