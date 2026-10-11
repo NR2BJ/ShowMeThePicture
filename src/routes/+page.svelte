@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import FilmStrip from '#lib/components/FilmStrip.svelte';
 	import type { Frame, StripRow } from '#lib/types.ts';
 	import type { PageProps } from './$types';
@@ -13,6 +14,17 @@
 			dir: (i % 2 === 0 ? 'left' : 'right') as 'left' | 'right'
 		}));
 	const MIN_PER_ROW = 12;
+	// 폰: 줄마다 6장만. 한 줄은 프레임을 두 벌 이어 붙인 긴 띠를 통째로 움직이는데, 아이폰 Safari 는 움직이는 요소가
+	// 너무 길면(폰에서 7000px 넘음) 일부를 그리지 않는다 — 오른쪽으로 흐르는 줄은 띠 한가운데부터 보여서 늘 비었다.
+	const PHONE_PER_ROW = 6;
+	let narrow = $state(false);
+	onMount(() => {
+		const mq = matchMedia('(max-width: 720px)');
+		narrow = mq.matches;
+		const on = () => (narrow = mq.matches);
+		mq.addEventListener('change', on);
+		return () => mq.removeEventListener('change', on);
+	});
 
 	function placeholders(n: number): Frame[] {
 		return Array.from({ length: n }, (_, i) => ({
@@ -33,13 +45,13 @@
 	const rows: StripRow[] = $derived.by(() => {
 		const layout = layoutFor(data.stripRows);
 		const src = data.frames.length ? data.frames : placeholders(MIN_PER_ROW * layout.length);
-		return layout.map((l, i) => ({
-			...l,
-			frames: pad(
-				src.filter((_, j) => j % layout.length === i),
-				MIN_PER_ROW
-			)
-		}));
+		return layout.map((l, i) => {
+			const own = src.filter((_, j) => j % layout.length === i);
+			return {
+				...l,
+				frames: narrow ? pad(own, PHONE_PER_ROW).slice(0, PHONE_PER_ROW) : pad(own, MIN_PER_ROW)
+			};
+		});
 	});
 </script>
 

@@ -9,7 +9,7 @@
 <div
 	class="strips"
 	aria-label="무작위 사진 필름 스트립"
-	style:--fh="clamp(40px, {frameVh}vh, 960px)"
+	style:--fh="clamp(40px, min({frameVh}vh, {(frameVh * 1.4).toFixed(1)}vw), 960px)"
 >
 	{#each rows as row, r (r)}
 		<section class="strip" data-dir={row.dir} style:--dur="{row.dur}s" style:--tilt="{row.tilt}deg">
