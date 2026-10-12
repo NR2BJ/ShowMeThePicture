@@ -3,6 +3,7 @@
 	import { beforeNavigate, goto, invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import { markChanged } from '#lib/changed.ts';
+	import { countPhotoView } from '#lib/visit.ts';
 	import { fadeIn } from '#lib/actions/fadeIn.ts';
 	import GearSelect from '#lib/components/GearSelect.svelte';
 	import PhotoGrid from '#lib/components/PhotoGrid.svelte';
@@ -12,6 +13,11 @@
 	let { data }: PageProps = $props();
 
 	let info = $state(false);
+	// 조회수: 손님이 이 사진을 화면에 띄워 둔 채 2초 머물면 한 번 (사진마다 하루 한 번). 숫자는 관리자만 본다.
+	$effect(() => {
+		if (data.admin) return;
+		return countPhotoView(data.photo.id);
+	});
 	// 장비 수정 폼: 고정렌즈 바디를 고르면 렌즈 칸이 잠긴다
 	// svelte-ignore state_referenced_locally
 	let ovCamera = $state(data.photo.metaOverride?.camera ?? '');
@@ -337,6 +343,8 @@
 					· 숨김</span
 				>{/if}{#if data.admin && data.photo.visibilityManual}<span class="dim">
 					· 수동 설정</span
+				>{/if}{#if data.views}<span class="dim" title="손님 조회 (한 사람 하루 한 번)">
+					· 조회 {data.views.total}{data.views.today ? ` (오늘 ${data.views.today})` : ''}</span
 				>{/if}
 		</p>
 		<div class="controls">

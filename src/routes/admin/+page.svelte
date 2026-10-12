@@ -69,6 +69,14 @@
 			<span class="v">{sm.embed.done}<small>/ {sm.embed.total} 임베딩</small></span>
 			<span class="s mono dim">{sm.embed.model}</span>
 		</a>
+		<a class="card" href="/admin/stats">
+			<span class="k mono">방문</span>
+			<span class="v">{sm.visits.today}<small>TODAY</small></span>
+			<span class="s mono dim"
+				>TOTAL {sm.visits.total} · 어제 {sm.visits.yesterday}<br />오늘 사진 조회 {sm.visits
+					.viewsToday}</span
+			>
+		</a>
 		<a class="card" href="/admin/collections">
 			<span class="k mono">컬렉션</span>
 			<span class="v">{sm.collections.total}<small>개</small></span>

@@ -366,6 +366,38 @@ export const settings = pgTable('settings', {
 	updatedAt: ts('updated_at').notNull().defaultNow()
 });
 
+// ---- 방문 통계 (관리자만 본다) ----
+/** 날마다 순 방문자 수(하루 한 사람 한 번). 전체 = 합계 — 싸이월드식 TODAY / TOTAL */
+export const visitDays = pgTable('visit_days', {
+	day: date('day', { mode: 'string' }).primaryKey(),
+	visitors: integer('visitors').notNull().default(0)
+});
+
+/** 사진별·날짜별 조회수 (사진 페이지를 실제로 연 사람만, 한 사람당 하루 한 번) */
+export const photoViewDays = pgTable(
+	'photo_view_days',
+	{
+		photoId: text('photo_id')
+			.notNull()
+			.references(() => photos.id, { onDelete: 'cascade' }),
+		day: date('day', { mode: 'string' }).notNull(),
+		views: integer('views').notNull().default(0)
+	},
+	(t) => [primaryKey({ columns: [t.photoId, t.day] }), index('photo_view_days_day_idx').on(t.day)]
+);
+
+/** 중복 방지용 그날의 익명 해시(그날만 쓰는 비밀값으로 만든 것이라 되돌릴 수 없다). 지난 날짜 행은 지운다. */
+export const visitSeen = pgTable(
+	'visit_seen',
+	{
+		day: date('day', { mode: 'string' }).notNull(),
+		/** '' = 사이트 방문, 그 외 = 사진 id */
+		target: text('target').notNull(),
+		hash: text('hash').notNull()
+	},
+	(t) => [primaryKey({ columns: [t.day, t.target, t.hash] })]
+);
+
 // ---- 유효 장비 뷰 ----
 /** gallery.effectiveMeta 의 SQL 판(수동 > 필름: 롤 > EXIF / 디지털: EXIF > 롤). 아카이브 필터·facet 이 조인한다.
  *  마이그레이션 0006 의 SQL 로 만든 뷰라 drizzle-kit 은 건드리지 않는다(.existing()). 정의를 바꾸면 새 마이그레이션에서 replace. */

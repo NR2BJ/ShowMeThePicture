@@ -8,6 +8,7 @@
 	import favicon from '#lib/assets/favicon.svg';
 	import Header from '#lib/components/Header.svelte';
 	import type { OgMeta } from '#lib/og.ts';
+	import { countVisit, markMe } from '#lib/visit.ts';
 	import type { LayoutProps } from './$types';
 
 	let { data, children }: LayoutProps = $props();
@@ -32,6 +33,12 @@
 	const title = $derived(og.title ? `${og.title} · ${data.site.title}` : data.site.title);
 	const description = $derived(og.description || data.site.description);
 	const image = $derived(og.image ?? data.defaultOgImage);
+	// 방문 수: 관리자 브라우저는 표시만 남기고 안 센다. 관리자 페이지(로그인 화면 포함)도 안 센다.
+	$effect(() => {
+		if (data.admin) return markMe();
+		if (path.startsWith('/admin')) return;
+		return countVisit();
+	});
 	const abs = (p: string) => (/^https?:/.test(p) ? p : `${data.origin}${p}`);
 </script>
 

@@ -21,6 +21,7 @@ import {
 	setPhotoVisibilityManual
 } from '#lib/server/visibility.ts';
 import { getSetting } from '#lib/server/settings.ts';
+import { photoViews } from '#lib/server/visits.ts';
 import type { OgMeta } from '#lib/og.ts';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -86,6 +87,8 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		showGps,
 		admin,
 		manualCollections: admin ? await manualCollections(db()) : [],
+		// 조회수는 관리자만
+		views: admin ? await photoViews(db(), photo.id).catch(() => null) : null,
 		gear
 	};
 };

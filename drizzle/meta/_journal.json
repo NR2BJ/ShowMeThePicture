@@ -85,6 +85,13 @@
       "when": 1791714167127,
       "tag": "0011_gear_names",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791786627712,
+      "tag": "0012_visit_stats",
+      "breakpoints": true
     }
   ]
 }

@@ -7,6 +7,7 @@ import { pairCounts } from '#lib/server/pairs-admin.ts';
 import { queueCounts } from '#lib/server/queue.ts';
 import { embeddingStats } from '#lib/server/search.ts';
 import { listSourcesWithCounts, recentFailures } from '#lib/server/sources.ts';
+import { visitSummary } from '#lib/server/visits.ts';
 import type { PageServerLoad } from './$types';
 
 const n = (c: unknown) => Number(c ?? 0);
@@ -14,43 +15,56 @@ const n = (c: unknown) => Number(c ?? 0);
 /** 대시보드: 라이브러리 표 + 다른 탭들의 요약(사진·폴더 정보·페어링·장비·컬렉션) + 캐시·큐 */
 export const load: PageServerLoad = async () => {
 	const d = db();
-	const [sources, queues, cache, failures, pairs, [folders], gearRows, [cols], [ph], embed, free] =
-		await Promise.all([
-			listSourcesWithCounts(d),
-			queueCounts(d),
-			getCacheUsage(config.CACHE_DIR),
-			recentFailures(d),
-			pairCounts(d),
-			d
-				.select({
-					pending: sql<number>`count(*) filter (where ${isNull(folderMeta.confirmedAt)})::int`,
-					confirmed: sql<number>`count(*) filter (where ${isNotNull(folderMeta.confirmedAt)})::int`
-				})
-				.from(folderMeta),
-			d
-				.select({ kind: gear.kind, n: sql<number>`count(*)::int` })
-				.from(gear)
-				.groupBy(gear.kind),
-			d
-				.select({
-					total: sql<number>`count(*)::int`,
-					pub: sql<number>`count(*) filter (where ${eq(collections.visibility, 'public')})::int`
-				})
-				.from(collections),
-			d
-				.select({
-					total: sql<number>`count(*)::int`,
-					pub: sql<number>`count(*) filter (where ${photos.visibility} = 'public')::int`,
-					hidden: sql<number>`count(*) filter (where ${photos.visibility} = 'hidden')::int`,
-					manual: sql<number>`count(*) filter (where ${photos.visibilityManual} or ${photos.tierManual})::int`,
-					a: sql<number>`count(*) filter (where ${photos.tier} = 'A')::int`,
-					b: sql<number>`count(*) filter (where ${photos.tier} = 'B')::int`,
-					original: sql<number>`count(*) filter (where ${photos.tier} is null)::int`
-				})
-				.from(photos),
-			embeddingStats(d),
-			diskFree(config.CACHE_DIR)
-		]);
+	const [
+		sources,
+		queues,
+		cache,
+		failures,
+		pairs,
+		[folders],
+		gearRows,
+		[cols],
+		[ph],
+		embed,
+		free,
+		visits
+	] = await Promise.all([
+		listSourcesWithCounts(d),
+		queueCounts(d),
+		getCacheUsage(config.CACHE_DIR),
+		recentFailures(d),
+		pairCounts(d),
+		d
+			.select({
+				pending: sql<number>`count(*) filter (where ${isNull(folderMeta.confirmedAt)})::int`,
+				confirmed: sql<number>`count(*) filter (where ${isNotNull(folderMeta.confirmedAt)})::int`
+			})
+			.from(folderMeta),
+		d
+			.select({ kind: gear.kind, n: sql<number>`count(*)::int` })
+			.from(gear)
+			.groupBy(gear.kind),
+		d
+			.select({
+				total: sql<number>`count(*)::int`,
+				pub: sql<number>`count(*) filter (where ${eq(collections.visibility, 'public')})::int`
+			})
+			.from(collections),
+		d
+			.select({
+				total: sql<number>`count(*)::int`,
+				pub: sql<number>`count(*) filter (where ${photos.visibility} = 'public')::int`,
+				hidden: sql<number>`count(*) filter (where ${photos.visibility} = 'hidden')::int`,
+				manual: sql<number>`count(*) filter (where ${photos.visibilityManual} or ${photos.tierManual})::int`,
+				a: sql<number>`count(*) filter (where ${photos.tier} = 'A')::int`,
+				b: sql<number>`count(*) filter (where ${photos.tier} = 'B')::int`,
+				original: sql<number>`count(*) filter (where ${photos.tier} is null)::int`
+			})
+			.from(photos),
+		embeddingStats(d),
+		diskFree(config.CACHE_DIR),
+		visitSummary(d)
+	]);
 	const gearBy = Object.fromEntries(gearRows.map((g) => [g.kind, n(g.n)]));
 	return {
 		sources,
@@ -70,7 +84,8 @@ export const load: PageServerLoad = async () => {
 			pairs,
 			gear: { camera: gearBy.camera ?? 0, lens: gearBy.lens ?? 0, film: gearBy.film ?? 0 },
 			collections: { total: n(cols?.total), pub: n(cols?.pub) },
-			embed
+			embed,
+			visits
 		},
 		cache: {
 			total: fmtBytes(cache.bytes),

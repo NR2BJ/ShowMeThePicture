@@ -11,6 +11,7 @@
 		{ href: '/admin/pairs', label: '페어링' },
 		{ href: '/admin/collections', label: '컬렉션' },
 		{ href: '/admin/visibility', label: '직접 바꾼 사진' },
+		{ href: '/admin/stats', label: '방문' },
 		{ href: '/admin/settings', label: '설정' }
 	];
 	function current(href: string, exact?: boolean) {
