@@ -73,7 +73,7 @@
 			<tbody>
 				{#each shown as o (o.id)}
 					<tr>
-						<td class="thumb"
+						<td class="thumb bare"
 							><a href={`/p/${o.id}?ctx=manual`}><img src={o.thumb} alt="" class="th" /></a></td
 						>
 						<td class="mono lead">{o.filename}<span class="dim day">{day(o.takenAt)}</span></td>

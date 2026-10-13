@@ -8,6 +8,23 @@
 			data.queues.some((q) => q.state === 'active' || q.state === 'created')
 	);
 	const sm = $derived(data.summary);
+	// 마지막 스캔: 2026.10.13 00:08 (일본 시간, 24시간제) — toLocaleString 은 '오전 12:08:00' 처럼 길어 칸에서 이상하게 줄바꿈됐다
+	const stamp = (iso: string | Date) => {
+		const p = Object.fromEntries(
+			new Intl.DateTimeFormat('en-CA', {
+				timeZone: 'Asia/Tokyo',
+				year: 'numeric',
+				month: '2-digit',
+				day: '2-digit',
+				hour: '2-digit',
+				minute: '2-digit',
+				hourCycle: 'h23'
+			})
+				.formatToParts(new Date(iso))
+				.map((x) => [x.type, x.value])
+		);
+		return `${p.year}.${p.month}.${p.day} ${p.hour}:${p.minute}`;
+	};
 	const totals = $derived({
 		files: data.sources.reduce((a, s) => a + s.fileCount, 0),
 		indexed: data.sources.reduce((a, s) => a + s.indexedCount, 0),
@@ -121,9 +138,7 @@
 						<td class="mono">{s.pendingCount}</td>
 						<td class="mono" class:bad={s.failedCount > 0}>{s.failedCount}</td>
 						<td class="mono">{s.missingCount}</td>
-						<td class="mono dim"
-							>{s.lastScannedAt ? new Date(s.lastScannedAt).toLocaleString('ko-KR') : '-'}</td
-						>
+						<td class="mono dim nowrap">{s.lastScannedAt ? stamp(s.lastScannedAt) : '-'}</td>
 					</tr>
 				{/each}
 				<tr>

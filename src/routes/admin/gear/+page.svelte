@@ -18,31 +18,84 @@
 		rows = data.gear;
 	});
 	const isFirst = (i: number) => i === 0 || rows[i - 1].kind !== rows[i].kind;
+	// 순서 바꾸기: 손잡이(≡)를 잡고 위아래로 끈다. 마우스·손가락 모두 포인터 이벤트로 — HTML 기본 드래그는 폰에서 안 되고,
+	// '지금 올라가 있는 행' 기준이라 빨리 끌어 그룹 끝을 지나치면 끝에서 두 번째에 멈췄다.
+	// 이제는 포인터 높이를 같은 종류 행들의 가운데선과 비교해 자리를 정한다(끝을 지나치면 맨 끝).
 	let dragId = $state<string | null>(null);
 	let reorderError = $state<string | null>(null);
-	function dragStart(e: DragEvent, g: Gear) {
-		dragId = g.id;
-		e.dataTransfer?.setData('text/plain', g.id);
-		if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move';
+	let tbody: HTMLTableSectionElement | undefined = $state();
+	let startOrder = '';
+	let lastY = 0;
+	let raf = 0;
+	const groupIds = (k: string) => rows.filter((r) => r.kind === k).map((r) => r.id);
+	function place(y: number) {
+		const me = rows.find((r) => r.id === dragId);
+		if (!me || !tbody) return;
+		const others = [
+			...tbody.querySelectorAll<HTMLTableRowElement>(`tr[data-kind="${me.kind}"]`)
+		].filter((tr) => tr.dataset.id !== me.id);
+		let at = 0;
+		for (const tr of others) {
+			const r = tr.getBoundingClientRect();
+			if (r.top + r.height / 2 < y) at++;
+		}
+		const ids = others.map((tr) => tr.dataset.id as string);
+		ids.splice(at, 0, me.id);
+		if (ids.join() === groupIds(me.kind).join()) return;
+		const byId = new Map(rows.map((r) => [r.id, r]));
+		const out: Gear[] = [];
+		let placed = false;
+		for (const r of rows) {
+			if (r.kind !== me.kind) out.push(r);
+			else if (!placed) {
+				out.push(...ids.map((id) => byId.get(id) as Gear));
+				placed = true;
+			}
+		}
+		rows = out;
 	}
-	/** 같은 종류 위로 끌고 가면 그 자리로 옮긴다 (미리 보이게) */
-	function dragOver(e: DragEvent, over: Gear) {
-		if (!dragId || dragId === over.id) return;
-		const from = rows.findIndex((r) => r.id === dragId);
-		const to = rows.findIndex((r) => r.id === over.id);
-		if (from < 0 || to < 0 || rows[from].kind !== over.kind) return;
-		e.preventDefault();
-		const next = rows.slice();
-		const [moved] = next.splice(from, 1);
-		next.splice(to, 0, moved);
-		rows = next;
-	}
-	async function dragEnd() {
+	// 화면 위·아래 가장자리 근처에서 잡고 있으면 페이지를 천천히 굴린다 (폰에서 긴 목록 끝까지)
+	function autoScroll() {
 		if (!dragId) return;
+		const edge = 80;
+		const dy =
+			lastY < edge
+				? -Math.ceil((edge - lastY) / 5)
+				: lastY > innerHeight - edge
+					? Math.ceil((lastY - (innerHeight - edge)) / 5)
+					: 0;
+		if (dy) {
+			window.scrollBy(0, dy);
+			place(lastY);
+		}
+		raf = requestAnimationFrame(autoScroll);
+	}
+	function onMove(e: PointerEvent) {
+		lastY = e.clientY;
+		place(lastY);
+	}
+	function grab(e: PointerEvent, g: Gear) {
+		if (e.button !== 0) return;
+		e.preventDefault();
+		dragId = g.id;
+		lastY = e.clientY;
+		startOrder = groupIds(g.kind).join();
+		// 행이 DOM 에서 자리를 옮겨도 놓치지 않게 창에서 받는다 (요소에 붙인 포인터 캡처는 그때 풀린다)
+		window.addEventListener('pointermove', onMove);
+		window.addEventListener('pointerup', drop);
+		window.addEventListener('pointercancel', drop);
+		raf = requestAnimationFrame(autoScroll);
+	}
+	async function drop() {
+		window.removeEventListener('pointermove', onMove);
+		window.removeEventListener('pointerup', drop);
+		window.removeEventListener('pointercancel', drop);
+		cancelAnimationFrame(raf);
 		const kind = rows.find((r) => r.id === dragId)?.kind;
 		dragId = null;
 		if (!kind) return;
-		const ids = rows.filter((r) => r.kind === kind).map((r) => r.id);
+		const ids = groupIds(kind);
+		if (ids.join() === startOrder) return;
 		try {
 			const r = await fetch('/api/admin/gear', {
 				method: 'POST',
@@ -125,18 +178,26 @@
 					<th></th>
 				</tr>
 			</thead>
-			<tbody>
+			<tbody bind:this={tbody}>
 				{#each rows as g, i (g.id)}
+					<!-- 폰·태블릿 카드 보기에서만 보이는 종류 제목 줄 (컴퓨터는 왼쪽 '종류' 칸이 그 역할) -->
+					{#if isFirst(i)}<tr class="group-head"><td colspan="7">{label(g.kind)}</td></tr>{/if}
 					<tr
+						data-id={g.id}
+						data-kind={g.kind}
 						class:group-start={isFirst(i) && i > 0}
 						class:dragging={dragId === g.id}
-						draggable="true"
-						ondragstart={(e) => dragStart(e, g)}
-						ondragover={(e) => dragOver(e, g)}
-						ondragend={dragEnd}
 					>
-						<td class="mono dim">{isFirst(i) ? label(g.kind) : ''}</td>
-						<td class="handle" title="끌어서 순서 바꾸기"><span aria-hidden="true">≡</span></td>
+						<td class="mono dim kind">{isFirst(i) ? label(g.kind) : ''}</td>
+						<td class="handle bare"
+							><button
+								type="button"
+								class="grip"
+								title="끌어서 순서 바꾸기 (같은 종류 안에서)"
+								aria-label={`${g.name} 순서 바꾸기`}
+								onpointerdown={(e) => grab(e, g)}>≡</button
+							></td
+						>
 						<td class="wrap lead">{g.name}</td>
 						<td class="mono wrap">{g.kind === 'camera' ? (g.fixedLens ?? '-') : ''}</td>
 						<td class="mono">{g.format ?? '-'}</td>
@@ -233,21 +294,46 @@
 	.gear {
 		table-layout: fixed;
 	}
-	/* 폰·태블릿: 카드로 쌓는다(app.css .table.stack). 끌어서 순서 바꾸기는 터치로 안 되니 손잡이를 숨긴다 */
+	.gear tr.group-head {
+		display: none;
+	}
+	/* 폰·태블릿: 카드로 쌓는다(app.css .table.stack). 종류는 그룹 제목 줄로, 손잡이는 카드 오른쪽 위 */
 	@media (max-width: 1024px) {
 		.gear {
 			table-layout: auto;
 		}
-		.gear td.handle {
+		.gear tbody tr {
+			position: relative;
+		}
+		.gear tbody tr.group-head {
+			display: block;
+			padding: 28px 0 8px;
+			border-bottom: 1px solid var(--color-amber);
+		}
+		.gear tbody tr.group-head:first-child {
+			padding-top: 0;
+		}
+		.gear tr.group-head td {
+			font-family: var(--font-mono);
+			font-size: 14px;
+			letter-spacing: 0.16em;
+			color: var(--color-amber);
+		}
+		.gear td.kind {
 			display: none;
 		}
-		/* 카드에서는 이름이 맨 위, 종류는 그 밑 */
-		.gear tbody tr {
-			display: flex;
-			flex-direction: column;
-		}
 		.gear td.lead {
-			order: -1;
+			padding-right: 52px;
+		}
+		.gear td.handle {
+			position: absolute;
+			top: 6px;
+			right: 0;
+			padding: 0;
+		}
+		.gear .grip {
+			width: 44px;
+			height: 44px;
 		}
 		.gear tbody tr.group-start td {
 			border-top: 0;
@@ -269,15 +355,36 @@
 		align-items: center;
 	}
 	.handle {
-		cursor: grab;
-		color: var(--color-ink-dim);
+		text-align: center;
+		padding: 0;
+	}
+	.grip {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		/* 칸 전체가 손잡이 — 작은 ≡ 글자만 잡히면 빗나가기 쉽다 */
+		width: 100%;
+		min-width: 32px;
+		height: 40px;
 		font-size: 22px;
 		line-height: 1;
+		color: var(--color-ink-dim);
+		background: none;
+		border: 0;
+		cursor: grab;
 		user-select: none;
-		text-align: center;
+		/* 손가락으로 잡았을 때 페이지가 스크롤되지 않고 끌리게 */
+		touch-action: none;
+	}
+	.grip:hover {
+		color: var(--color-ink);
 	}
 	tr.dragging {
-		opacity: 0.4;
+		background: rgba(217, 166, 90, 0.08);
+	}
+	tr.dragging .grip {
+		color: var(--color-amber);
+		cursor: grabbing;
 	}
 	.editrow td {
 		background: rgba(255, 255, 255, 0.02);
