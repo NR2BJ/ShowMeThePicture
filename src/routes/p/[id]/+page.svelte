@@ -470,7 +470,7 @@
 					<!-- 되돌리기(공개 기본값·컷 자동)는 관리자 '직접 바꾼 사진' 페이지에서 — 여기서 버튼이 생겼다 사라지면 다른 버튼 위치가 바뀐다 -->
 					{#if current}<a
 							class="tb"
-							href={`/media/${current.id}/original`}
+							href={`/media/${current.id}/original/${encodeURIComponent(current.filename)}`}
 							target="_blank"
 							rel="noopener">원본 파일</a
 						>{/if}
