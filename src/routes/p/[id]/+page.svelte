@@ -354,11 +354,6 @@
 				>{' '}{/each}
 		</p>
 		<div class="tools" role="toolbar" aria-label="보기">
-			{#if canToggle}
-				<button type="button" class="tb" onclick={toggle} title="\\ 키"
-					>{showingOriginal ? '보정 보기' : '원본 보기'}</button
-				>
-			{/if}
 			{#if data.photo.variants.length > 1}
 				<span class="seg" role="group" aria-label="파일">
 					{#each data.photo.variants as v (v.id)}
@@ -367,6 +362,7 @@
 							class="tb"
 							class:on={current?.id === v.id}
 							aria-pressed={current?.id === v.id}
+							title={canToggle ? '\\ 키: 원본 ↔ 보정' : undefined}
 							onclick={() => (currentId = v.id)}
 							>{v.role === 'edit' ? (v.label ?? '기본') : (v.label ?? v.ext.toUpperCase())}</button
 						>
@@ -856,6 +852,17 @@
 			height: 40px;
 			padding: 0 12px;
 			font-size: 13px;
+		}
+		/* 관리 줄: 점선이 이미 구분해 주니 '관리' 글자는 빼고, 숨기기 폭도 줄여 한 줄에 */
+		.admin-tools .lbl {
+			display: none;
+		}
+		.tb.same-width {
+			min-width: 6em;
+		}
+		/* 사진 칸 높이는 고정이라 가로 사진이면 빈칸이 생긴다 — 사진을 아래(설명 쪽)에 붙여 빈칸이 헤더 밑 여백이 되게 */
+		.stage {
+			align-items: flex-end;
 		}
 		.seg > .tb:first-child {
 			padding-left: 14px;
