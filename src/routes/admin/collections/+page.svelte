@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { stackTable } from '#lib/actions/stackTable.ts';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	let kind: 'manual' | 'smart' = $state('manual');
@@ -12,19 +13,19 @@
 	<h2>목록</h2>
 	{#if data.collections.length === 0}<p class="dim">아직 없습니다.</p>{/if}
 	{#if data.collections.length}
-		<table class="table">
+		<table class="table stack" use:stackTable>
 			<thead><tr><th>제목</th><th>종류</th><th>장수</th><th>공개</th><th></th></tr></thead>
 			<tbody>
 				{#each data.collections as c (c.id)}
 					<tr>
-						<td
+						<td class="lead"
 							><a href={`/admin/collections/${c.id}`}>{c.title}</a>
-							<div class="mono dim path">/c/{c.slug}</div></td
+							<div class="path">/c/{c.slug}</div></td
 						>
 						<td class="mono">{c.kind === 'smart' ? '스마트' : '수동'}</td>
 						<td class="mono">{c.count}</td>
 						<td class="mono">{c.visibility === 'public' ? '공개' : '숨김'}</td>
-						<td class="acts">
+						<td class="actions">
 							<a class="btn quiet" href={`/c/${c.slug}`}>보기</a>
 							<form
 								method="POST"
@@ -122,11 +123,6 @@
 	.path {
 		font-size: 15px;
 		margin-top: 2px;
-	}
-	.acts {
-		display: flex;
-		gap: 6px;
-		white-space: nowrap;
 	}
 	.create {
 		max-width: 760px;

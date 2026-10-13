@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { stackTable } from '#lib/actions/stackTable.ts';
 	import RollForm from '#lib/components/RollForm.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
@@ -55,7 +56,7 @@
 	{:else if confirmed.length === 0}
 		<p class="dim">아직 저장한 폴더가 없습니다.</p>
 	{:else}
-		<table class="table confirmed">
+		<table class="table confirmed stack" use:stackTable>
 			<thead>
 				<tr>
 					<th>폴더</th>
@@ -72,15 +73,15 @@
 			<tbody>
 				{#each confirmed as f (f.id)}
 					<tr>
-						<td class="mono">{f.relDir || '(루트)'}</td>
-						<td>{f.title ?? '-'}</td>
+						<td class="mono wrap lead">{f.relDir || '(루트)'}</td>
+						<td class="title">{f.title ?? '-'}</td>
 						<td class="mono">{ym(f.developedAt)}</td>
 						<td class="mono">{f.rollNo ?? '-'}</td>
 						<td class="mono">{f.camera ?? '-'}</td>
 						<td class="mono">{f.lens ?? '-'}</td>
 						<td class="mono">{f.filmStock ?? '-'}</td>
 						<td class="mono dim">{f.fileCount}</td>
-						<td
+						<td class="actions"
 							><button class="btn quiet" type="button" onclick={() => (open[f.id] = !open[f.id])}
 								>{open[f.id] ? '접기' : '수정'}</button
 							></td
@@ -115,27 +116,9 @@
 		flex-wrap: wrap;
 		margin: 0 0 18px;
 	}
-	.tabs {
-		display: flex;
-		gap: 4px;
-		font-size: 16px;
-		letter-spacing: 0.06em;
-	}
-	.tabs a {
-		padding: 8px 14px;
-		border: 1px solid var(--color-ink-faint);
-		color: var(--color-ink-dim);
-	}
-	.tabs a.on {
-		color: var(--color-amber);
-		border-color: var(--color-amber);
-	}
-	.tabs .n {
-		opacity: 0.7;
-		margin-left: 4px;
-	}
-	.confirmed td {
-		vertical-align: top;
+	/* 제목이 좁은 칸에서 한 글자씩 세로로 쌓이지 않게 */
+	.confirmed td.title {
+		min-width: 6em;
 	}
 	.editrow td {
 		background: rgba(255, 255, 255, 0.02);

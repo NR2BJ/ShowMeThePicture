@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { stackTable } from '#lib/actions/stackTable.ts';
 	import FormatSelect from '#lib/components/FormatSelect.svelte';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
@@ -103,7 +104,7 @@
 	{#if rows.length === 0}
 		<p class="dim">없음</p>
 	{:else}
-		<table class="table gear">
+		<table class="table gear stack" use:stackTable>
 			<colgroup>
 				<col style="width: 7%" />
 				<col style="width: 36px" />
@@ -136,7 +137,7 @@
 					>
 						<td class="mono dim">{isFirst(i) ? label(g.kind) : ''}</td>
 						<td class="handle" title="끌어서 순서 바꾸기"><span aria-hidden="true">≡</span></td>
-						<td class="wrap">{g.name}</td>
+						<td class="wrap lead">{g.name}</td>
 						<td class="mono wrap">{g.kind === 'camera' ? (g.fixedLens ?? '-') : ''}</td>
 						<td class="mono">{g.format ?? '-'}</td>
 						<td class="dim wrap">{g.notes ?? ''}</td>
@@ -228,25 +229,31 @@
 	.cols .wide {
 		grid-column: 1 / -1;
 	}
-	/* 열 너비를 고정해 메모가 비어도 여백이 멋대로 흩어지지 않고, 길면 그 칸 안에서 줄바꿈. 셀은 전부 위에 붙는다 */
+	/* 열 너비를 고정해 메모가 비어도 여백이 멋대로 흩어지지 않고, 길면 그 칸 안에서 줄바꿈 */
 	.gear {
 		table-layout: fixed;
 	}
-	.gear td {
-		vertical-align: top;
-	}
-	.gear td.wrap {
-		white-space: normal;
-		overflow-wrap: anywhere;
-	}
-	/* 폰: 칸 폭을 고정하지 않고 표 안에서 옆으로 민다 (고정 폭이면 이름·렌즈가 한 글자씩 세로로 쌓였다) */
-	@media (max-width: 720px) {
+	/* 폰·태블릿: 카드로 쌓는다(app.css .table.stack). 끌어서 순서 바꾸기는 터치로 안 되니 손잡이를 숨긴다 */
+	@media (max-width: 1024px) {
 		.gear {
 			table-layout: auto;
 		}
-		.gear td.wrap {
-			white-space: nowrap;
-			overflow-wrap: normal;
+		.gear td.handle {
+			display: none;
+		}
+		/* 카드에서는 이름이 맨 위, 종류는 그 밑 */
+		.gear tbody tr {
+			display: flex;
+			flex-direction: column;
+		}
+		.gear td.lead {
+			order: -1;
+		}
+		.gear tbody tr.group-start td {
+			border-top: 0;
+		}
+		.gear td .acts {
+			justify-content: flex-start;
 		}
 	}
 	.gear tr.group-start td {

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { stackTable } from '#lib/actions/stackTable.ts';
 	// 설정: 저장 버튼 없이 바꾸는 즉시 저장(use:enhance 라 새로고침 없음). 모델 시험은 오래 걸리므로 진행 중 표시.
 	import { enhance, type SubmitFunction } from '$app/forms';
 	import { SEARCH_MODELS, needsLanguage } from '#lib/search.ts';
@@ -206,12 +207,12 @@
 	{:else if data.modelCaches.length === 0}
 		<p class="mono dim status">아직 받아 둔 모델이 없습니다.</p>
 	{:else}
-		<table class="table caches">
+		<table class="table caches stack" use:stackTable>
 			<thead><tr><th>모델</th><th>용량</th><th>글 / 사진</th><th></th></tr></thead>
 			<tbody>
 				{#each data.modelCaches as m (m.name)}
 					<tr>
-						<td class="mono"
+						<td class="mono wrap lead"
 							>{m.name}{#if m.name === data.searchModel}
 								<span class="dim"> · 사용 중</span>{/if}</td
 						>

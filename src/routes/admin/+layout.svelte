@@ -17,15 +17,23 @@
 	function current(href: string, exact?: boolean) {
 		return exact ? page.url.pathname === href : page.url.pathname.startsWith(href);
 	}
+	// 폰: 메뉴가 옆으로 밀리는 한 줄이라, 지금 탭이 화면 밖이면 보이는 자리로 당겨 온다
+	let nav: HTMLElement | undefined = $state();
+	$effect(() => {
+		void page.url.pathname;
+		nav
+			?.querySelector('[aria-current="page"]')
+			?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+	});
 </script>
 
 {#if data.admin}
-	<nav class="admin-nav" aria-label="관리자 메뉴">
+	<nav class="admin-nav" aria-label="관리자 메뉴" bind:this={nav}>
 		{#each links as l (l.href)}
 			<a href={l.href} aria-current={current(l.href, l.exact) ? 'page' : undefined}>{l.label}</a>
 		{/each}
 		<form method="POST" action="/admin/logout">
-			<button class="btn quiet" type="submit">로그아웃 · {data.admin.username}</button>
+			<button class="logout" type="submit">로그아웃</button>
 		</form>
 	</nav>
 {/if}

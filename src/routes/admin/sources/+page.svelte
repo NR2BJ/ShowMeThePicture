@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
+	import { stackTable } from '#lib/actions/stackTable.ts';
 	import FolderPicker from '#lib/components/FolderPicker.svelte';
 	import type { PageProps } from './$types';
 
@@ -35,7 +36,7 @@
 	{#if data.sources.length === 0}
 		<p class="dim">아직 없습니다.</p>
 	{:else}
-		<table class="table">
+		<table class="table stack" use:stackTable>
 			<thead>
 				<tr>
 					<th>이름</th>
@@ -50,9 +51,9 @@
 				{#each data.sources as s (s.id)}
 					{@const st = data.stats[s.id]}
 					<tr>
-						<td>
+						<td class="lead">
 							<a href={`/library/${s.slug}`}>{s.name}</a>
-							<div class="mono dim">{s.rootPath}</div>
+							<div class="path">{s.rootPath}</div>
 						</td>
 						<td class="mono"
 							>{roleLabel(s.role)}{s.medium
@@ -137,11 +138,6 @@
 </section>
 
 <style>
-	.actions {
-		display: flex;
-		gap: 6px;
-		white-space: nowrap;
-	}
 	.create {
 		max-width: 720px;
 	}

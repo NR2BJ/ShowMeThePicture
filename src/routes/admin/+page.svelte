@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
+	import { stackTable } from '#lib/actions/stackTable.ts';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 	const busy = $derived(
@@ -90,7 +91,7 @@
 			등록된 폴더가 없습니다. <a href="/admin/sources">라이브러리</a>에서 폴더를 추가하세요.
 		</p>
 	{:else}
-		<table class="table">
+		<table class="table stack" use:stackTable>
 			<thead>
 				<tr>
 					<th>이름</th>
@@ -106,9 +107,9 @@
 			<tbody>
 				{#each data.sources as s (s.id)}
 					<tr>
-						<td
+						<td class="lead"
 							><a href={`/library/${s.slug}`}>{s.name}</a>
-							<div class="mono dim">{s.rootPath}</div></td
+							<div class="path">{s.rootPath}</div></td
 						>
 						<td class="mono"
 							>{s.role === 'edit' ? '보정' : '원본'}{s.medium
@@ -126,7 +127,7 @@
 					</tr>
 				{/each}
 				<tr>
-					<td class="mono dim">합계</td>
+					<td class="mono dim lead">합계</td>
 					<td></td>
 					<td class="mono">{totals.files}</td>
 					<td class="mono">{totals.indexed}</td>
@@ -141,13 +142,13 @@
 
 	{#if data.failures.length}
 		<h2>처리 실패 (최근 {data.failures.length})</h2>
-		<table class="table">
+		<table class="table stack" use:stackTable>
 			<thead><tr><th>파일</th><th>라이브러리</th><th>사유</th></tr></thead>
 			<tbody>
 				{#each data.failures as f (f.id)}
 					<tr
-						><td class="mono">{f.relPath}</td><td class="mono dim">{f.source}</td><td
-							class="mono bad">{f.error}</td
+						><td class="mono wrap lead">{f.relPath}</td><td class="mono dim">{f.source}</td><td
+							class="mono wrap bad">{f.error}</td
 						></tr
 					>
 				{/each}
@@ -238,6 +239,34 @@
 	}
 	.bad {
 		color: #d98a7a;
+	}
+	/* 폰: 카드 두 줄씩 — 한 장씩 세로로 늘어서면 대시보드가 끝없이 길어진다 */
+	@media (max-width: 720px) {
+		.cards {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 8px;
+		}
+		.card {
+			padding: 12px;
+			gap: 4px;
+		}
+		.card .k {
+			font-size: 12px;
+		}
+		.card .v {
+			font-size: 32px;
+		}
+		.card .v small {
+			font-size: 12px;
+			margin-left: 4px;
+		}
+		.card .s {
+			font-size: 12px;
+		}
+		h1 .live {
+			display: block;
+			margin: 8px 0 0;
+		}
 	}
 	.live {
 		font-size: 14px;

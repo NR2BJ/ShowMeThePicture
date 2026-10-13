@@ -57,9 +57,9 @@
 			currentId = original.id;
 		}
 	}
-	const dateLine = $derived.by(() => {
+	const dateParts = $derived.by(() => {
 		const v = current;
-		if (!v) return '';
+		if (!v) return [] as string[];
 		const parts: string[] = [];
 		if (v.takenAt) {
 			const d = Object.fromEntries(
@@ -76,8 +76,21 @@
 		if (e.camera) parts.push(e.camera);
 		if (e.lens) parts.push(e.lens);
 		if (e.filmStock) parts.push(e.filmStock);
-		return parts.join(' · ');
+		return parts;
 	});
+	// 날짜 줄 뒤에 흐리게: 컷·숨김·수동·조회 (컷·수동·조회는 관리자만)
+	const metaParts = $derived(
+		[
+			data.admin && data.photo.tier
+				? `${data.photo.tier}컷${data.photo.tierManual ? '(직접)' : ''}`
+				: null,
+			data.photo.visibility === 'hidden' ? '숨김' : null,
+			data.admin && data.photo.visibilityManual ? '수동 설정' : null,
+			data.views
+				? `조회 ${data.views.total}${data.views.today ? ` (오늘 ${data.views.today})` : ''}`
+				: null
+		].filter((x): x is string => !!x)
+	);
 	const q = $derived(`?ctx=${encodeURIComponent(data.ctx)}`);
 
 	// 보기용 회전 (누구나). variant(원본/보정)마다 따로 기억하고, 각도는 누적값이라 ↺ 는 반시계로 90° 만 돈다.
@@ -292,7 +305,7 @@
 
 <svelte:window onkeydown={onKey} />
 
-<main class="photo" class:info>
+<main class="photo" class:info class:admin={!!data.admin}>
 	<!-- 넘기기는 방문 기록을 쌓지 않는다(replacestate) — 뒤로 가기 한 번이면 목록으로 -->
 	<figure use:swipe>
 		{#if data.nav.prev}<a
@@ -332,56 +345,50 @@
 			>{/if}
 	</figure>
 
+	<!-- 사진 밑: 왼쪽은 날짜·장비 한 줄, 오른쪽은 보기 도구(누구나). 관리 도구는 그 아래 따로 한 줄 — 섞이면 어떤 버튼이 무엇을 바꾸는지 헷갈린다 -->
 	<div class="bar">
 		<p class="line mono">
-			{dateLine}
-			<!-- A/B 컷은 관리자용 라벨 — 게스트에게는 안 보인다 -->
-			{#if data.admin && data.photo.tier}<span class="dim">
-					· {data.photo.tier}컷{data.photo.tierManual ? '(직접)' : ''}</span
-				>{/if}
-			{#if data.photo.visibility === 'hidden'}<span class="dim">
-					· 숨김</span
-				>{/if}{#if data.admin && data.photo.visibilityManual}<span class="dim">
-					· 수동 설정</span
-				>{/if}{#if data.views}<span class="dim" title="손님 조회 (한 사람 하루 한 번)">
-					· 조회 {data.views.total}{data.views.today ? ` (오늘 ${data.views.today})` : ''}</span
-				>{/if}
+			{#each [...dateParts.map( (t) => ({ t, dim: false }) ), ...metaParts.map( (t) => ({ t, dim: true }) )] as p, i (i)}<span
+					class="part"
+					class:dim={p.dim}>{p.t}</span
+				>{' '}{/each}
 		</p>
-		<div class="controls">
+		<div class="tools" role="toolbar" aria-label="보기">
 			{#if canToggle}
-				<button type="button" class="pill" onclick={toggle} title="\\ 키"
+				<button type="button" class="tb" onclick={toggle} title="\\ 키"
 					>{showingOriginal ? '보정 보기' : '원본 보기'}</button
 				>
 			{/if}
 			{#if data.photo.variants.length > 1}
-				<span class="chips">
+				<span class="seg" role="group" aria-label="파일">
 					{#each data.photo.variants as v (v.id)}
 						<button
 							type="button"
-							class="chip"
+							class="tb"
 							class:on={current?.id === v.id}
+							aria-pressed={current?.id === v.id}
 							onclick={() => (currentId = v.id)}
 							>{v.role === 'edit' ? (v.label ?? '기본') : (v.label ?? v.ext.toUpperCase())}</button
 						>
 					{/each}
 				</span>
 			{/if}
-			<span class="chips rotate">
+			<span class="seg" role="group" aria-label="회전">
 				<button
 					type="button"
-					class="chip icon"
+					class="tb icon"
 					onclick={() => rotateBy(-90)}
 					disabled={rotSaving}
-					title={data.admin ? '왼쪽으로 90° — 바로 저장' : '왼쪽으로 90° (보기만)'}
+					title={data.admin ? '왼쪽으로 90° · 바로 저장' : '왼쪽으로 90° · 보기만'}
 					aria-label="왼쪽으로 90° 회전"
 				>
 					<svg
-						width="14"
-						height="14"
+						width="16"
+						height="16"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
-						stroke-width="2"
+						stroke-width="1.8"
 						stroke-linecap="round"
 						stroke-linejoin="round"
 						aria-hidden="true"
@@ -389,24 +396,22 @@
 							d="M3 3v5h5"
 						/></svg
 					>
-					<span>왼쪽</span>
 				</button>
 				<button
 					type="button"
-					class="chip icon"
+					class="tb icon"
 					onclick={() => rotateBy(90)}
 					disabled={rotSaving}
-					title={data.admin ? '오른쪽으로 90° — 바로 저장' : '오른쪽으로 90° (보기만)'}
+					title={data.admin ? '오른쪽으로 90° · 바로 저장' : '오른쪽으로 90° · 보기만'}
 					aria-label="오른쪽으로 90° 회전"
 				>
-					<span>오른쪽</span>
 					<svg
-						width="14"
-						height="14"
+						width="16"
+						height="16"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
-						stroke-width="2"
+						stroke-width="1.8"
 						stroke-linecap="round"
 						stroke-linejoin="round"
 						aria-hidden="true"
@@ -416,53 +421,63 @@
 					>
 				</button>
 			</span>
-			<button type="button" class="pill quiet" onclick={() => (info = !info)} title="i 키"
-				>{info ? '닫기' : '정보'}</button
+			<button
+				type="button"
+				class="tb info-btn"
+				class:on={info}
+				aria-expanded={info}
+				onclick={() => (info = !info)}
+				title="i 키">{info ? '닫기' : '정보'}</button
 			>
-			{#if data.admin}
-				<form use:enhance={keep} method="POST" action={`?/visibility${act}`}>
-					<input
-						type="hidden"
-						name="visibility"
-						value={data.photo.visibility === 'public' ? 'hidden' : 'public'}
-					/>
-					<!-- 폭 고정: 숨기기 ↔ 공개하기 를 눌러도 옆 버튼이 밀리지 않게 -->
-					<button type="submit" class="pill quiet same-width"
-						>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
-					>
-				</form>
-				<!-- 컷 직접 정하기: 원본 폴더의 필름 스캔·카메라 JPG 도 A/B 로 올릴 수 있다 -->
-				<form use:enhance={keep} method="POST" action={`?/tier${act}`} class="tiers">
-					{#each [['A', 'A컷'], ['B', 'B컷'], ['', '컷 없음']] as [t, label] (t)}
-						<button
-							type="submit"
-							name="tier"
-							value={t}
-							class="pill quiet"
-							class:on={(data.photo.tier ?? '') === t}
-							title={t ? `${label}으로 (숨김이면 공개로 바뀜)` : '컷 표시를 뺍니다'}>{label}</button
-						>
-					{/each}
-				</form>
-				<!-- 되돌리기(공개 기본값·컷 자동)는 관리자 '직접 바꾼 사진' 페이지에서 — 여기서 버튼이 생겼다 사라지면 다른 버튼 위치가 바뀐다 -->
-				{#if current}<a
-						class="pill quiet"
-						href={`/media/${current.id}/original`}
-						target="_blank"
-						rel="noopener">원본 파일</a
-					>{/if}
-				{#if data.manualCollections.length}
-					<form use:enhance={keep} method="POST" action={`?/collect${act}`} class="collect">
-						<select name="collectionId">
-							{#each data.manualCollections as mc (mc.id)}<option value={mc.id}>{mc.title}</option
-								>{/each}
-						</select>
-						<button type="submit" class="pill quiet">컬렉션에 추가</button>
-					</form>
-				{/if}
-			{/if}
 		</div>
 	</div>
+
+	{#if data.admin}
+		<div class="admin-tools" role="toolbar" aria-label="관리">
+			<span class="lbl mono">관리</span>
+			<form use:enhance={keep} method="POST" action={`?/visibility${act}`}>
+				<input
+					type="hidden"
+					name="visibility"
+					value={data.photo.visibility === 'public' ? 'hidden' : 'public'}
+				/>
+				<!-- 폭 고정: 숨기기 ↔ 공개하기 를 눌러도 옆 버튼이 밀리지 않게 -->
+				<button type="submit" class="tb same-width"
+					>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
+				>
+			</form>
+			<!-- 컷 직접 정하기: 원본 폴더의 필름 스캔·카메라 JPG 도 A/B 로 올릴 수 있다 -->
+			<form use:enhance={keep} method="POST" action={`?/tier${act}`} class="seg" aria-label="컷">
+				{#each [['A', 'A컷'], ['B', 'B컷'], ['', '없음']] as [t, label] (t)}
+					<button
+						type="submit"
+						name="tier"
+						value={t}
+						class="tb"
+						class:on={(data.photo.tier ?? '') === t}
+						aria-pressed={(data.photo.tier ?? '') === t}
+						title={t ? `${label}으로 (숨김이면 공개로 바뀜)` : '컷 표시를 뺍니다'}>{label}</button
+					>
+				{/each}
+			</form>
+			<!-- 되돌리기(공개 기본값·컷 자동)는 관리자 '직접 바꾼 사진' 페이지에서 — 여기서 버튼이 생겼다 사라지면 다른 버튼 위치가 바뀐다 -->
+			{#if current}<a
+					class="tb"
+					href={`/media/${current.id}/original`}
+					target="_blank"
+					rel="noopener">원본 파일</a
+				>{/if}
+			{#if data.manualCollections.length}
+				<form use:enhance={keep} method="POST" action={`?/collect${act}`} class="seg collect">
+					<select name="collectionId" class="tb" aria-label="컬렉션">
+						{#each data.manualCollections as mc (mc.id)}<option value={mc.id}>{mc.title}</option
+							>{/each}
+					</select>
+					<button type="submit" class="tb">컬렉션에 추가</button>
+				</form>
+			{/if}
+		</div>
+	{/if}
 
 	{#if info && current}
 		<aside class="drawer">
@@ -507,12 +522,9 @@
 						/></label
 					>
 					<div class="row">
-						<button type="submit" class="pill quiet">저장</button>
-						{#if data.photo.metaOverride}<button
-								type="submit"
-								name="clear"
-								value="on"
-								class="pill quiet">자동으로</button
+						<button type="submit" class="tb">저장</button>
+						{#if data.photo.metaOverride}<button type="submit" name="clear" value="on" class="tb"
+								>자동으로</button
 							>{/if}
 						<a href="/admin/gear" class="dim">장비 등록</a>
 					</div>
@@ -543,7 +555,6 @@
 	/* 버튼 줄은 화면 바닥이 아니라 사진 바로 밑에 — 모바일 주소창이 들어가고 나와도(보이는 높이가 바뀌어도) 움직이지 않게 */
 	.photo {
 		display: grid;
-		grid-template-rows: auto auto;
 		align-content: start;
 		grid-template-columns: 1fr;
 		padding: 0 40px 28px;
@@ -565,6 +576,10 @@
 		/* svh: 주소창이 다 나와 있을 때의 화면 높이 — 스크롤로 주소창이 숨어도 크기가 바뀌지 않는다. 헤더 + 버튼 줄 자리를 뺀다 */
 		height: calc(100svh - 240px);
 		min-height: 300px;
+	}
+	/* 관리자는 관리 줄 하나가 더 있다 — 그만큼 사진 칸을 줄여 버튼이 첫 화면에 들어오게 */
+	.photo.admin figure {
+		height: calc(100svh - 300px);
 	}
 	.stage {
 		transition: transform 0.2s ease;
@@ -622,89 +637,121 @@
 	.bar {
 		display: flex;
 		justify-content: space-between;
-		align-items: baseline;
-		gap: 20px;
+		align-items: center;
+		gap: 12px 24px;
 		flex-wrap: wrap;
 	}
 	.line {
 		margin: 0;
 		font-size: 17px;
 		letter-spacing: 0.06em;
+		min-width: 0;
 	}
-	.controls {
+	/* 항목 하나는 안 쪼개고 항목 사이에서만 줄바꿈 — 점은 앞 항목 끝에 붙어 새 줄이 점으로 시작하지 않는다 */
+	.part {
+		white-space: nowrap;
+	}
+	.part:not(:last-of-type)::after {
+		content: ' ·';
+		color: var(--color-ink-faint);
+		margin-right: 0.25em;
+	}
+	.tools,
+	.admin-tools {
 		display: flex;
-		gap: 8px;
-		align-items: center;
 		flex-wrap: wrap;
+		align-items: center;
+		gap: 8px;
 	}
-	.controls form {
+	.admin-tools {
+		padding-top: 12px;
+		border-top: 1px dashed var(--color-ink-faint);
+	}
+	.admin-tools .lbl {
+		font-size: 12px;
+		letter-spacing: 0.16em;
+		color: var(--color-amber);
+		margin-right: 4px;
+	}
+	.admin-tools form:not(.seg) {
 		display: contents;
 	}
-	.collect select {
-		background: #141311;
-		border: 1px solid var(--color-ink-faint);
-		color: var(--color-ink-dim);
-		font-family: var(--font-mono);
-		font-size: 15px;
-		padding: 7px 10px;
-		border-radius: 999px;
-	}
-	.pill,
-	.chip {
-		font-family: var(--font-mono);
-		font-size: 16px;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-		padding: 8px 16px;
-		border-radius: 999px;
-		border: 1px solid var(--color-ink);
-		background: transparent;
-		color: var(--color-ink);
-		cursor: pointer;
-	}
-	.pill:hover {
-		background: var(--color-ink);
-		color: var(--color-bg);
-	}
-	.pill.quiet {
-		border-color: var(--color-ink-faint);
-		color: var(--color-ink-dim);
-	}
-	.pill.quiet:hover {
-		background: transparent;
-		color: var(--color-ink);
-		border-color: var(--color-ink);
-	}
-	.pill.same-width {
-		min-width: 7.5em;
-		text-align: center;
-	}
-	/* 지금 컷 */
-	.tiers .pill.on {
-		color: var(--color-amber);
-		border-color: var(--color-amber);
-	}
-	.chips {
-		display: inline-flex;
-		gap: 4px;
-	}
-	.chips.rotate .chip.icon {
+	/* 사진 페이지 버튼은 전부 이 한 가지 — 높이·글자·테두리가 같다 */
+	.tb {
+		box-sizing: border-box;
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		gap: 6px;
+		height: 36px;
+		padding: 0 14px;
+		font-family: var(--font-mono);
 		font-size: 14px;
-		padding: 6px 10px;
-		text-transform: none;
-		letter-spacing: 0.04em;
+		letter-spacing: 0.06em;
+		white-space: nowrap;
+		border-radius: 999px;
+		border: 1px solid var(--color-ink-faint);
+		background: transparent;
+		color: var(--color-ink-soft);
+		cursor: pointer;
+		transition:
+			border-color 0.15s,
+			color 0.15s;
 	}
-	.chip {
-		border-color: var(--color-ink-faint);
-		color: var(--color-ink-dim);
-		padding: 7px 12px;
+	.tb:hover:not(:disabled) {
+		border-color: var(--color-ink);
+		color: var(--color-ink);
 	}
-	.chip.on {
+	.tb.on {
 		border-color: var(--color-amber);
 		color: var(--color-amber);
+	}
+	.tb:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+	.tb.icon {
+		width: 40px;
+		padding: 0;
+	}
+	.tb.same-width {
+		min-width: 7em;
+	}
+	select.tb {
+		appearance: none;
+		background: #141311;
+		padding: 0 14px;
+		max-width: 14em;
+		text-overflow: ellipsis;
+		color-scheme: dark;
+	}
+	/* 붙은 버튼 묶음 (한 가지를 고르는 것들) — 양 끝만 둥글게, 사이 테두리는 하나로 */
+	.seg {
+		display: inline-flex;
+	}
+	.seg > .tb {
+		border-radius: 0;
+	}
+	.seg > .tb + .tb {
+		margin-left: -1px;
+	}
+	.seg > .tb:first-child {
+		border-radius: 999px 0 0 999px;
+		padding-left: 16px;
+	}
+	.seg > .tb:last-child {
+		border-radius: 0 999px 999px 0;
+		padding-right: 16px;
+	}
+	.seg > .tb.icon:first-child,
+	.seg > .tb.icon:last-child {
+		padding: 0;
+		width: 44px;
+	}
+	.seg > .tb.on,
+	.seg > .tb:hover {
+		position: relative;
+		z-index: 1;
 	}
 	.meta-edit {
 		margin-top: 18px;
@@ -726,9 +773,10 @@
 	.meta-edit label,
 	.meta-edit .ro {
 		display: grid;
-		grid-template-columns: 60px 1fr;
+		/* 위 사양표(SpecSheet dl: 100px, 간격 14px)와 같은 칸 — 값이 같은 세로줄에서 시작 */
+		grid-template-columns: 100px minmax(0, 1fr);
 		align-items: center;
-		gap: 10px;
+		gap: 14px;
 		color: var(--color-ink-dim);
 	}
 	.meta-edit :global(select) {
@@ -747,7 +795,7 @@
 	}
 	.drawer {
 		grid-column: 2;
-		grid-row: 1 / span 2;
+		grid-row: 1 / span 3;
 		border-left: 1px solid var(--color-ink-faint);
 		padding: 8px 0 0 24px;
 		max-height: calc(100svh - 120px);
@@ -776,6 +824,48 @@
 		}
 		.stage {
 			grid-column: 1;
+		}
+		/* 폰: 사진 칸 높이는 사진마다 바뀌지 않게 고정(버튼이 제자리), 대신 4:5 비율까지만 — 가로·정사각 사진 위아래 빈칸을 줄인다 */
+		figure {
+			height: min(calc(100svh - 240px), calc((100vw - 32px) * 1.25));
+			min-height: 240px;
+		}
+		.photo.admin figure {
+			height: min(calc(100svh - 320px), calc((100vw - 32px) * 1.25));
+		}
+		.photo {
+			gap: 14px;
+		}
+		.line {
+			font-size: 15px;
+		}
+		.bar {
+			gap: 12px;
+		}
+		.tools {
+			width: 100%;
+		}
+		/* 정보는 줄 오른쪽 끝 — 엄지로 찾기 쉬운 자리 */
+		.info-btn {
+			margin-left: auto;
+		}
+		.tools {
+			gap: 6px;
+		}
+		.tb {
+			height: 40px;
+			padding: 0 12px;
+			font-size: 13px;
+		}
+		.seg > .tb:first-child {
+			padding-left: 14px;
+		}
+		.seg > .tb:last-child {
+			padding-right: 14px;
+		}
+		.seg > .tb.icon:first-child,
+		.seg > .tb.icon:last-child {
+			width: 40px;
 		}
 	}
 </style>

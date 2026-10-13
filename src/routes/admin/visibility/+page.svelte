@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
+	import { stackTable } from '#lib/actions/stackTable.ts';
 	import type { PageProps } from './$types';
 	let { data, form }: PageProps = $props();
 	const vis = (v: 'public' | 'hidden') => (v === 'public' ? '공개' : '숨김');
@@ -61,7 +62,7 @@
 			{/if}
 			<span class="dim count">{shown.length}장 · 찍은 날짜순</span>
 		</div>
-		<table class="table overrides">
+		<table class="table overrides stack" use:stackTable>
 			<thead
 				><tr
 					><th></th><th>파일</th><th>라이브러리</th><th>공개 · 기본값</th><th>컷 · 자동</th><th
@@ -75,7 +76,7 @@
 						<td class="thumb"
 							><a href={`/p/${o.id}?ctx=manual`}><img src={o.thumb} alt="" class="th" /></a></td
 						>
-						<td class="mono">{o.filename}<span class="dim day">{day(o.takenAt)}</span></td>
+						<td class="mono lead">{o.filename}<span class="dim day">{day(o.takenAt)}</span></td>
 						<td class="mono dim">{o.source}</td>
 						<td>
 							<div class="cell">
@@ -198,5 +199,17 @@
 		gap: 8px;
 		min-height: 48px;
 		white-space: nowrap;
+	}
+	/* 폰·태블릿: 카드로 쌓이면 값과 버튼이 한 줄에 안 들어갈 수 있다 — 감싸서 넘치지 않게 */
+	@media (max-width: 1024px) {
+		.cell {
+			flex-wrap: wrap;
+			min-height: 0;
+			white-space: normal;
+		}
+		.count {
+			margin-left: 0;
+			flex-basis: 100%;
+		}
 	}
 </style>

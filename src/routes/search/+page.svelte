@@ -204,6 +204,12 @@
 	.order a.on {
 		color: var(--color-amber);
 	}
+	/* 폰: 필터 버튼 바로 밑에 붙지 않게 한 줄 띄운다 */
+	@media (max-width: 720px) {
+		.order {
+			margin: -4px 0 16px;
+		}
+	}
 	.order a:hover {
 		color: var(--color-ink);
 	}

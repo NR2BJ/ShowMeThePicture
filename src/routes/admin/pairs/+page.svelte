@@ -412,26 +412,6 @@
 		flex-wrap: wrap;
 		margin: 0 0 18px;
 	}
-	.tabs {
-		display: flex;
-		gap: 4px;
-		flex-wrap: wrap;
-		font-size: 16px;
-		letter-spacing: 0.06em;
-	}
-	.tabs a {
-		padding: 8px 14px;
-		border: 1px solid var(--color-ink-faint);
-		color: var(--color-ink-dim);
-	}
-	.tabs a.on {
-		color: var(--color-amber);
-		border-color: var(--color-amber);
-	}
-	.tabs .n {
-		opacity: 0.7;
-		margin-left: 4px;
-	}
 	.bulk {
 		display: flex;
 		gap: 8px;

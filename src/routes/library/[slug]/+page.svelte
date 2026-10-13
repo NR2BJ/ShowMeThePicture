@@ -45,5 +45,7 @@
 	.path {
 		font-size: 15px;
 		margin: 12px 0 0;
+		/* 띄어쓰기 없는 긴 경로가 폰 화면을 옆으로 넓히지 않게 */
+		overflow-wrap: anywhere;
 	}
 </style>

@@ -32,7 +32,8 @@ export const actions: Actions = {
 		const medium = mediumRaw === 'film' || mediumRaw === 'digital' ? mediumRaw : null;
 		const tier =
 			tierRaw === 'A' || tierRaw === 'B' ? tierRaw : role === 'edit' ? (s.tier ?? 'A') : null;
-		const defaultVisibility = form.get('visibility') === 'public' ? ('public' as const) : ('hidden' as const);
+		const defaultVisibility =
+			form.get('visibility') === 'public' ? ('public' as const) : ('hidden' as const);
 		const poll = Number(form.get('pollIntervalMin'));
 		await updateSource(db(), s.id, {
 			name: String(form.get('name') ?? '').trim() || s.name,
