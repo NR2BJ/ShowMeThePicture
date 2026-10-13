@@ -177,10 +177,50 @@ export async function deleteGear(db: Db, id: string): Promise<void> {
 // ---- EXIF·폴더 이름 → 등록 장비 대응표 (gear_names) ----
 
 /** raw 이름이 이 종류의 어떤 등록 장비와 같은지 (비슷하면 같은 것으로) */
-function mapOne(raw: string, kind: 'camera' | 'lens', rows: GearRow[]): GearRow | null {
+/** 낱말로 쪼갠다: 기호에서, 그리고 글자↔숫자 경계에서 ("16-50mm" → 16 50 mm, "F2.8" → f 2 8) */
+function words(s: string): string[] {
+	return s
+		.normalize('NFC')
+		.toLowerCase()
+		.split(/[^a-z0-9가-힣]+/)
+		.flatMap((t) => t.split(/(?<=[a-z가-힣])(?=\d)|(?<=\d)(?=[a-z가-힣])/))
+		.filter(Boolean);
+}
+
+/** 등록 이름의 낱말 하나가 EXIF 에 있는가 — 같은 낱말, 또는 이어진 낱말들의 머리글자(PZ ← Power Zoom) */
+function wordFound(w: string, ws: string[]): boolean {
+	if (ws.includes(w)) return true;
+	if (!/^[a-z]{2,4}$/.test(w)) return false;
+	for (let i = 0; i + w.length <= ws.length; i++) {
+		const run = ws.slice(i, i + w.length);
+		if (run.every((t, j) => /^[a-z]/.test(t) && t[0] === w[j])) return true;
+	}
+	return false;
+}
+
+/** 등록 이름 낱말 중 EXIF 에서 찾은 비율 */
+function wordScore(name: string, raw: string): number {
+	const nw = words(name);
+	const rw = words(raw);
+	return nw.length ? nw.filter((w) => wordFound(w, rw)).length / nw.length : 0;
+}
+
+/**
+ * EXIF·폴더 정보의 장비 이름 → 등록 장비. 같은 이름이면 그것, 아니면 열쇠(gearKeys)가 들어 있는 후보 중에서 고른다.
+ * 후보가 여럿이면(예: 'NX 16-50 PZ' 와 'NX 16-50 S' — 둘 다 'nx1650' 이 EXIF 에 있다) 낱말 점수로 가린다:
+ * 'Samsung NX 16-50mm F2-2.8 S ED OIS' 는 S 가, '… Power Zoom ED OIS' 는 PZ(머리글자)가 더 맞는다.
+ * 예전엔 가장 긴 열쇠만 봐서 동점이면 먼저 등록된 쪽(PZ)으로 모두 붙었다. 그래도 동점이면 예전 방식.
+ */
+export function pickGear(raw: string, kind: 'camera' | 'lens', rows: GearRow[]): GearRow | null {
 	const pool = rows.filter((r) => r.kind === kind);
 	const exact = pool.find((r) => norm(r.name) === norm(raw));
 	if (exact) return exact;
+	const n = norm(raw);
+	const hits = pool.filter((r) => gearKeys(r.name).some((k) => n.includes(k)));
+	if (hits.length > 1) {
+		const scored = hits.map((r) => ({ r, s: wordScore(r.name, raw) })).sort((a, b) => b.s - a.s);
+		if (scored[0].s > scored[1].s) return scored[0].r;
+	}
 	const m = matchGear(raw, toItems(pool));
 	const name = kind === 'camera' ? m.camera : m.lens;
 	return name ? (pool.find((r) => r.name === name) ?? null) : null;
@@ -208,7 +248,7 @@ export async function rebuildGearNames(db: Db): Promise<number> {
 	const out: { kind: 'camera' | 'lens'; raw: string; gearId: string }[] = [];
 	for (const kind of ['camera', 'lens'] as const)
 		for (const raw of await raws(kind)) {
-			const g = mapOne(raw, kind, rows);
+			const g = pickGear(raw, kind, rows);
 			if (g) out.push({ kind, raw, gearId: g.id });
 		}
 	await db.transaction(async (tx) => {
@@ -228,7 +268,7 @@ export async function mapGearNames(
 	for (const kind of ['camera', 'lens'] as const) {
 		const raw = names[kind]?.trim();
 		if (!raw) continue;
-		const g = mapOne(raw, kind, rows);
+		const g = pickGear(raw, kind, rows);
 		if (g)
 			await db
 				.insert(gearNames)
