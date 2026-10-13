@@ -715,9 +715,17 @@
 			border-color 0.15s,
 			color 0.15s;
 	}
-	.tb:hover:not(:disabled) {
-		border-color: var(--color-ink);
-		color: var(--color-ink);
+	/* 마우스가 있는 기기만 — 터치는 누른 뒤에도 hover 가 남아 그 버튼만 밝게 보였다 */
+	@media (hover: hover) {
+		.tb:hover:not(:disabled) {
+			border-color: var(--color-ink);
+			color: var(--color-ink);
+		}
+		/* 붙은 묶음에서 hover 테두리가 옆 버튼 밑에 깔리지 않게 */
+		.seg > .tb:hover {
+			position: relative;
+			z-index: 1;
+		}
 	}
 	.tb.on {
 		border-color: var(--color-amber);
@@ -766,7 +774,7 @@
 		width: 44px;
 	}
 	.seg > .tb.on,
-	.seg > .tb:hover {
+	.seg > .tb:focus-visible {
 		position: relative;
 		z-index: 1;
 	}
@@ -876,10 +884,6 @@
 		}
 		.tools {
 			width: 100%;
-		}
-		/* 정보는 줄 오른쪽 끝 — 엄지로 찾기 쉬운 자리 */
-		.info-btn {
-			margin-left: auto;
 		}
 		.tools {
 			gap: 6px;
