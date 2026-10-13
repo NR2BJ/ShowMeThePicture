@@ -111,13 +111,15 @@
 		{#if cur || values.length > 1}
 			<label class="pick">
 				<span>{label}</span>
-				<select onchange={(e) => pick(key, e)}>
+				<!-- 선택은 select 의 value 로 맞춘다 — option 의 selected 속성만 바꾸면, 사용자가 한 번 직접 고른 상자는
+				     브라우저가 그 속성 변화를 무시해 '필터 지우기' 뒤에도 예전 장비가 칸에 남았다 -->
+				<select value={cur ?? ''} onchange={(e) => pick(key, e)}>
 					<option value="">전체</option>
 					{#each values as c (c.v)}
-						<option value={c.v} selected={cur === c.v}>{c.v} ({c.n})</option>
+						<option value={c.v}>{c.v} ({c.n})</option>
 					{/each}
 					{#if cur && !values.some((c) => c.v === cur)}
-						<option value={cur} selected>{cur} (0)</option>
+						<option value={cur}>{cur} (0)</option>
 					{/if}
 				</select>
 			</label>
