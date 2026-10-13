@@ -345,7 +345,9 @@
 			>{/if}
 	</figure>
 
-	<!-- 사진 밑: 왼쪽은 날짜·장비 한 줄, 오른쪽은 보기 도구(누구나). 관리 도구는 그 아래 따로 한 줄 — 섞이면 어떤 버튼이 무엇을 바꾸는지 헷갈린다 -->
+	<!-- 사진 바로 밑에 모은다: 날짜·장비 한 줄, 그 밑에 보기 도구(누구나) | 관리 도구(관리자).
+	     컴퓨터는 가운데 정렬(사진도 가운데) — 예전엔 날짜는 왼쪽 끝, 버튼은 오른쪽 끝, 관리는 왼쪽 아래라 눈·마우스가 오갔다.
+	     폰은 왼쪽 정렬로 줄마다 쌓는다. 관리 도구는 구분선으로 나눠 어떤 버튼이 무엇을 바꾸는지 헷갈리지 않게. -->
 	<div class="bar">
 		<p class="line mono">
 			{#each [...dateParts.map( (t) => ({ t, dim: false }) ), ...metaParts.map( (t) => ({ t, dim: true }) )] as p, i (i)}<span
@@ -353,127 +355,138 @@
 					class:dim={p.dim}>{p.t}</span
 				>{' '}{/each}
 		</p>
-		<div class="tools" role="toolbar" aria-label="보기">
-			{#if data.photo.variants.length > 1}
-				<span class="seg" role="group" aria-label="파일">
-					{#each data.photo.variants as v (v.id)}
-						<button
-							type="button"
-							class="tb"
-							class:on={current?.id === v.id}
-							aria-pressed={current?.id === v.id}
-							title={canToggle ? '\\ 키: 원본 ↔ 보정' : undefined}
-							onclick={() => (currentId = v.id)}
-							>{v.role === 'edit' ? (v.label ?? '기본') : (v.label ?? v.ext.toUpperCase())}</button
+		<div class="toolbar">
+			<div class="tools" role="toolbar" aria-label="보기">
+				{#if data.photo.variants.length > 1}
+					<span class="seg" role="group" aria-label="파일">
+						{#each data.photo.variants as v (v.id)}
+							<button
+								type="button"
+								class="tb"
+								class:on={current?.id === v.id}
+								aria-pressed={current?.id === v.id}
+								title={canToggle ? '\\ 키: 원본 ↔ 보정' : undefined}
+								onclick={() => (currentId = v.id)}
+								>{v.role === 'edit'
+									? (v.label ?? '기본')
+									: (v.label ?? v.ext.toUpperCase())}</button
+							>
+						{/each}
+					</span>
+				{/if}
+				<span class="seg" role="group" aria-label="회전">
+					<button
+						type="button"
+						class="tb icon"
+						onclick={() => rotateBy(-90)}
+						disabled={rotSaving}
+						title={data.admin ? '왼쪽으로 90° · 바로 저장' : '왼쪽으로 90° · 보기만'}
+						aria-label="왼쪽으로 90° 회전"
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
+								d="M3 3v5h5"
+							/></svg
 						>
-					{/each}
+					</button>
+					<button
+						type="button"
+						class="tb icon"
+						onclick={() => rotateBy(90)}
+						disabled={rotSaving}
+						title={data.admin ? '오른쪽으로 90° · 바로 저장' : '오른쪽으로 90° · 보기만'}
+						aria-label="오른쪽으로 90° 회전"
+					>
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.8"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+							><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path
+								d="M21 3v5h-5"
+							/></svg
+						>
+					</button>
 				</span>
+				<button
+					type="button"
+					class="tb info-btn"
+					class:on={info}
+					aria-expanded={info}
+					onclick={() => (info = !info)}
+					title="i 키">{info ? '닫기' : '정보'}</button
+				>
+			</div>
+
+			{#if data.admin}
+				<div class="admin-tools" role="toolbar" aria-label="관리">
+					<span class="lbl mono">관리</span>
+					<form use:enhance={keep} method="POST" action={`?/visibility${act}`}>
+						<input
+							type="hidden"
+							name="visibility"
+							value={data.photo.visibility === 'public' ? 'hidden' : 'public'}
+						/>
+						<!-- 폭 고정: 숨기기 ↔ 공개하기 를 눌러도 옆 버튼이 밀리지 않게 -->
+						<button type="submit" class="tb same-width"
+							>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
+						>
+					</form>
+					<!-- 컷 직접 정하기: 원본 폴더의 필름 스캔·카메라 JPG 도 A/B 로 올릴 수 있다 -->
+					<form
+						use:enhance={keep}
+						method="POST"
+						action={`?/tier${act}`}
+						class="seg"
+						aria-label="컷"
+					>
+						{#each [['A', 'A컷'], ['B', 'B컷'], ['', '없음']] as [t, label] (t)}
+							<button
+								type="submit"
+								name="tier"
+								value={t}
+								class="tb"
+								class:on={(data.photo.tier ?? '') === t}
+								aria-pressed={(data.photo.tier ?? '') === t}
+								title={t ? `${label}으로 (숨김이면 공개로 바뀜)` : '컷 표시를 뺍니다'}
+								>{label}</button
+							>
+						{/each}
+					</form>
+					<!-- 되돌리기(공개 기본값·컷 자동)는 관리자 '직접 바꾼 사진' 페이지에서 — 여기서 버튼이 생겼다 사라지면 다른 버튼 위치가 바뀐다 -->
+					{#if current}<a
+							class="tb"
+							href={`/media/${current.id}/original`}
+							target="_blank"
+							rel="noopener">원본 파일</a
+						>{/if}
+					{#if data.manualCollections.length}
+						<form use:enhance={keep} method="POST" action={`?/collect${act}`} class="seg collect">
+							<select name="collectionId" class="tb" aria-label="컬렉션">
+								{#each data.manualCollections as mc (mc.id)}<option value={mc.id}>{mc.title}</option
+									>{/each}
+							</select>
+							<button type="submit" class="tb">컬렉션에 추가</button>
+						</form>
+					{/if}
+				</div>
 			{/if}
-			<span class="seg" role="group" aria-label="회전">
-				<button
-					type="button"
-					class="tb icon"
-					onclick={() => rotateBy(-90)}
-					disabled={rotSaving}
-					title={data.admin ? '왼쪽으로 90° · 바로 저장' : '왼쪽으로 90° · 보기만'}
-					aria-label="왼쪽으로 90° 회전"
-				>
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.8"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-						><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path
-							d="M3 3v5h5"
-						/></svg
-					>
-				</button>
-				<button
-					type="button"
-					class="tb icon"
-					onclick={() => rotateBy(90)}
-					disabled={rotSaving}
-					title={data.admin ? '오른쪽으로 90° · 바로 저장' : '오른쪽으로 90° · 보기만'}
-					aria-label="오른쪽으로 90° 회전"
-				>
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.8"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						aria-hidden="true"
-						><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" /><path
-							d="M21 3v5h-5"
-						/></svg
-					>
-				</button>
-			</span>
-			<button
-				type="button"
-				class="tb info-btn"
-				class:on={info}
-				aria-expanded={info}
-				onclick={() => (info = !info)}
-				title="i 키">{info ? '닫기' : '정보'}</button
-			>
 		</div>
 	</div>
-
-	{#if data.admin}
-		<div class="admin-tools" role="toolbar" aria-label="관리">
-			<span class="lbl mono">관리</span>
-			<form use:enhance={keep} method="POST" action={`?/visibility${act}`}>
-				<input
-					type="hidden"
-					name="visibility"
-					value={data.photo.visibility === 'public' ? 'hidden' : 'public'}
-				/>
-				<!-- 폭 고정: 숨기기 ↔ 공개하기 를 눌러도 옆 버튼이 밀리지 않게 -->
-				<button type="submit" class="tb same-width"
-					>{data.photo.visibility === 'public' ? '숨기기' : '공개하기'}</button
-				>
-			</form>
-			<!-- 컷 직접 정하기: 원본 폴더의 필름 스캔·카메라 JPG 도 A/B 로 올릴 수 있다 -->
-			<form use:enhance={keep} method="POST" action={`?/tier${act}`} class="seg" aria-label="컷">
-				{#each [['A', 'A컷'], ['B', 'B컷'], ['', '없음']] as [t, label] (t)}
-					<button
-						type="submit"
-						name="tier"
-						value={t}
-						class="tb"
-						class:on={(data.photo.tier ?? '') === t}
-						aria-pressed={(data.photo.tier ?? '') === t}
-						title={t ? `${label}으로 (숨김이면 공개로 바뀜)` : '컷 표시를 뺍니다'}>{label}</button
-					>
-				{/each}
-			</form>
-			<!-- 되돌리기(공개 기본값·컷 자동)는 관리자 '직접 바꾼 사진' 페이지에서 — 여기서 버튼이 생겼다 사라지면 다른 버튼 위치가 바뀐다 -->
-			{#if current}<a
-					class="tb"
-					href={`/media/${current.id}/original`}
-					target="_blank"
-					rel="noopener">원본 파일</a
-				>{/if}
-			{#if data.manualCollections.length}
-				<form use:enhance={keep} method="POST" action={`?/collect${act}`} class="seg collect">
-					<select name="collectionId" class="tb" aria-label="컬렉션">
-						{#each data.manualCollections as mc (mc.id)}<option value={mc.id}>{mc.title}</option
-							>{/each}
-					</select>
-					<button type="submit" class="tb">컬렉션에 추가</button>
-				</form>
-			{/if}
-		</div>
-	{/if}
 
 	{#if info && current}
 		<aside class="drawer">
@@ -573,9 +586,9 @@
 		height: calc(100svh - 240px);
 		min-height: 300px;
 	}
-	/* 관리자는 관리 줄 하나가 더 있다 — 그만큼 사진 칸을 줄여 버튼이 첫 화면에 들어오게 */
+	/* 관리자: 컴퓨터는 관리 도구가 같은 줄이라 조금만 더 뺀다(좁은 창에서 두 줄로 감길 때 대비) */
 	.photo.admin figure {
-		height: calc(100svh - 300px);
+		height: calc(100svh - 260px);
 	}
 	.stage {
 		transition: transform 0.2s ease;
@@ -632,16 +645,23 @@
 	}
 	.bar {
 		display: flex;
-		justify-content: space-between;
+		flex-direction: column;
 		align-items: center;
-		gap: 12px 24px;
+		gap: 14px;
+	}
+	.toolbar {
+		display: flex;
 		flex-wrap: wrap;
+		justify-content: center;
+		align-items: center;
+		gap: 10px 18px;
 	}
 	.line {
 		margin: 0;
 		font-size: 17px;
 		letter-spacing: 0.06em;
 		min-width: 0;
+		text-align: center;
 	}
 	/* 항목 하나는 안 쪼개고 항목 사이에서만 줄바꿈 — 점은 앞 항목 끝에 붙어 새 줄이 점으로 시작하지 않는다 */
 	.part {
@@ -659,9 +679,10 @@
 		align-items: center;
 		gap: 8px;
 	}
+	/* 컴퓨터: 보기 도구 옆에 세로 점선으로 나눠 이어 붙인다 */
 	.admin-tools {
-		padding-top: 12px;
-		border-top: 1px dashed var(--color-ink-faint);
+		padding-left: 18px;
+		border-left: 1px dashed var(--color-ink-faint);
 	}
 	.admin-tools .lbl {
 		font-size: 12px;
@@ -835,8 +856,23 @@
 		.line {
 			font-size: 15px;
 		}
+		/* 폰: 왼쪽 정렬, 줄마다 쌓기. 관리 도구는 가로 점선 밑 */
 		.bar {
+			align-items: stretch;
 			gap: 12px;
+		}
+		.line {
+			text-align: left;
+		}
+		.toolbar {
+			flex-direction: column;
+			align-items: stretch;
+			gap: 12px;
+		}
+		.admin-tools {
+			padding: 12px 0 0;
+			border-left: 0;
+			border-top: 1px dashed var(--color-ink-faint);
 		}
 		.tools {
 			width: 100%;
