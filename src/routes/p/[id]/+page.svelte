@@ -826,6 +826,42 @@
 		max-height: calc(100svh - 120px);
 		overflow: auto;
 	}
+	/* 세로 태블릿(컴퓨터 배치를 쓰는 넓이): 정보는 오른쪽 좁은 칸 대신 사진 아래 두 단으로, 사진 칸은 정사각까지만.
+	   세로 화면에서 오른쪽 칸을 쓰면 사진이 작아지고 아래가 텅 비었다. 가로 사진의 남는 칸은 설명 쪽에 붙여 헤더 밑 여백으로 */
+	@media (min-width: 901px) and (orientation: portrait) {
+		.photo.info {
+			grid-template-columns: 1fr;
+		}
+		.drawer {
+			grid-column: 1;
+			grid-row: auto;
+			border-left: 0;
+			border-top: 1px solid var(--color-ink-faint);
+			padding: 20px 0 0;
+			max-height: none;
+			overflow: visible;
+			display: grid;
+			grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+			gap: 0 40px;
+			align-items: start;
+		}
+		.drawer > .similar {
+			grid-column: 1 / -1;
+		}
+		/* 두 단: 오른쪽 단(장비 수정)도 왼쪽 사양표와 같은 높이에서 시작 */
+		.drawer > .meta-edit {
+			margin-top: 0;
+			padding-top: 0;
+			border-top: 0;
+		}
+		figure,
+		.photo.admin figure {
+			height: min(calc(100svh - 260px), calc(100vw - 192px));
+		}
+		.stage {
+			align-items: flex-end;
+		}
+	}
 	@media (max-width: 900px) {
 		.photo,
 		.photo.info {

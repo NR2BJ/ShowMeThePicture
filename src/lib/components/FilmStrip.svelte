@@ -29,6 +29,13 @@
 		);
 	});
 	let paused = $state<boolean[]>([]);
+	// 프레임 높이(--fh, 아래 CSS): 가로 화면은 설정값(화면 높이 %), 세로 화면은 줄 수만큼 화면 높이를 채우는 크기(--fill).
+	// 둘 다 화면 폭 상한(--wcap)을 넘지 않는다 — 폰에서 한 줄에 프레임이 너무 적어지지 않게.
+	// 예전엔 세로 태블릿에서도 설정값·폭 상한에 묶여 프레임이 작고 위아래가 크게 비었다.
+	// 116px = 랜딩 위아래 여백(72+36) + 기울기 여유
+	const fill = $derived(
+		`calc((100dvh - 116px - ${Math.max(0, rows.length - 1)} * clamp(10px, 2.2vh, 56px)) / ${Math.max(1, rows.length)} - 2 * var(--pad))`
+	);
 	let root: HTMLDivElement | undefined = $state();
 
 	onMount(() => {
@@ -101,7 +108,8 @@
 	class="strips"
 	bind:this={root}
 	aria-label="무작위 사진 필름 스트립"
-	style:--fh="clamp(40px, min({frameVh}vh, {(frameVh * 1.4).toFixed(1)}vw), 960px)"
+	style:--fv={frameVh}
+	style:--fill={fill}
 >
 	{#each rows as row, r (r)}
 		<!-- 마우스를 올린 동안, 또는 손가락으로 누르고 있는 동안 그 줄만 멈춘다 (손을 떼거나 제스처가 취소되면 다시 흐름) -->
@@ -140,7 +148,12 @@
 <style>
 	/* 크기는 화면 높이에 비례(폰처럼 세로로 긴 화면은 너비 상한) — 4K 에서도 얇지 않고, 작은 창에서도 여러 줄이 들어간다 */
 	.strips {
+		/* 프레임 높이 (위 스크립트 주석 참고) */
+		--wcap: calc(var(--fv) * 1.4vw);
+		--fh: clamp(40px, min(calc(var(--fv) * 1vh), var(--wcap), var(--fill)), 960px);
 		--hole: clamp(6px, 0.75vh, 16px);
+		/* 정수 px 로 — 소수 높이면 구멍 가장자리가 반 픽셀로 번져 띠에 옅은 선이 보였다 */
+		--hole: round(clamp(6px, 0.75vh, 16px), 1px);
 		--lab: clamp(11px, 1vh, 20px);
 		--gap: clamp(8px, 0.9vh, 20px);
 		/* 각인 글자가 구멍 띠와 겹치지 않도록 띠 + 글자 + 여유 */
@@ -151,6 +164,18 @@
 		justify-content: center;
 		gap: clamp(10px, 2.2vh, 56px);
 		height: 100%;
+	}
+	/* 폰보다 넓으면 폭 상한을 풀어 준다 */
+	@media (min-width: 600px) {
+		.strips {
+			--wcap: calc(var(--fv) * 2vw);
+		}
+	}
+	/* 세로로 긴 화면(태블릿·폰 세로): 설정값 대신 화면을 채우는 크기 */
+	@media (orientation: portrait) {
+		.strips {
+			--fh: clamp(40px, min(var(--wcap), var(--fill)), 960px);
+		}
 	}
 	.strip {
 		position: relative;
@@ -179,7 +204,15 @@
 		left: 0;
 		right: 0;
 		height: var(--hole);
-		background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='8'%3E%3Crect x='11' y='0' width='12' height='8' rx='1.5' fill='%230b0b0a'/%3E%3C/svg%3E")
+		/* 구멍은 그라디언트로(칸 1/6 폭 중 가운데 12/34). 예전 SVG 그림을 소수 크기로 늘려 반복하면, 회전한 띠에서
+		   그림 가장자리가 번져 구멍 줄 밑에 옅은(하얀) 선 조각이 보였다(안드로이드 태블릿) */
+		background: linear-gradient(
+				90deg,
+				transparent 32.35%,
+				#0b0b0a 32.35%,
+				#0b0b0a 67.65%,
+				transparent 67.65%
+			)
 			repeat-x;
 		/* 칸 폭을 구멍 6개로 나눠 칸 경계에서도 간격이 이어지게 */
 		background-size: calc(var(--step-px, var(--step)) / 6) var(--hole);

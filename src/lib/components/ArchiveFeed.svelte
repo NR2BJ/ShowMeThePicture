@@ -269,6 +269,11 @@
 		}
 		void goto(hrefFor(data.filter, { from: key }));
 	}
+	/** 타임라인을 끄는 중: 이미 불러온 달이면 그 자리로 바로(부드럽게 말고) — 손가락을 따라오게 */
+	function preview(key: string) {
+		const h = listEl?.querySelector<HTMLElement>(`[data-month="${key}"]`);
+		if (h) window.scrollTo({ top: window.scrollY + h.getBoundingClientRect().top - 120 });
+	}
 
 	onMount(() => {
 		const io = new IntersectionObserver(
@@ -346,7 +351,7 @@
 		</p>
 	</div>
 	{#if data.months.length > 0}
-		<ArchiveTimeline months={data.months} {active} onjump={jump} />
+		<ArchiveTimeline months={data.months} {active} onjump={jump} onpreview={preview} />
 	{/if}
 </section>
 
@@ -408,9 +413,12 @@
 		text-decoration: underline;
 	}
 	@media (max-width: 720px) {
-		.page,
-		.page.with-timeline {
+		.page {
 			padding: 8px 16px 40px;
+		}
+		/* 오른쪽 날짜 막대(28px)를 잡을 자리 */
+		.page.with-timeline {
+			padding: 8px 30px 40px 16px;
 		}
 	}
 </style>
