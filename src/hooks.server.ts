@@ -1,5 +1,5 @@
 import { redirect } from '@sveltejs/kit';
-import type { Handle, ServerInit } from '@sveltejs/kit/hooks';
+import type { Handle, HandleServerError, ServerInit } from '@sveltejs/kit/hooks';
 import {
 	SESSION_COOKIE,
 	findAdminById,
@@ -43,4 +43,19 @@ export const handle: Handle = async ({ event, resolve }) => {
 		return new Response('unauthorized', { status: 401 });
 	}
 	return resolve(event);
+};
+
+/**
+ * 서버에서 난 예상 못 한 오류: 짧은 번호를 붙여 로그에 남기고, 화면(+error.svelte)에도 같은 번호를 보여 준다.
+ * 운영에서 '500 Internal Error' 가 보이면 docker logs 에서 그 번호로 찾는다.
+ */
+export const handleError: HandleServerError = ({ kind, error, event }) => {
+	// error(404) 같은 의도한 오류·프레임워크 오류(없는 주소)는 남기지 않는다 — 봇이 두드리는 주소로 로그가 덮인다
+	if (kind !== 'unknown') return;
+	const id = Math.random().toString(36).slice(2, 8);
+	console.error(
+		`[error ${id}] ${kind} ${event.request.method} ${event.url.pathname}${event.url.search} route=${event.route.id ?? '-'}`,
+		error
+	);
+	return { id };
 };

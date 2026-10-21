@@ -10,15 +10,15 @@ SvelteKit 3(Svelte 5) · TypeScript · Tailwind v4 · PostgreSQL 17 + pgvector �
 
 ## 설정의 경계
 
-- **compose + 환경변수 = 인프라만**: 마운트 경로, DB 비밀번호, 도메인/ORIGIN, 이미지 태그. ([.env.example](.env.example))
+- **compose + 환경변수 = 인프라만**: 마운트 경로, DB 비밀번호, 이미지 태그. ([.env.example](.env.example))
 - **관리자 페이지 = 앱 설정 전부**: 사진 폴더(Source) 등록, 사이트 제목, 공개 정책, 검색 모델 … DB 볼륨에 저장되어 재배포해도 유지된다.
 - `PHOTOS_HOST_PATH` 는 넓게(풀 전체나 `photo123` 의 부모) 한 번만 마운트하고, 실제 폴더는 앱의 폴더 선택기로 `/photos` 아래에서 고른다. 폴더를 더 등록할 때 compose 를 건드리지 않는다.
 
 ## 배포 (Debian + Docker, Portainer)
 
 1. `main` 에 push 하면 GitHub Actions 가 `ghcr.io/nr2bj/showmethepicture:latest` 를 만든다 (`sha-…`, `v*` 태그도). 레포가 public 이라 pull 에 인증이 필요 없다.
-2. Portainer → Stacks → Add stack → **Web editor** 에 [compose.yaml](compose.yaml) 을 붙여넣는다. `${...}` 자리는 아래 Environment variables 에 넣어도 되고 그냥 값으로 바꿔 써도 된다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `ORIGIN`, `RENDER_GID` = `stat -c %g /dev/dri/renderD128` 의 값, 필요하면 `APP_PORT`, `ML_MODEL_TTL`). 이후 수정도 Portainer 에서 바로 한다. 레포의 compose 는 템플릿일 뿐 고정이 아니다.
-3. 외부 reverse proxy(예: Proxmox LXC 의 Caddy)에서 도메인을 app 으로 넘긴다. `ORIGIN` 은 이 공개 URL 과 같아야 한다.
+2. Portainer → Stacks → Add stack → **Web editor** 에 [compose.yaml](compose.yaml) 을 붙여넣는다. `${...}` 자리는 아래 Environment variables 에 넣어도 되고 그냥 값으로 바꿔 써도 된다 (`PHOTOS_HOST_PATH`, `CACHE_HOST_PATH`, `POSTGRES_PASSWORD`, `RENDER_GID` = `stat -c %g /dev/dri/renderD128` 의 값, 필요하면 `APP_PORT`, `ML_MODEL_TTL`). 이후 수정도 Portainer 에서 바로 한다. 레포의 compose 는 템플릿일 뿐 고정이 아니다.
+3. 외부 reverse proxy(예: Proxmox LXC 의 Caddy)에서 https 도메인을 app 으로 넘긴다. 앱은 자기 주소를 `https://<요청의 Host>` 로 정하므로(SvelteKit adapter-node 6 은 `ORIGIN` 환경변수를 읽지 않는다) 프록시가 Host 를 그대로 넘기면 된다(Caddy 기본값).
    ```
    photos.example.com {
        encode zstd gzip
@@ -101,7 +101,7 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 ## 사이트 정보와 링크 미리보기
 
 - `/admin/settings` 의 '사이트'에서 제목, 한 줄 소개, 소개 글(마크다운: `# 제목`, `**굵게**`, `*기울임*`, `[링크](주소)`, `- 목록`)을 쓴다. 제목을 비우면 `SITE_TITLE` 환경변수. 소개 글이 비어 있으면 게스트 메뉴에서 '소개'가 숨고 `/about` 은 404. 컬렉션 설명도 같은 마크다운으로 보인다.
-- 모든 페이지가 `<title>`·`description`·Open Graph·Twitter 카드 태그를 낸다(루트 레이아웃 한 곳, 페이지는 load 의 `og` 로 덮어씀). 사진 페이지는 그 사진, 컬렉션은 표지, 나머지는 가장 최근 공개 A컷이 미리보기 이미지다. 이미지는 `/og/<사진 id>.jpg` — 공개 사진만, preview 를 1200px JPEG 로 바꿔 캐시(WebP 를 못 읽는 미리보기 봇 대비). 절대 주소는 `ORIGIN` 기준이라 공개 주소로 맞춰 둬야 한다.
+- 모든 페이지가 `<title>`·`description`·Open Graph·Twitter 카드 태그를 낸다(루트 레이아웃 한 곳, 페이지는 load 의 `og` 로 덮어씀). 사진 페이지는 그 사진, 컬렉션은 표지, 나머지는 가장 최근 공개 A컷이 미리보기 이미지다. 이미지는 `/og/<사진 id>.jpg` — 공개 사진만, preview 를 1200px JPEG 로 바꿔 캐시(WebP 를 못 읽는 미리보기 봇 대비). 절대 주소는 `https://<요청의 Host>` 기준이다.
 
 ## 검색 (3단계)
 
@@ -117,8 +117,9 @@ pnpm worker                                     # 다른 터미널에서. 스캔
 
 - **첫 관리자 생성**(`/admin/setup`)은 관리자가 0명일 때만 열리고, 앱이 기동하며 로그에 찍는 **설정 토큰**을 요구한다. `docker compose logs app | grep setup` 으로 확인한다. 계정을 만들면 토큰은 사라지고 페이지는 로그인으로만 간다.
 - **방문 통계**(관리자 → 방문)는 관리자만 본다. 사이트 순 방문자와 사진별 조회를 한 사람당 하루 한 번 센다. 페이지를 2초 넘게 화면에 띄운 브라우저만 신호를 보내 봇·링크 미리보기는 빠지고, 관리자로 로그인한 적 있는 브라우저도 안 센다. 중복 방지 해시는 메모리에만 있는 그날의 비밀값으로 만들고 다음 날 버린다. IP 원문은 저장하지 않는다.
-- **로그인**은 IP 당 10분에 실패 10회까지. 프록시 뒤에서 IP 를 제대로 보려면 compose 의 `ADDRESS_HEADER=X-Forwarded-For` 를 켠다(기본 켜져 있음). 세션은 HttpOnly·SameSite=Lax 쿠키이고 https 로 접속하면 Secure 가 붙는다. **`ORIGIN` 과 같은 주소로 접속해야 로그인이 유지된다**(https 로 설정해 두고 http://IP:3000 으로 들어가면 쿠키가 거부된다).
-- 폼 요청은 SvelteKit 이 `ORIGIN` 과 비교해 CSRF 를 막는다.
+- **로그인**은 IP 당 10분에 실패 10회까지. 프록시 뒤에서 IP 를 제대로 보려면 compose 의 `ADDRESS_HEADER=X-Forwarded-For` 를 켠다(기본 켜져 있음). 세션은 HttpOnly·SameSite=Lax 쿠키이고 https 로 접속하면 Secure 가 붙는다. **https 공개 도메인으로 접속해야 한다** — http://IP:3000 으로 직접 열면 앱이 주소를 https 로 여겨 로그인 같은 폼이 'Cross-site POST form submissions are forbidden'(403)으로 거부된다.
+- 폼 요청은 SvelteKit 이 요청의 Origin 과 앱 주소(`https://<Host>`)를 비교해 CSRF 를 막는다.
+- 예상 못 한 오류는 화면에 짧은 오류 번호를 보여 주고, 서버 로그에 같은 번호로 남는다(`[error 번호]`, 브라우저에서 난 오류는 `[client-error 번호]`).
 - 원본 폴더는 컨테이너에 **read-only** 로 마운트되고, 앱은 사이드카도 쓰지 않는다. 폴더 선택기와 모든 경로 API 는 `/photos` 아래로만 제한된다(상위 탈출 불가).
 - 게스트는 공개(`visibility=public`) 사진의 파생본만 받는다. 숨긴 사진은 썸네일도 404. 원본 파일(`/media/{id}/original`)은 관리자 세션에서만.
 - 컨테이너는 `PUID`/`PGID`(기본 1000:1000)로 돈다. entrypoint 가 root 로 시작해 `/cache` 소유권을 그 uid 로 맞춘 뒤 권한을 내린다. 사진 파일은 그 uid 가 읽을 수 있어야 한다 — 소유자가 1000 이면 그대로 맞고, 다른 사용자면 `.env` 의 PUID/PGID 를 그 값으로. 캐시 파일도 그 사용자 소유로 생긴다. root 로 돌리려면 `PUID=0`.

@@ -5,7 +5,7 @@ name: showmethepicture
 # ${...} 자리는 Portainer 의 Environment variables 로 채워도 되고, 그냥 값으로 바꿔 써도 된다.
 #
 # 설정의 경계 (docs/DESIGN.md §8.1)
-#  - 여기에는 "인프라"만: 마운트 경로, DB 비밀번호, 도메인/ORIGIN, 이미지 태그.
+#  - 여기에는 "인프라"만: 마운트 경로, DB 비밀번호, 이미지 태그.
 #  - 사진 폴더(Source) 등록, 사이트 제목, 공개 정책, 검색 모델 같은 "앱 설정"은 관리자 페이지에서 바꾸고
 #    DB(db-data 볼륨)에 저장된다. 재배포해도 유지된다.
 #  - PHOTOS_HOST_PATH 는 넓게(풀 전체 또는 photo123 의 부모) 잡고, 실제 폴더는 앱 안 폴더 선택기로 고른다.
@@ -20,7 +20,7 @@ x-app: &app
   environment:
     NODE_ENV: production
     PORT: '3000'
-    ORIGIN: ${ORIGIN:-http://localhost}
+    # 앱의 공개 주소는 https://<요청의 Host> 로 정해진다(adapter-node 6 은 ORIGIN 을 읽지 않음) — https 도메인으로 접속할 것
     DATABASE_URL: postgres://${POSTGRES_USER:-smtp}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-smtp}
     PHOTOS_ROOT: /photos
     CACHE_DIR: /cache

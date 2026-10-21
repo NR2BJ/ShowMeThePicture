@@ -2,6 +2,11 @@
 #   docker compose -f compose.yaml -f compose.caddy.yaml up -d
 # Portainer 웹 에디터라면 아래 caddy 서비스와 configs/volumes 를 compose.yaml 에 합쳐 넣으면 된다.
 services:
+  # 스택 안 caddy 가 맨 앞이면 그가 붙이는 X-Forwarded-Proto 를 믿어도 된다 — SITE_ADDRESS 를 :80(http)으로 쓸 때
+  # 앱이 자기 주소를 https 로 착각해 로그인 폼이 거부되지 않게
+  app:
+    environment:
+      PROTOCOL_HEADER: x-forwarded-proto
   caddy:
     image: caddy:2
     ports:
