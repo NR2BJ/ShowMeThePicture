@@ -3,7 +3,9 @@ import { ExifTool } from 'exiftool-vendored';
 import { PgBoss, type JobResult } from 'pg-boss';
 import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { getDb } from '#lib/server/db/index.ts';
-import { files, sources } from '#lib/server/db/schema.ts';
+import { embeddings, files, photos, sources } from '#lib/server/db/schema.ts';
+import { stat } from 'node:fs/promises';
+import { derivativePath } from '#lib/server/media.ts';
 import { loadConfig } from '#lib/server/env.ts';
 import {
 	Q,
@@ -44,8 +46,37 @@ for (const name of Object.values(Q)) {
 	}
 }
 
+/**
+ * 미리보기보다 오래된 임베딩 찾기 — 같은 이름으로 덮어써 다시 처리된 사진(이 수정 전)은 옛 사진 기준 임베딩이 남아 있다.
+ * 그런 것만 지우고 다시 만들게 큐에 넣는다. 기동 때 한 번, 배경에서.
+ */
+async function requeueStaleEmbeddings(): Promise<number> {
+	const rows = await db
+		.select({ fileId: embeddings.fileId, at: embeddings.updatedAt })
+		.from(embeddings)
+		.innerJoin(photos, eq(photos.primaryFileId, embeddings.fileId));
+	let n = 0;
+	for (const r of rows) {
+		const p = await stat(derivativePath(config.CACHE_DIR, r.fileId, 'preview')).catch(() => null);
+		if (!p || p.mtimeMs <= r.at.getTime() + 60_000) continue;
+		await db.delete(embeddings).where(eq(embeddings.fileId, r.fileId));
+		await boss.send(Q.EMBED, { fileId: r.fileId } satisfies EmbedJob, {
+			singletonKey: `embed:${r.fileId}`,
+			singletonSeconds: 5,
+			retryLimit: 5,
+			retryDelay: 60,
+			retryBackoff: true
+		});
+		n++;
+	}
+	return n;
+}
+
 // 장비 이름 대응표(gear_names)를 기동 때 한 번 맞춘다 — 배포 직후에도 등록 이름·고정렌즈가 바로 보이게
 await rebuildGearNames(db).catch((e) => console.error('[worker] gear names', e));
+void requeueStaleEmbeddings()
+	.then((n) => n && log(`stale embeddings requeued: ${n}`))
+	.catch((e) => console.error('[worker] stale embeddings', e));
 
 await boss.work<ScanSourceJob>(Q.SCAN_SOURCE, async (jobs) => {
 	for (const job of jobs) {

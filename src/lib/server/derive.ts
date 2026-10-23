@@ -81,13 +81,17 @@ export async function ensureDerivative(
 	edge: number = SIZES[size]
 ): Promise<string> {
 	const out = derivativePath(cacheDir, file.id, size);
-	if (
-		await stat(out).then(
-			() => true,
-			() => false
-		)
-	)
-		return out;
+	const have = await stat(out).catch(() => null);
+	if (have) {
+		// full 은 열 때 만들어 두고 계속 쓴다. 같은 이름으로 덮어쓴 파일을 다시 처리하면 thumb·preview 는 새로 생기지만
+		// full 은 옛 내용 그대로 남아, 사진 페이지만 예전 사진(예전 크롭)이 나왔다 — preview 보다 오래된 full 은 버린다
+		const preview =
+			size === 'full'
+				? await stat(derivativePath(cacheDir, file.id, 'preview')).catch(() => null)
+				: null;
+		if (!preview || preview.mtimeMs <= have.mtimeMs + 1000) return out;
+		await rm(out, { force: true });
+	}
 	const key = `${file.id}:${size}`;
 	let p = inflight.get(key);
 	if (!p) {

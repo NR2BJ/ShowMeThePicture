@@ -6,7 +6,7 @@ import path from 'node:path';
 import { and, eq, ne, sql } from 'drizzle-orm';
 import type { ExifTool } from 'exiftool-vendored';
 import type { Db } from '#lib/server/db/index.ts';
-import { files, photos, sources } from '#lib/server/db/schema.ts';
+import { embeddings, files, photos, sources } from '#lib/server/db/schema.ts';
 import { folderMetaForSource, pickFolderMeta } from '#lib/server/folders.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import { metadataJson, normalizeExif } from './exif.ts';
@@ -65,6 +65,13 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 	}
 
 	const contentHash = await sha256(abs);
+	// 같은 자리에 덮어쓴 파일(라이트룸에서 다시 내보내기 등): 열 때 만드는 full 캐시와 검색 임베딩은 옛 내용
+	// 그대로 남으므로 지운다. thumb·preview 는 아래에서 다시 만든다.
+	if (file.contentHash && file.contentHash !== contentHash) {
+		await removeDerivatives(ctx.cacheDir, fileId);
+		await db.delete(embeddings).where(eq(embeddings.fileId, fileId));
+		ctx.log(`file ${fileId} content changed — derivatives and embedding reset`);
+	}
 	// 다른 폴더에서 옮겨 온 파일이면(같은 내용의 옛 파일이 디스크에서 사라짐) 옛 사진·방향을 넘겨받는다
 	let movedPhotoId: string | null = null;
 	if (!file.photoId) {
