@@ -86,7 +86,7 @@ export const load: PageServerLoad = async ({ params, url, locals }) => {
 		similar,
 		showGps,
 		admin,
-		manualCollections: admin ? await manualCollections(db()) : [],
+		manualCollections: admin ? await manualCollections(db(), photo.id) : [],
 		// 조회수는 관리자만
 		views: admin ? await photoViews(db(), photo.id).catch(() => null) : null,
 		gear
@@ -142,8 +142,8 @@ export const actions: Actions = {
 		const form = await request.formData();
 		const collectionId = String(form.get('collectionId') ?? '');
 		if (!collectionId) return fail(400, { error: 'collection' });
-		await addPhotoToCollection(db(), collectionId, params.id);
-		return { collected: true };
+		const added = await addPhotoToCollection(db(), collectionId, params.id);
+		return { collected: { collectionId, added } };
 	},
 	/** 관리자: 파일 하나의 방향을 저장하고 파생본을 다시 만든다 */
 	rotate: async ({ request, locals }) => {

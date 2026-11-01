@@ -22,6 +22,8 @@ describe('parseFilter', () => {
 		expect(parseFilter(sp('kind=B,A'))).toEqual({ kind: ['A', 'B'] });
 		expect(parseFilter(sp('kind=A,A,zzz'))).toEqual({ kind: ['A'] });
 		expect(parseFilter(sp('kind=zzz'))).toEqual({});
+		expect(parseFilter(sp('kind=original,none'))).toEqual({ kind: ['none', 'original'] });
+		expect(parseFilter(sp('kind=A,B,none,original'))).toEqual({});
 	});
 	it('장비 축: 공백 제거, 빈 값 무시', () => {
 		expect(parseFilter(sp('camera=%20NX500%20&lens=&film=Kodak+ColorPlus+200'))).toEqual({

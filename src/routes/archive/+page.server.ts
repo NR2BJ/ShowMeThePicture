@@ -15,7 +15,7 @@ const OG: OgMeta = { title: '아카이브' };
 
 const EMPTY_FACETS: ArchiveFacets = {
 	medium: { film: 0, digital: 0 },
-	kind: { A: 0, B: 0, original: 0 },
+	kind: { A: 0, B: 0, none: 0, original: 0 },
 	camera: [],
 	lens: [],
 	film: []

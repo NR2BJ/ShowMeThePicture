@@ -56,10 +56,16 @@ export function groupByMonth(items: GalleryItem[], zone: string): MonthGroup[] {
 // ---- 필터 ----
 export const MEDIUMS = ['film', 'digital'] as const;
 export type MediumKey = (typeof MEDIUMS)[number];
-export const KINDS = ['A', 'B', 'original'] as const;
+export const KINDS = ['A', 'B', 'none', 'original'] as const;
 export type KindKey = (typeof KINDS)[number];
 export const MEDIUM_LABEL: Record<MediumKey, string> = { film: '필름', digital: '디지털' };
-export const KIND_LABEL: Record<KindKey, string> = { A: 'A컷', B: 'B컷', original: '원본만' };
+/** none = 보정본은 있지만 컷을 뺀 사진(사진 페이지에서 '없음'), original = 보정본 없이 원본만 있는 사진 */
+export const KIND_LABEL: Record<KindKey, string> = {
+	A: 'A컷',
+	B: 'B컷',
+	none: '컷 없음',
+	original: '원본만'
+};
 
 /** 아카이브 필터. 비어 있으면 전체. medium/kind 는 집합(비면 전체), camera/lens/film 은 유효 장비와 정확히 일치. */
 export type ArchiveFilter = {

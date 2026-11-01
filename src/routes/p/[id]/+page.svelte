@@ -226,6 +226,25 @@
 			if (result.type === 'success') markChanged(data.photo.id);
 			await update({ reset: false });
 		};
+	// 컬렉션에 넣은 결과를 화면 아래에 잠깐 띄운다 (넣었는지 / 이미 있었는지)
+	let notice = $state<{ text: string; n: number } | null>(null);
+	let noticeTimer: ReturnType<typeof setTimeout> | null = null;
+	function notify(text: string) {
+		if (noticeTimer) clearTimeout(noticeTimer);
+		notice = { text, n: (notice?.n ?? 0) + 1 };
+		noticeTimer = setTimeout(() => (notice = null), 2400);
+	}
+	const collect: SubmitFunction =
+		({ formData }) =>
+		async ({ update, result }) => {
+			const title =
+				data.manualCollections.find((c) => c.id === formData.get('collectionId'))?.title ?? '';
+			if (result.type === 'success') {
+				const r = result.data?.collected as { added: boolean } | undefined;
+				notify(r?.added ? `‘${title}’에 추가했습니다` : `이미 ‘${title}’에 있는 사진입니다`);
+			} else notify('컬렉션에 추가하지 못했습니다');
+			await update({ reset: false });
+		};
 	async function postRotation(fileId: string, rotation: number) {
 		const fd = new FormData();
 		fd.set('fileId', fileId);
@@ -475,9 +494,15 @@
 							rel="noopener">원본 파일</a
 						>{/if}
 					{#if data.manualCollections.length}
-						<form use:enhance={keep} method="POST" action={`?/collect${act}`} class="seg collect">
+						<form
+							use:enhance={collect}
+							method="POST"
+							action={`?/collect${act}`}
+							class="seg collect"
+						>
 							<select name="collectionId" class="tb" aria-label="컬렉션">
-								{#each data.manualCollections as mc (mc.id)}<option value={mc.id}>{mc.title}</option
+								{#each data.manualCollections as mc (mc.id)}<option value={mc.id}
+										>{mc.title}{mc.has ? ' ✓' : ''}</option
 									>{/each}
 							</select>
 							<button type="submit" class="tb">컬렉션에 추가</button>
@@ -547,9 +572,46 @@
 			{/if}
 		</aside>
 	{/if}
+	<!-- 알림 줄: 비어 있어도 live 영역은 남겨 둬야 화면 읽기 프로그램이 새 문구를 읽는다 -->
+	<div class="notice-wrap" role="status" aria-live="polite">
+		{#if notice}{#key notice.n}<p class="notice">{notice.text}</p>{/key}{/if}
+	</div>
 </main>
 
 <style>
+	.notice-wrap {
+		position: fixed;
+		left: 0;
+		right: 0;
+		/* 위에 띄운다 — 버튼 줄이 화면 아래쪽이라, 아래에 띄우면 방금 누른 버튼을 가린다 */
+		top: calc(16px + env(safe-area-inset-top));
+		display: flex;
+		justify-content: center;
+		pointer-events: none;
+		z-index: 30;
+	}
+	.notice {
+		margin: 0 16px;
+		padding: 10px 16px;
+		border: 1px solid var(--color-ink-faint);
+		border-left: 2px solid var(--color-amber);
+		background: var(--color-base);
+		color: var(--color-ink);
+		font-size: 14px;
+		box-shadow: 0 6px 24px rgb(0 0 0 / 0.5);
+		animation: notice-in 0.18s ease-out;
+	}
+	@keyframes notice-in {
+		from {
+			opacity: 0;
+			transform: translateY(-6px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.notice {
+			animation: none;
+		}
+	}
 	.similar {
 		margin-top: 28px;
 	}

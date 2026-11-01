@@ -48,16 +48,23 @@
 		apply({ ...filter, [key]: v || undefined });
 	}
 	const active = $derived(isFilterActive(filter));
-	// 컷(A/B/원본만) 축은 관리자용 — 게스트에게는 숨긴다
+	// 컷: 손님은 A/B 만 (공개된 사진의 컷 표시). '컷 없음'·'원본만'은 관리용 구분이라 관리자에게만.
+	// 컷은 사진의 tier 만 본다 — 공개 여부(직접 공개·숨김)는 이 축과 무관하다
 	const admin = $derived(!!(page.data as { admin?: unknown }).admin);
+	const kindKeys = $derived(admin ? KINDS : KINDS.filter((k) => k === 'A' || k === 'B'));
 	// 0장인 선택지는 숨긴다(고른 것은 남김). 고를 게 하나뿐인 묶음·선택 상자는 통째로 숨긴다
 	// (예: F31fd 폴더에서는 매체가 디지털뿐이라 매체 묶음이 없다. 원본만 폴더라도 직접 A/B 로 올린 사진이 있으면 A/B 가 보인다)
 	const mediums = $derived(MEDIUMS.filter((m) => facets.medium[m] > 0 || mediumOn(m)));
-	const kinds = $derived(KINDS.filter((k) => facets.kind[k] > 0 || kindOn(k)));
+	const kinds = $derived(kindKeys.filter((k) => facets.kind[k] > 0 || kindOn(k)));
+	// 선택지가 하나여도 그게 전체가 아니면(손님: A컷만 있고 컷 없는 사진도 섞인 경우) 고를 의미가 있다
+	const kindAll = $derived(KINDS.reduce((n, k) => n + facets.kind[k], 0));
+	const showKinds = $derived(
+		kinds.length > 1 || (kinds.length === 1 && facets.kind[kinds[0]] < kindAll)
+	);
 	// 고른 필터 수 (폰에서 접힌 버튼에 표시)
 	const activeCount = $derived(
 		(filter.medium?.length ? 1 : 0) +
-			(admin && filter.kind?.length ? 1 : 0) +
+			(filter.kind?.length ? 1 : 0) +
 			(filter.camera ? 1 : 0) +
 			(filter.lens ? 1 : 0) +
 			(filter.film ? 1 : 0)
@@ -91,7 +98,7 @@
 			{/each}
 		</div>
 	{/if}
-	{#if admin && kinds.length > 1}
+	{#if showKinds}
 		<div class="group" role="group" aria-label="컷">
 			{#each kinds as k (k)}
 				<button

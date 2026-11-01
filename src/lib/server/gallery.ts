@@ -43,9 +43,19 @@ export function baseConds(o: { scope: Scope; admin: boolean; filter?: ArchiveFil
 			sql`exists (select 1 from ${files} f2 where f2.photo_id = ${photos.id} and f2.source_id = ${o.scope.sourceId})`
 		);
 	}
-	conds.push(...filterConds(o.filter));
+	conds.push(...filterConds(o.admin ? o.filter : guestFilter(o.filter)));
 	return conds;
 }
+
+/** 손님 필터: 컷은 A/B 만 — '컷 없음'·'원본만'은 관리용 구분이라 주소로 넣어도 무시한다 */
+function guestFilter(f: ArchiveFilter | undefined): ArchiveFilter | undefined {
+	if (!f?.kind?.length) return f;
+	const kind = f.kind.filter((k) => k === 'A' || k === 'B');
+	return { ...f, kind: kind.length ? kind : undefined };
+}
+
+/** 보정본(edit 파일)이 있는 사진 — 컷이 없을 때 '컷 없음'(보정했지만 뺀 것)과 '원본만'을 가른다 */
+export const hasEdit = sql`exists (select 1 from ${files} fe where fe.photo_id = ${photos.id} and fe.variant_role = 'edit' and fe.status = 'active')`;
 
 /** 아카이브 필터 → where 조건. camera/lens/film 은 photo_meta 뷰(유효 장비)를 left join 해 둬야 한다. */
 export function filterConds(f: ArchiveFilter | undefined): SQL[] {
@@ -56,7 +66,8 @@ export function filterConds(f: ArchiveFilter | undefined): SQL[] {
 		const parts: SQL[] = [];
 		if (f.kind.includes('A')) parts.push(eq(photos.tier, 'A'));
 		if (f.kind.includes('B')) parts.push(eq(photos.tier, 'B'));
-		if (f.kind.includes('original')) parts.push(isNull(photos.tier));
+		if (f.kind.includes('none')) parts.push(and(isNull(photos.tier), hasEdit)!);
+		if (f.kind.includes('original')) parts.push(and(isNull(photos.tier), sql`not ${hasEdit}`)!);
 		conds.push(or(...parts)!);
 	}
 	if (f.camera) conds.push(eq(photoMeta.camera, f.camera));

@@ -12,7 +12,7 @@ import type { PageServerLoad } from './$types';
 const EMPTY = { items: [] as SearchHit[], mean: 0, std: 0, collapsed: 0 };
 const EMPTY_FACETS: ArchiveFacets = {
 	medium: { film: 0, digital: 0 },
-	kind: { A: 0, B: 0, original: 0 },
+	kind: { A: 0, B: 0, none: 0, original: 0 },
 	camera: [],
 	lens: [],
 	film: []

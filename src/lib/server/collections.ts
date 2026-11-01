@@ -265,15 +265,18 @@ export async function addPhotoToCollection(
 	db: Db,
 	collectionId: string,
 	photoId: string
-): Promise<void> {
+): Promise<boolean> {
 	const [{ max }] = await db
 		.select({ max: sql<number>`coalesce(max(${collectionPhotos.position}), 0)::int` })
 		.from(collectionPhotos)
 		.where(eq(collectionPhotos.collectionId, collectionId));
-	await db
+	const added = await db
 		.insert(collectionPhotos)
 		.values({ collectionId, photoId, position: Number(max) + 1 })
-		.onConflictDoNothing();
+		.onConflictDoNothing()
+		.returning({ photoId: collectionPhotos.photoId });
+	// false 면 이미 들어 있던 사진
+	return added.length > 0;
 }
 
 export async function removePhotoFromCollection(
@@ -317,9 +320,19 @@ export async function movePhotoInCollection(
 }
 
 /** 관리자가 수동 컬렉션에 넣을 수 있는 목록 */
-export async function manualCollections(db: Db): Promise<{ id: string; title: string }[]> {
+/** 직접 담는 컬렉션 목록. photoId 를 주면 그 사진이 이미 들어 있는지(has)도 */
+export async function manualCollections(
+	db: Db,
+	photoId?: string
+): Promise<{ id: string; title: string; has: boolean }[]> {
 	return db
-		.select({ id: collections.id, title: collections.title })
+		.select({
+			id: collections.id,
+			title: collections.title,
+			has: photoId
+				? sql<boolean>`exists (select 1 from ${collectionPhotos} where ${collectionPhotos.collectionId} = ${collections.id} and ${collectionPhotos.photoId} = ${photoId})`
+				: sql<boolean>`false`
+		})
 		.from(collections)
 		.where(eq(collections.kind, 'manual'))
 		.orderBy(asc(collections.position));

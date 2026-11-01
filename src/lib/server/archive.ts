@@ -14,7 +14,15 @@ import {
 } from '#lib/archive.ts';
 import type { Db } from './db';
 import { files, gear, photoMeta, photos } from './db/schema';
-import { baseConds, itemSelect, orderKey, toItem, type GalleryItem, type Scope } from './gallery';
+import {
+	baseConds,
+	hasEdit,
+	itemSelect,
+	orderKey,
+	toItem,
+	type GalleryItem,
+	type Scope
+} from './gallery';
 
 export const ARCHIVE_PAGE = 120;
 /** 월 묶음 기준 시간대 = 서버(Node) 로컬. 촬영 시각의 저장·표시도 같은 기준이라 월 경계가 어긋나지 않는다. */
@@ -120,7 +128,7 @@ export async function archiveFacets(db: Db, o: ArchiveOpts): Promise<ArchiveFace
 			sql`select ${photos.medium}::text as v, count(*)::int as n ${from} where ${where('medium')} group by 1`
 		),
 		run(
-			sql`select coalesce(${photos.tier}::text, 'original') as v, count(*)::int as n ${from} where ${where('kind')} group by 1`
+			sql`select case when ${photos.tier} is not null then ${photos.tier}::text when ${hasEdit} then 'none' else 'original' end as v, count(*)::int as n ${from} where ${where('kind')} group by 1`
 		),
 		run(
 			sql`select ${photoMeta.camera} as v, count(*)::int as n ${from} where ${where('camera')} and ${photoMeta.camera} is not null group by 1 order by 2 desc, 1`
