@@ -148,9 +148,12 @@ export async function archiveFacets(db: Db, o: ArchiveOpts): Promise<ArchiveFace
 			K,
 			number
 		>;
+	const kinds = rec<KindKey>(KINDS, kind);
+	// 손님에게는 '원본만'도 '컷 없음'으로 합쳐 센다 (guestFilter 와 같은 구분)
+	if (!o.admin) Object.assign(kinds, { none: kinds.none + kinds.original, original: 0 });
 	return {
 		medium: rec<MediumKey>(MEDIUMS, medium),
-		kind: rec<KindKey>(KINDS, kind),
+		kind: kinds,
 		camera,
 		lens,
 		film

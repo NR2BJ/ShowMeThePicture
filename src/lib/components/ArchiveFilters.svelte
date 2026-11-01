@@ -48,10 +48,10 @@
 		apply({ ...filter, [key]: v || undefined });
 	}
 	const active = $derived(isFilterActive(filter));
-	// 컷: 손님은 A/B 만 (공개된 사진의 컷 표시). '컷 없음'·'원본만'은 관리용 구분이라 관리자에게만.
+	// 컷: 손님은 A/B/컷 없음 — 손님의 '컷 없음'은 '원본만'까지 합친 것(서버가 합쳐 센다). 보정본 유무 구분은 관리자에게만.
 	// 컷은 사진의 tier 만 본다 — 공개 여부(직접 공개·숨김)는 이 축과 무관하다
 	const admin = $derived(!!(page.data as { admin?: unknown }).admin);
-	const kindKeys = $derived(admin ? KINDS : KINDS.filter((k) => k === 'A' || k === 'B'));
+	const kindKeys = $derived(admin ? KINDS : KINDS.filter((k) => k !== 'original'));
 	// 0장인 선택지는 숨긴다(고른 것은 남김). 고를 게 하나뿐인 묶음·선택 상자는 통째로 숨긴다
 	// (예: F31fd 폴더에서는 매체가 디지털뿐이라 매체 묶음이 없다. 원본만 폴더라도 직접 A/B 로 올린 사진이 있으면 A/B 가 보인다)
 	const mediums = $derived(MEDIUMS.filter((m) => facets.medium[m] > 0 || mediumOn(m)));

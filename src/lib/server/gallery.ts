@@ -1,6 +1,6 @@
 // 갤러리 쿼리: 아카이브 / 라이브러리 목록, 사진 상세, 이웃(prev/next).
 import { and, asc, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
-import type { ArchiveFilter } from '#lib/archive.ts';
+import type { ArchiveFilter, KindKey } from '#lib/archive.ts';
 import { mediaUrl, versionOf } from '#lib/media.ts';
 import type { Db } from './db';
 import { resolveGear } from './gear';
@@ -47,10 +47,11 @@ export function baseConds(o: { scope: Scope; admin: boolean; filter?: ArchiveFil
 	return conds;
 }
 
-/** 손님 필터: 컷은 A/B 만 — '컷 없음'·'원본만'은 관리용 구분이라 주소로 넣어도 무시한다 */
+/** 손님 필터: 손님에게 '컷 없음'은 A/B 가 아닌 사진 전부(관리자의 '컷 없음'+'원본만') — 보정본 유무는 관리용 구분 */
 function guestFilter(f: ArchiveFilter | undefined): ArchiveFilter | undefined {
 	if (!f?.kind?.length) return f;
-	const kind = f.kind.filter((k) => k === 'A' || k === 'B');
+	const kind: KindKey[] = f.kind.filter((k) => k !== 'original');
+	if (kind.includes('none')) kind.push('original');
 	return { ...f, kind: kind.length ? kind : undefined };
 }
 
