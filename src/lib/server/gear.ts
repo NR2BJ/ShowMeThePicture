@@ -119,9 +119,14 @@ export async function addGear(
 		notes: string | null;
 	}
 ): Promise<GearRow> {
+	// 새 장비는 그 종류의 맨 위로: 가장 작은 순서값보다 하나 작게 (기본 0 이면 맨 위 장비와 같은 값이라 이름순으로 섞였다)
+	const [{ top }] = await db
+		.select({ top: sql<number>`coalesce(min(${gear.position}), 1)::int` })
+		.from(gear)
+		.where(eq(gear.kind, input.kind));
 	const [row] = await db
 		.insert(gear)
-		.values({ ...input })
+		.values({ ...input, position: Number(top) - 1 })
 		.onConflictDoUpdate({
 			target: [gear.kind, gear.name],
 			set: {
