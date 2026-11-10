@@ -182,7 +182,8 @@ export type MetaOverride = {
 	filmStock?: string | null;
 } | null;
 
-/** 사진의 유효 장비: 수동 > (필름이면 롤 > EXIF, 디지털이면 EXIF > 롤) */
+/** 사진의 유효 장비: 수동 > (필름이면 롤만, 디지털이면 EXIF > 롤).
+ *  필름 스캔의 EXIF 카메라·렌즈는 스캔 장비라 쓰지 않는다 — 롤에 비워 두면 비어 있는 게 맞다 (photo_meta 뷰와 같은 규칙) */
 export function effectiveMeta(
 	medium: 'film' | 'digital' | null,
 	override: MetaOverride,
@@ -194,7 +195,7 @@ export function effectiveMeta(
 		if (o) return [o, 'manual'];
 		const r = roll ? roll[key] : null;
 		const e = key === 'filmStock' ? null : exif[key];
-		if (medium === 'film') return r ? [r, 'roll'] : e ? [e, 'exif'] : [null, null];
+		if (medium === 'film') return r ? [r, 'roll'] : [null, null];
 		return e ? [e, 'exif'] : r ? [r, 'roll'] : [null, null];
 	};
 	const [camera, fc] = pick('camera');

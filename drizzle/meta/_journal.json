@@ -92,6 +92,13 @@
       "when": 1791786627712,
       "tag": "0012_visit_stats",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794330660398,
+      "tag": "0013_film_meta_no_exif",
+      "breakpoints": true
     }
   ]
 }
