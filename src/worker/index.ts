@@ -3,7 +3,7 @@ import { ExifTool } from 'exiftool-vendored';
 import { PgBoss, type JobResult } from 'pg-boss';
 import { and, eq, isNull, lt, or, sql } from 'drizzle-orm';
 import { getDb } from '#lib/server/db/index.ts';
-import { embeddings, files, photos, sources } from '#lib/server/db/schema.ts';
+import { embeddings, files, folderMeta, photos, sources } from '#lib/server/db/schema.ts';
 import { stat } from 'node:fs/promises';
 import { derivativePath } from '#lib/server/media.ts';
 import { loadConfig } from '#lib/server/env.ts';
@@ -16,6 +16,7 @@ import {
 	type ScanSourceJob
 } from '#lib/server/jobs.ts';
 import { rebuildAllSmart } from '#lib/server/collections.ts';
+import { applyFolderDates } from '#lib/server/folders.ts';
 import { rebuildGearNames } from '#lib/server/gear.ts';
 import { pairAfterProcess, pairEditFile, unpairedEditIds } from '#lib/server/pairing.ts';
 import { MlError } from '#lib/server/ml.ts';
@@ -74,6 +75,16 @@ async function requeueStaleEmbeddings(): Promise<number> {
 
 // 장비 이름 대응표(gear_names)를 기동 때 한 번 맞춘다 — 배포 직후에도 등록 이름·고정렌즈가 바로 보이게
 await rebuildGearNames(db).catch((e) => console.error('[worker] gear names', e));
+// 롤 날짜를 지금 규칙(롤 번호마다 띄우기)으로 맞춘다 — 값이 같은 파일은 쓰지 않으니 매 기동 돌려도 가볍다
+void (async () => {
+	const rolls = await db
+		.select({ sourceId: folderMeta.sourceId, relDir: folderMeta.relDir })
+		.from(folderMeta)
+		.where(sql`${folderMeta.developedAt} is not null`)
+		// 상위 폴더 롤이 하위 롤을 덮지 않게 얕은 폴더부터
+		.orderBy(sql`length(${folderMeta.relDir})`);
+	for (const r of rolls) await applyFolderDates(db, r.sourceId, r.relDir);
+})().catch((e) => console.error('[worker] roll dates', e));
 void requeueStaleEmbeddings()
 	.then((n) => n && log(`stale embeddings requeued: ${n}`))
 	.catch((e) => console.error('[worker] stale embeddings', e));

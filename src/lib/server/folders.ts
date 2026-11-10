@@ -95,7 +95,8 @@ export function toRollInfo(r: FolderMetaRow): RollInfo {
 
 /**
  * 폴더의 developed_at 을 그 아래 파일들의 촬영시각으로 준다 (수동으로 정한 날짜만 제외).
- * 롤 안 순서를 지키려고 파일명 순으로 1분씩 더한다.
+ * 같은 달 롤끼리 섞이지 않게 롤 번호마다 1000초씩 띄우고(999롤이어도 12일 안 — 달을 넘지 않는다),
+ * 롤 안은 파일명 순으로 1초씩 더한다 → 아카이브(최신 위)에서 2롤이 1롤 위, 롤 안은 뒷컷이 위.
  */
 export async function applyFolderDates(db: Db, sourceId: string, relDir: string): Promise<number> {
 	const [meta] = await db
@@ -109,6 +110,7 @@ export async function applyFolderDates(db: Db, sourceId: string, relDir: string)
 			id: files.id,
 			relPath: files.relPath,
 			src: files.takenAtSource,
+			takenAt: files.takenAt,
 			photoId: files.photoId
 		})
 		.from(files)
@@ -121,11 +123,13 @@ export async function applyFolderDates(db: Db, sourceId: string, relDir: string)
 			return inDir && f.src !== 'manual';
 		})
 		.sort((a, b) => a.relPath.localeCompare(b.relPath, undefined, { numeric: true }));
-	const base = new Date(meta.developedAt + 'T12:00:00');
+	const base = new Date(meta.developedAt + 'T12:00:00').getTime() + (meta.rollNo ?? 0) * 1_000_000;
 	let i = 0;
 	const photoIds = new Set<string>();
 	for (const f of targets) {
-		const t = new Date(base.getTime() + i++ * 60_000);
+		const t = new Date(base + i++ * 1000);
+		// 이미 같은 값이면 건너뛴다 (기동 때마다 전체 롤에 다시 돌려도 쓰기가 없게)
+		if (f.src === 'roll' && f.takenAt?.getTime() === t.getTime()) continue;
 		await db
 			.update(files)
 			.set({ takenAt: t, takenAtSource: 'roll', updatedAt: new Date() })
