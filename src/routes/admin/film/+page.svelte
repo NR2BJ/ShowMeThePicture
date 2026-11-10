@@ -77,9 +77,9 @@
 						<td class="title">{f.title ?? '-'}</td>
 						<td class="mono">{ym(f.developedAt)}</td>
 						<td class="mono">{f.rollNo ?? '-'}</td>
-						<td class="mono">{f.camera ?? '-'}</td>
-						<td class="mono">{f.lens ?? '-'}</td>
-						<td class="mono">{f.filmStock ?? '-'}</td>
+						<td class="mono gear">{f.camera ?? '-'}</td>
+						<td class="mono gear">{f.lens ?? '-'}</td>
+						<td class="mono gear">{f.filmStock ?? '-'}</td>
 						<td class="mono dim">{f.fileCount}</td>
 						<td class="actions"
 							><button class="btn quiet" type="button" onclick={() => (open[f.id] = !open[f.id])}
@@ -119,6 +119,15 @@
 	/* 제목이 좁은 칸에서 한 글자씩 세로로 쌓이지 않게 */
 	.confirmed td.title {
 		min-width: 6em;
+	}
+	/* 폴더 이름은 아무 데서나 끊을 수 있어서(overflow-wrap:anywhere) 최소 폭이 한 글자가 된다 — 장비 칸(줄바꿈 금지)이
+	   폭을 다 가져가면 폴더 칸이 한 글자씩 세로로 쌓였다. 폴더 칸에 최소 폭을 주고, 긴 장비 이름은 띄어쓰기에서 줄을 바꾼다. */
+	.confirmed td.lead {
+		min-width: 14em;
+	}
+	.confirmed td.gear {
+		white-space: normal;
+		min-width: 7em;
 	}
 	.editrow td {
 		background: rgba(255, 255, 255, 0.02);
