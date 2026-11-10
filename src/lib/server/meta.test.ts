@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { RollInfo } from './folders';
+import { rollDay, type RollInfo } from './folders';
 import { effectiveMeta } from './gallery';
 
 const scan = { camera: 'NX500', lens: 'Sigma 20-40mm F2.8 EX DG ASPHERICAL' };
@@ -33,5 +33,15 @@ describe('effectiveMeta', () => {
 		expect(effectiveMeta('film', { lens: 'SMC Pentax-M 50mm F1.7' }, scan, roll).lens).toBe(
 			'SMC Pentax-M 50mm F1.7'
 		);
+	});
+});
+
+describe('rollDay', () => {
+	it('uses the earliest scan day when it falls in the developed month', () => {
+		expect(rollDay('2026-11-01', ['2026-11-12', '2026-11-10'])).toBe('2026-11-10');
+	});
+	it('falls back to the 1st when scanned in another month or unknown', () => {
+		expect(rollDay('2026-11-01', ['2026-12-02'])).toBe('2026-11-01');
+		expect(rollDay('2026-11-01', [])).toBe('2026-11-01');
 	});
 });

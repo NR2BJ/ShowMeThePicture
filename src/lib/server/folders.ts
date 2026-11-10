@@ -93,9 +93,36 @@ export function toRollInfo(r: FolderMetaRow): RollInfo {
 	};
 }
 
+// 서버 시간대의 날짜 (archive.ts 의 ZONE 과 같은 값 — 그쪽을 import 하면 순환이라 따로)
+const dayFmt = new Intl.DateTimeFormat('en-CA', {
+	year: 'numeric',
+	month: '2-digit',
+	day: '2-digit'
+});
+
+/** 파일의 스캔일 후보: EXIF 날짜(스캐너·미러리스가 찍은 날) → 없으면 파일 수정 시각(랩 스캔을 받은 날 즈음) */
+function scanDayOf(metadata: Record<string, unknown> | null, mtime: Date): string {
+	for (const k of ['SubSecDateTimeOriginal', 'DateTimeOriginal', 'CreateDate']) {
+		const m =
+			typeof metadata?.[k] === 'string' && (metadata[k] as string).match(/^\d{4}-\d{2}-\d{2}/);
+		if (m) return m[0];
+	}
+	return dayFmt.format(mtime);
+}
+
+/**
+ * 롤의 날짜(YYYY-MM-DD): 폴더엔 현상월만 있으니 일(日)은 스캔일로 짐작한다 — 가장 이른 스캔일이 현상월 안이면 그날,
+ * 아니면(다음 달에 스캔했거나 스캐너 시계가 틀림) 1일. 같은 달 디지털 사진과 앞뒤가 맞게.
+ */
+export function rollDay(developedAt: string, scanDays: string[]): string {
+	const month = developedAt.slice(0, 7);
+	const first = [...scanDays].sort()[0];
+	return first && first.slice(0, 7) === month ? first : `${month}-01`;
+}
+
 /**
  * 폴더의 developed_at 을 그 아래 파일들의 촬영시각으로 준다 (수동으로 정한 날짜만 제외).
- * 같은 달 롤끼리 섞이지 않게 롤 번호마다 1000초씩 띄우고(999롤이어도 12일 안 — 달을 넘지 않는다),
+ * 날짜는 rollDay(현상월 + 스캔일), 같은 날 롤끼리 섞이지 않게 롤 번호마다 1000초씩 띄우고,
  * 롤 안은 파일명 순으로 1초씩 더한다 → 아카이브(최신 위)에서 2롤이 1롤 위, 롤 안은 뒷컷이 위.
  */
 export async function applyFolderDates(db: Db, sourceId: string, relDir: string): Promise<number> {
@@ -111,6 +138,8 @@ export async function applyFolderDates(db: Db, sourceId: string, relDir: string)
 			relPath: files.relPath,
 			src: files.takenAtSource,
 			takenAt: files.takenAt,
+			mtime: files.mtime,
+			metadata: files.metadata,
 			photoId: files.photoId
 		})
 		.from(files)
@@ -123,7 +152,11 @@ export async function applyFolderDates(db: Db, sourceId: string, relDir: string)
 			return inDir && f.src !== 'manual';
 		})
 		.sort((a, b) => a.relPath.localeCompare(b.relPath, undefined, { numeric: true }));
-	const base = new Date(meta.developedAt + 'T12:00:00').getTime() + (meta.rollNo ?? 0) * 1_000_000;
+	const day = rollDay(
+		meta.developedAt,
+		targets.map((f) => scanDayOf(f.metadata, f.mtime))
+	);
+	const base = new Date(day + 'T12:00:00').getTime() + (meta.rollNo ?? 0) * 1_000_000;
 	let i = 0;
 	const photoIds = new Set<string>();
 	for (const f of targets) {

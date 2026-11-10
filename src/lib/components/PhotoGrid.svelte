@@ -83,11 +83,8 @@
 						<span class="badge vis" class:off={it.visibility === 'hidden'}
 							>{it.visibility === 'hidden' ? '숨김' : '공개'}</span
 						>
-						<span
-							class="badge cut"
-							class:a={it.tier === 'A'}
-							class:b={it.tier === 'B'}
-							title={it.tier ? `${it.tier}컷` : '컷 없음'}>{it.tier ?? 'X'}</span
+						<span class="badge cut" class:a={it.tier === 'A'} class:b={it.tier === 'B'}
+							>{it.tier ?? 'X'}</span
 						>
 					{/if}
 					{#if it.dup}<span class="badge dup">+{it.dup}</span>{/if}
