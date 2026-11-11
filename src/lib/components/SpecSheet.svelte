@@ -12,7 +12,8 @@
 		effective?: EffectiveMeta | null;
 		showGps?: boolean;
 		admin?: boolean;
-		/** 필름 스캔: 촬영 시각·출처는 실제 찍은 시각과 무관(롤 현상월·스캔일·파일 시각)이라 감춘다 — 연·월은 롤 칸에 있다 */
+		/** 필름 스캔: 파일 EXIF 는 스캔에 쓴 카메라(미러리스 등)의 값이라 촬영과 무관하다 — 촬영 시각·EXIF 기종·노출·위치를 감춘다.
+		 *  장비는 롤 정보로(effective), 연·월은 롤 칸에 있다. 파일 자체의 값(크기·색공간)과 직접 넣은 설명은 그대로. */
 		film?: boolean;
 	} = $props();
 
@@ -60,26 +61,30 @@
 							[
 								'EXIF 기종',
 								// 보이는 이름이 EXIF 기종과 다르면(수동·롤·등록 이름으로 맞춤) 원래 EXIF 기종도 보여 준다
-								v.cameraModel && v.cameraModel !== effective.camera ? v.cameraModel : null
+								!film && v.cameraModel && v.cameraModel !== effective.camera ? v.cameraModel : null
 							]
 						]
 					}
 				: {
 						title: '카메라',
-						rows: [
-							['제조사', v.cameraMake],
-							['기종', v.cameraModel],
-							['렌즈', v.lens]
-						]
+						rows: film
+							? []
+							: [
+									['제조사', v.cameraMake],
+									['기종', v.cameraModel],
+									['렌즈', v.lens]
+								]
 					},
 			{
 				title: '노출',
-				rows: [
-					['초점거리', v.focalLengthMm ? `${v.focalLengthMm} mm` : null],
-					['조리개', v.fNumber ? `f/${v.fNumber}` : null],
-					['셔터', v.exposureTime ? `${v.exposureTime} s` : null],
-					['ISO', v.iso ? String(v.iso) : null]
-				]
+				rows: film
+					? []
+					: [
+							['초점거리', v.focalLengthMm ? `${v.focalLengthMm} mm` : null],
+							['조리개', v.fNumber ? `f/${v.fNumber}` : null],
+							['셔터', v.exposureTime ? `${v.exposureTime} s` : null],
+							['ISO', v.iso ? String(v.iso) : null]
+						]
 			},
 			{
 				title: '파일',
@@ -106,7 +111,7 @@
 				]
 			});
 		}
-		if (showGps && v.gpsLat != null && v.gpsLon != null) {
+		if (!film && showGps && v.gpsLat != null && v.gpsLon != null) {
 			g.push({ title: '위치', rows: [['좌표', `${v.gpsLat.toFixed(5)}, ${v.gpsLon.toFixed(5)}`]] });
 		}
 		if (v.rating || v.keywords?.length || v.title || v.caption) {
@@ -139,7 +144,8 @@
 			</dl>
 		</section>
 	{/each}
-	{#if all.length}
+	<!-- 파일 메타데이터 원본: 필름 스캔은 스캔 카메라 값뿐이라 관리자(확인용)에게만 -->
+	{#if all.length && (!film || admin)}
 		<section>
 			<button type="button" class="more" onclick={() => (showAll = !showAll)}>
 				{showAll ? '모든 메타데이터 접기' : `모든 메타데이터 보기 (${all.length})`}
