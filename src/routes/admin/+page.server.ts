@@ -1,14 +1,16 @@
+import { fail } from '@sveltejs/kit';
 import { eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { diskFree, fmtBytes, getCacheUsage } from '#lib/server/cacheusage.ts';
 import { config } from '#lib/server/config.ts';
 import { db } from '#lib/server/db/app.ts';
 import { collections, folderMeta, gear, photos } from '#lib/server/db/schema.ts';
+import { purgeLongMissing } from '#lib/server/filemoves.ts';
 import { pairCounts } from '#lib/server/pairs-admin.ts';
 import { queueCounts } from '#lib/server/queue.ts';
 import { embeddingStats } from '#lib/server/search.ts';
 import { listSourcesWithCounts, recentFailures } from '#lib/server/sources.ts';
 import { visitSummary } from '#lib/server/visits.ts';
-import type { PageServerLoad } from './$types';
+import type { Actions, PageServerLoad } from './$types';
 
 const n = (c: unknown) => Number(c ?? 0);
 
@@ -96,4 +98,16 @@ export const load: PageServerLoad = async () => {
 			lowDisk: free != null && free < 5 * 1024 ** 3
 		}
 	};
+};
+
+export const actions: Actions = {
+	/** 사라진 파일 기록을 30일 기다리지 않고 지금 정리 (옮긴 파일 알아보기·디스크가 잠깐 빠졌을 때 되살리기는 포기) */
+	purgeMissing: async ({ locals }) => {
+		if (!locals.admin) return fail(403, { error: 'forbidden' });
+		const d = db();
+		let purged = 0;
+		for (const s of await listSourcesWithCounts(d))
+			if (s.missingCount) purged += await purgeLongMissing(d, config.CACHE_DIR, s.id, 0);
+		return { purged };
+	}
 };

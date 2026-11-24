@@ -7,7 +7,7 @@ import { and, eq, ne, sql } from 'drizzle-orm';
 import type { ExifTool } from 'exiftool-vendored';
 import type { Db } from '#lib/server/db/index.ts';
 import { embeddings, files, photos, sources } from '#lib/server/db/schema.ts';
-import { folderMetaForSource, pickFolderMeta } from '#lib/server/folders.ts';
+import { applyFolderDates, folderMetaForSource, pickFolderMeta } from '#lib/server/folders.ts';
 import { getSetting } from '#lib/server/settings.ts';
 import { metadataJson, normalizeExif } from './exif.ts';
 import { openSource } from '#lib/server/derive.ts';
@@ -123,6 +123,7 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 	const isFilm = source.medium === 'film';
 	let takenAt: Date | null = null;
 	let takenAtSource: 'exif' | 'xmp' | 'folder' | 'roll' | 'mtime' | null = null;
+	let rollDir: string | null = null;
 	const fromExif = () => {
 		if (!takenAt && ex.takenAt) {
 			takenAt = ex.takenAt;
@@ -141,6 +142,7 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 		if (takenAt) return;
 		const meta = pickFolderMeta(await folderMetaForSource(db, source.id), file.relPath);
 		if (!meta?.developedAt) return;
+		rollDir = meta.relDir;
 		const dir = path.posix.dirname(file.relPath);
 		const siblings = await db
 			.select({ relPath: files.relPath })
@@ -209,6 +211,11 @@ export async function processFile(ctx: ProcessCtx, fileId: string): Promise<void
 
 	await mapGearNames(db, { camera: ex.cameraModel, lens: ex.lens });
 	await attachPhoto(ctx, fileId, source, { takenAt, isRaw: file.kind === 'raw' });
+	// 롤 날짜는 위에서 임시로 잡았다 — 롤 전체 규칙(스캔일·롤 번호·파일명 순)으로 그 롤을 다시 맞춘다 (값이 같은 파일은 안 씀)
+	// (클로저에서 대입해서 TS 가 좁혀 버린 타입을 되돌린다)
+	const rolled = rollDir as string | null;
+	if ((takenAtSource as string | null) === 'roll' && rolled !== null)
+		await applyFolderDates(db, source.id, rolled);
 	// 옮겨 온 파일: 컷(폴더가 바뀜)·공개 기본값까지 다시 계산 — 직접 정한 값은 그대로
 	if (movedPhotoId) await recalcPhoto(db, movedPhotoId, { revisitVisibility: true });
 }

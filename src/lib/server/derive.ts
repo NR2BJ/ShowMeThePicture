@@ -1,6 +1,8 @@
 // 파생본 생성 (app 과 worker 공용). worker 는 thumb/preview 를 미리 만들고,
 // full 은 누가 그 사진을 열 때 /media 라우트가 여기로 만든다 (SSD 용량 절약).
-import { mkdir, rename, rm, stat } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, readdir, rename, rm, stat } from 'node:fs/promises';
+import { promisify } from 'node:util';
 import path from 'node:path';
 import type { ExifTool } from 'exiftool-vendored';
 import sharp, { type Sharp } from 'sharp';
@@ -11,12 +13,60 @@ export const QUALITY: Record<SizeName, number> = { thumb: 78, preview: 84, full:
 
 export type SourceFile = { id: string; kind: string; absPath: string; rotation?: number };
 
-/** RAW 면 내장 프리뷰를 꺼내 임시 JPG 경로를, 아니면 원본 경로를 돌려준다. */
+const run = promisify(execFile);
+
+/** sharp(내장 libvips)가 못 읽는 HEIC(HEVC)·JPEG XL 은 디코더 CLI 로 PNG 를 만들어 쓴다. PNG 에 ICC 가 들어가서
+ *  P3·AdobeRGB 로 내보낸 사진도 색이 맞는다. 이미지에 libheif-examples(heif-convert)·libjxl-tools(djxl)가 있다. */
+async function decodeToPng(file: SourceFile, dir: string): Promise<string> {
+	const out = path.join(dir, `source-${process.pid}.decoded.png`);
+	await rm(out, { force: true });
+	const opts = { timeout: 180_000, maxBuffer: 4 * 1024 * 1024 };
+	if (file.kind === 'jxl') {
+		await run('djxl', [file.absPath, out], opts);
+		return out;
+	}
+	// libheif 1.17 부터 heif-dec, 그 전(데비안 bookworm 1.15)은 heif-convert
+	let lastErr: unknown = null;
+	for (const cmd of ['heif-dec', 'heif-convert']) {
+		try {
+			await run(cmd, [file.absPath, out], opts);
+			lastErr = null;
+			break;
+		} catch (e) {
+			lastErr = e;
+			if ((e as NodeJS.ErrnoException).code !== 'ENOENT') break;
+		}
+	}
+	if (lastErr) throw lastErr;
+	if (await stat(out).catch(() => null)) return out;
+	// 대표 이미지가 여럿인 HEIC 는 out-1.png, out-2.png … 로 나온다 — 첫 장
+	const base = path.basename(out, '.png');
+	const first = (await readdir(dir))
+		.filter((n) => n.startsWith(base + '-') && n.endsWith('.png'))
+		.sort()[0];
+	if (!first) throw new Error('HEIC 디코딩 결과가 없습니다');
+	return path.join(dir, first);
+}
+
+/** RAW 면 내장 프리뷰를 꺼내 임시 JPG 경로를, HEIC·JXL 이면 디코딩한 임시 PNG 를, 아니면 원본 경로를 돌려준다. */
 export async function openSource(
 	exiftool: ExifTool,
 	cacheDir: string,
 	file: SourceFile
 ): Promise<{ input: string; cleanup: () => Promise<void> }> {
+	if (file.kind === 'heic' || file.kind === 'jxl') {
+		const dir = derivativeDir(cacheDir, file.id);
+		await mkdir(dir, { recursive: true });
+		const png = await decodeToPng(file, dir);
+		const base = path.basename(png).replace(/(-\d+)?\.png$/, '');
+		return {
+			input: png,
+			cleanup: async () => {
+				for (const n of await readdir(dir).catch(() => [] as string[]))
+					if (n.startsWith(base)) await rm(path.join(dir, n), { force: true });
+			}
+		};
+	}
 	if (file.kind !== 'raw') return { input: file.absPath, cleanup: async () => {} };
 	const dir = derivativeDir(cacheDir, file.id);
 	await mkdir(dir, { recursive: true });

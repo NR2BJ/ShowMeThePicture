@@ -15,7 +15,9 @@ const ORIGINAL_TYPES: Record<string, string> = {
 	tiff: 'image/tiff',
 	webp: 'image/webp',
 	heic: 'image/heic',
-	heif: 'image/heif'
+	heif: 'image/heif',
+	avif: 'image/avif',
+	jxl: 'image/jxl'
 };
 
 /** 원본 파일 주소 — 끝에 실제 파일 이름을 넣는다. 브라우저의 '다른 이름으로 저장'이 Content-Disposition 대신

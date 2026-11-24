@@ -35,6 +35,8 @@ export const fileKind = pgEnum('file_kind', [
 	'png',
 	'webp',
 	'heic',
+	'avif',
+	'jxl',
 	'other'
 ]);
 export const variantRole = pgEnum('variant_role', ['original', 'edit']);

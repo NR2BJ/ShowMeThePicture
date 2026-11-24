@@ -88,11 +88,13 @@ export async function refreshPhotosOfFiles(db: Db, fileIds: string[]): Promise<n
 	return rows.length;
 }
 
-/** 오래 사라진 파일의 기록·캐시 정리. 파일이 하나도 안 남은 사진도 지운다. */
+/** 오래 사라진 파일의 기록·캐시 정리. 파일이 하나도 안 남은 사진도 지운다.
+ *  days=0 이면 지금 사라진 것 전부 (대시보드 '지금 정리' — 일부러 지운 걸 30일 기다리지 않고). */
 export async function purgeLongMissing(
 	db: Db,
 	cacheDir: string,
-	sourceId: string
+	sourceId: string,
+	days = PURGE_MISSING_DAYS
 ): Promise<number> {
 	const old = await db
 		.select({ id: files.id, photoId: files.photoId })
@@ -101,7 +103,7 @@ export async function purgeLongMissing(
 			and(
 				eq(files.sourceId, sourceId),
 				eq(files.status, 'missing'),
-				lt(files.updatedAt, sql`now() - make_interval(days => ${PURGE_MISSING_DAYS})`)
+				lt(files.updatedAt, sql`now() - make_interval(days => ${days})`)
 			)
 		);
 	if (old.length === 0) return 0;

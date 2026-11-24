@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { autoRefresh } from '#lib/actions/autoRefresh.ts';
 	import { stackTable } from '#lib/actions/stackTable.ts';
+	import { enhance } from '$app/forms';
 	import type { PageProps } from './$types';
-	let { data }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 	const busy = $derived(
 		data.sources.some((s) => s.pendingCount > 0) ||
 			data.queues.some((q) => q.state === 'active' || q.state === 'created')
@@ -153,6 +154,30 @@
 				</tr>
 			</tbody>
 		</table>
+		<!-- 사라진 파일은 30일 동안 기록을 남긴다: 다른 폴더로 옮긴 파일을 알아보고(공개·컷·컬렉션 유지),
+		     디스크가 잠깐 빠졌다 돌아와도 되살리려고. 일부러 지운 거면 여기서 바로 비운다. -->
+		{#if totals.missing || form?.purged != null}
+			<form
+				class="purge"
+				method="POST"
+				action="?/purgeMissing"
+				use:enhance={({ cancel }) => {
+					if (
+						!confirm(
+							`사라진 파일 ${totals.missing}개의 기록과 캐시를 지금 지웁니다.\n다른 폴더로 옮긴 파일이나 잠깐 빠진 디스크의 파일이면 공개·컷·컬렉션 설정이 사라집니다.`
+						)
+					)
+						cancel();
+				}}
+			>
+				<p class="mono dim">
+					{#if totals.missing}없어짐 {totals.missing}개 — 30일 뒤 스캔 때 자동 정리{:else}없어진
+						파일
+						{form?.purged}개를 정리했습니다{/if}
+				</p>
+				{#if totals.missing}<button class="btn quiet" type="submit">지금 정리</button>{/if}
+			</form>
+		{/if}
 	{/if}
 
 	{#if data.failures.length}
@@ -256,6 +281,17 @@
 		color: #d98a7a;
 	}
 	/* 폰: 카드 두 줄씩 — 한 장씩 세로로 늘어서면 대시보드가 끝없이 길어진다 */
+	.purge {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+		margin: 12px 0 0;
+	}
+	.purge p {
+		margin: 0;
+		font-size: 14px;
+	}
 	@media (max-width: 720px) {
 		.cards {
 			grid-template-columns: repeat(2, minmax(0, 1fr));

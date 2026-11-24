@@ -13,7 +13,24 @@ export const RAW_EXTS = new Set([
 	'orf',
 	'rw2',
 	'pef',
-	'x3f'
+	'x3f',
+	// 덜 흔한 것들 — 전부 내장 프리뷰를 꺼내 쓰므로 회사와 상관없이 된다
+	'nrw',
+	'crw',
+	'sr2',
+	'srf',
+	'mrw',
+	'rwl',
+	'raw',
+	'3fr',
+	'fff',
+	'iiq',
+	'kdc',
+	'dcr',
+	'erf',
+	'mef',
+	'mos',
+	'gpr'
 ]);
 export const IMAGE_EXTS = new Set([
 	'jpg',
@@ -24,6 +41,8 @@ export const IMAGE_EXTS = new Set([
 	'webp',
 	'heic',
 	'heif',
+	'avif',
+	'jxl',
 	...RAW_EXTS
 ]);
 /** 스캔에서 건너뛰는 디렉터리 */
@@ -36,7 +55,7 @@ const IGNORED_DIRS = new Set([
 	'node_modules'
 ]);
 
-export type FileKind = 'raw' | 'jpeg' | 'tiff' | 'png' | 'webp' | 'heic' | 'other';
+export type FileKind = 'raw' | 'jpeg' | 'tiff' | 'png' | 'webp' | 'heic' | 'avif' | 'jxl' | 'other';
 
 export function extOf(name: string): string {
 	const i = name.lastIndexOf('.');
@@ -50,6 +69,8 @@ export function kindOf(ext: string): FileKind {
 	if (ext === 'png') return 'png';
 	if (ext === 'webp') return 'webp';
 	if (ext === 'heic' || ext === 'heif') return 'heic';
+	if (ext === 'avif') return 'avif';
+	if (ext === 'jxl') return 'jxl';
 	return 'other';
 }
 

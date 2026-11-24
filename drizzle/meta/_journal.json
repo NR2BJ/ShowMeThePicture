@@ -99,6 +99,13 @@
       "when": 1794330660398,
       "tag": "0013_film_meta_no_exif",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795523355035,
+      "tag": "0014_file_kinds_avif_jxl",
+      "breakpoints": true
     }
   ]
 }
